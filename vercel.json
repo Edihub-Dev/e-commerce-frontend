@@ -1,7 +1,9 @@
 {
-  "build": {
-    "env": {
-      "NODE_VERSION": "20"
+  "functions": {
+    "api/**": {
+      "runtime": "nodejs18.x"
     }
-  }
+  },
+  "buildCommand": "npm run build",
+  "devCommand": "npm run dev"
 }

@@ -1,0 +1,69 @@
+@import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Smooth scroll behavior */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #008ecc;
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #006fa3;
+}
+
+body {
+  font-family: "Manrope", sans-serif;
+  @apply bg-white text-dark-text;
+}
+
+.hero-slider .swiper-button-next,
+.hero-slider .swiper-button-prev {
+  color: #008ecc !important;
+  background-color: white;
+  border-radius: 50%;
+  width: 60px !important;
+  height: 60px !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  transition: all 0.3s ease;
+  padding: 20px;
+}
+
+.hero-slider .swiper-button-prev {
+  left: -25px !important;
+}
+
+.hero-slider .swiper-button-next {
+  right: -25px !important;
+}
+
+.hero-slider .swiper-button-next:hover,
+.hero-slider .swiper-button-prev:hover {
+  background-color: #eaeef0 !important;
+  color: white !important;
+}
+
+.hero-slider .swiper-button-next:after,
+.hero-slider .swiper-button-prev:after {
+  font-size: 0.5rem !important;
+  font-weight: 700 !important;
+}
+
+.swiper-pagination-bullet-active {
+  background: #008ecc !important;
+}

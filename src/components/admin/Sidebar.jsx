@@ -1,0 +1,93 @@
+import { motion } from "framer-motion";
+import {
+  LayoutDashboard,
+  Package,
+  ShoppingBag,
+  Layers,
+  Users,
+  Home,
+} from "lucide-react";
+import PropTypes from "prop-types";
+import { Link } from "react-router-dom";
+import { useEffect, useState } from "react";
+
+const navItems = [
+  { label: "Dashboard", icon: LayoutDashboard, to: "/admin" },
+  { label: "Products", icon: Package, to: "/admin/products" },
+  { label: "Orders", icon: ShoppingBag, to: "/admin/orders" },
+  { label: "Categories", icon: Layers, to: "/admin/categories" },
+  { label: "Customers", icon: Users, to: "/admin/customers" },
+];
+
+const MotionLink = motion.create(Link);
+
+const Sidebar = ({ active, className }) => {
+  const baseClasses =
+    "bg-white border-r border-slate-200 h-full md:h-screen md:sticky md:top-0 md:left-0";
+  const [currentItem, setCurrentItem] = useState(active);
+
+  useEffect(() => {
+    setCurrentItem(active);
+  }, [active]);
+
+  return (
+    <aside className={`${baseClasses} ${className}`}>
+      <div className="flex flex-col w-full h-full px-6 py-8 space-y-12">
+        <div className="flex items-center gap-2 text-xl font-semibold text-slate-900">
+          <div className="h-10 w-10 rounded-xl bg-blue-100 text-blue-600 grid place-items-center font-bold">
+            M
+          </div>
+          <span>MegaMart Admin</span>
+        </div>
+
+        <nav className="flex-1 space-y-2">
+          {navItems.map(({ label, icon: Icon, to }) => {
+            const isActive = label === currentItem;
+            return (
+              <MotionLink
+                key={label}
+                whileHover={{ x: 6 }}
+                to={to}
+                onClick={() => setCurrentItem(label)}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-150 cursor-pointer ${
+                  isActive
+                    ? "bg-blue-100 text-blue-700 shadow-sm"
+                    : "text-slate-500 hover:text-blue-600 hover:bg-blue-50"
+                }`}
+              >
+                <Icon size={20} />
+                {label}
+              </MotionLink>
+            );
+          })}
+          <div className="pt-4 mt-6 border-t border-slate-100">
+            <MotionLink
+              to="/"
+              whileHover={{ x: 6 }}
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-500 transition-colors hover:text-blue-600 hover:bg-blue-50"
+            >
+              <Home size={20} />
+              User Dashboard
+            </MotionLink>
+          </div>
+        </nav>
+
+        <div className="hidden lg:block text-xs text-slate-400">
+          © {new Date().getFullYear()} MegaMart. All rights reserved.
+        </div>
+      </div>
+    </aside>
+  );
+};
+
+Sidebar.propTypes = {
+  active: PropTypes.string,
+  className: PropTypes.string,
+};
+
+Sidebar.defaultProps = {
+  active: "Dashboard",
+  className: "hidden md:flex md:w-64",
+};
+
+export default Sidebar;

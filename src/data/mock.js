@@ -60,7 +60,7 @@ export const merchDeals = [
     "MST Blockchain Official Polo T-Shirt (White Edition)",
     // "Premium white polo with embroidered MST crest, perfect for community events",
     "Show your pride in the MST Blockchain community with this premium white polo t-shirt — crafted for comfort, style, and durability. Designed with a sleek printed MST logo, this shirt blends casual elegance with professional appeal. Whether you’re attending a blockchain event, trading from your desk, or relaxing on the weekend, this polo is your go-to merch.",
-    999, // originalPrice
+    2, // originalPrice
     20, // discount %
     "/assets/products/WHITE_FRONT.png",
     "MST Blockchain Official Polo T-Shirt",

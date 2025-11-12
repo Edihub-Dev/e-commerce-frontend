@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import {
   ArrowLeft,
@@ -17,7 +18,6 @@ import {
 } from "../store/thunks/adminProductsThunks";
 
 const statusOptions = [
-  { label: "Draft", value: "draft" },
   { label: "Published", value: "published" },
   { label: "Archived", value: "archived" },
 ];
@@ -35,7 +35,7 @@ const defaultFormState = {
   description: "",
   category: "",
   brand: "",
-  status: "draft",
+  status: "published",
   availabilityStatus: "in_stock",
   price: "",
   originalPrice: "",
@@ -61,6 +61,7 @@ const AdminAddProductPage = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [isGalleryUploading, setIsGalleryUploading] = useState(false);
   const { user, logout } = useAuth();
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   useEffect(() => {
     if (!items.length) {
@@ -405,13 +406,40 @@ const AdminAddProductPage = () => {
   const isStockLocked = isStockLockedForStatus(formState.availabilityStatus);
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900">
+    <div className="min-h-screen bg-slate-50 text-slate-900 overflow-x-hidden">
       <div className="flex">
         <Sidebar active="Products" className="hidden md:flex md:w-64" />
 
+        <AnimatePresence>
+          {isSidebarOpen && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-40 flex md:hidden"
+            >
+              <motion.div
+                initial={{ x: "-100%" }}
+                animate={{ x: 0 }}
+                exit={{ x: "-100%" }}
+                transition={{ type: "spring", stiffness: 220, damping: 24 }}
+                className="bg-white w-72 max-w-sm h-full shadow-xl"
+              >
+                <Sidebar active="Products" className="flex w-full" />
+              </motion.div>
+              <button
+                type="button"
+                onClick={() => setIsSidebarOpen(false)}
+                className="flex-1 bg-black/30"
+                aria-label="Close sidebar"
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         <div className="flex-1 flex flex-col">
           <Navbar
-            onToggleSidebar={() => {}}
+            onToggleSidebar={() => setIsSidebarOpen((prev) => !prev)}
             activeRange="All Date"
             onSelectRange={() => {}}
             adminName={user?.name || user?.username || "Admin"}
@@ -421,6 +449,8 @@ const AdminAddProductPage = () => {
               shippedOrders: 0,
               deliveredOrders: 0,
             }}
+            showRangeSelector={false}
+            showNotifications={false}
             onLogout={logout}
           />
 

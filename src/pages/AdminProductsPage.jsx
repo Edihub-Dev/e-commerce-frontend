@@ -37,7 +37,6 @@ import {
 
 const statusBadgeClasses = {
   published: "bg-emerald-100 text-emerald-700",
-  draft: "bg-slate-200 text-slate-600",
   archived: "bg-slate-300 text-slate-500",
 };
 
@@ -56,7 +55,6 @@ const tableVariants = {
 const statusOptions = [
   { label: "All Status", value: "" },
   { label: "Published", value: "published" },
-  { label: "Draft", value: "draft" },
   { label: "Archived", value: "archived" },
 ];
 
@@ -301,7 +299,7 @@ const AdminProductsPage = () => {
       reviews:
         activeProduct.reviews ?? activeProduct.ratings?.totalReviews ?? "",
       stock: activeProduct.stock ?? "",
-      status: activeProduct.status || "draft",
+      status: activeProduct.status || "published",
       availabilityStatus: activeProduct.availabilityStatus || "in_stock",
       thumbnail:
         activeProduct.thumbnail ||
@@ -725,7 +723,7 @@ const AdminProductsPage = () => {
                         items.map((product) => {
                           const statusClass =
                             statusBadgeClasses[product.status] ||
-                            statusBadgeClasses.draft;
+                            statusBadgeClasses.published;
                           const stockClass =
                             stockBadgeClasses[product.availabilityStatus] ||
                             stockBadgeClasses.in_stock;
@@ -833,7 +831,7 @@ const AdminProductsPage = () => {
                                   {product.status
                                     ? product.status.charAt(0).toUpperCase() +
                                       product.status.slice(1)
-                                    : "Draft"}
+                                    : "Published"}
                                 </span>
                               </td>
                               <td className="px-4 py-3 text-sm text-slate-500">
@@ -918,7 +916,7 @@ const AdminProductsPage = () => {
                     items.map((product) => {
                       const statusClass =
                         statusBadgeClasses[product.status] ||
-                        statusBadgeClasses.draft;
+                        statusBadgeClasses.published;
                       const stockClass =
                         stockBadgeClasses[product.availabilityStatus] ||
                         stockBadgeClasses.in_stock;
@@ -989,7 +987,7 @@ const AdminProductsPage = () => {
                               {product.status
                                 ? product.status.charAt(0).toUpperCase() +
                                   product.status.slice(1)
-                                : "Draft"}
+                                : "Published"}
                             </span>
                           </div>
 

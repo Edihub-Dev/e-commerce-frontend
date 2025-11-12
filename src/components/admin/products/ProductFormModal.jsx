@@ -15,7 +15,7 @@ const DEFAULT_FORM = {
   rating: "",
   reviews: "",
   stock: "",
-  status: "draft",
+  status: "published",
   availabilityStatus: "in_stock",
   thumbnail: "",
   description: "",
@@ -25,7 +25,6 @@ const DEFAULT_FORM = {
 };
 
 const statusOptions = [
-  { label: "Draft", value: "draft" },
   { label: "Published", value: "published" },
   { label: "Archived", value: "archived" },
 ];

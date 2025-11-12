@@ -12,6 +12,7 @@ import {
   Trash2,
   Loader2,
   X,
+  Star,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
@@ -265,7 +266,8 @@ const AdminProductsPage = () => {
     const body = document.body;
     const previousOverflow = body.style.overflow;
     const previousPaddingRight = body.style.paddingRight;
-    const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+    const scrollbarWidth =
+      window.innerWidth - document.documentElement.clientWidth;
 
     body.style.overflow = "hidden";
     if (scrollbarWidth > 0) {
@@ -296,16 +298,25 @@ const AdminProductsPage = () => {
       discountPercentage: activeProduct.discountPercentage ?? "",
       saveAmount: activeProduct.saveAmount ?? "",
       rating: activeProduct.rating ?? activeProduct.ratings?.average ?? "",
-      reviews: activeProduct.reviews ?? activeProduct.ratings?.totalReviews ?? "",
+      reviews:
+        activeProduct.reviews ?? activeProduct.ratings?.totalReviews ?? "",
       stock: activeProduct.stock ?? "",
       status: activeProduct.status || "draft",
       availabilityStatus: activeProduct.availabilityStatus || "in_stock",
-      thumbnail: activeProduct.thumbnail || activeProduct.image || activeProduct.imageUrl || "",
+      thumbnail:
+        activeProduct.thumbnail ||
+        activeProduct.image ||
+        activeProduct.imageUrl ||
+        "",
       description: activeProduct.description || "",
       gallery: Array.isArray(activeProduct.gallery)
         ? activeProduct.gallery
         : Array.isArray(activeProduct.images)
         ? activeProduct.images
+        : [],
+      isFeatured: Boolean(activeProduct.isFeatured),
+      keyFeatures: Array.isArray(activeProduct.keyFeatures)
+        ? activeProduct.keyFeatures
         : [],
     };
   }, [activeProduct]);
@@ -658,6 +669,9 @@ const AdminProductsPage = () => {
                         </button>
                       </th>
                       <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        Featured
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
                         Status
                       </th>
                       <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -792,6 +806,25 @@ const AdminProductsPage = () => {
                               </td>
                               <td className="px-4 py-3 text-sm font-semibold text-slate-900">
                                 {price}
+                              </td>
+                              <td className="px-4 py-3">
+                                <span
+                                  className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${
+                                    product.isFeatured
+                                      ? "bg-blue-50 text-blue-600"
+                                      : "bg-slate-100 text-slate-500"
+                                  }`}
+                                >
+                                  <Star
+                                    size={12}
+                                    className={
+                                      product.isFeatured
+                                        ? "text-blue-500 fill-blue-400"
+                                        : "text-slate-400"
+                                    }
+                                  />
+                                  {product.isFeatured ? "Featured" : "Standard"}
+                                </span>
                               </td>
                               <td className="px-4 py-3">
                                 <span
@@ -979,6 +1012,28 @@ const AdminProductsPage = () => {
                             </div>
                             <div className="flex justify-between">
                               <span className="text-xs uppercase text-slate-400">
+                                Featured
+                              </span>
+                              <span
+                                className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-semibold ${
+                                  product.isFeatured
+                                    ? "bg-blue-50 text-blue-600"
+                                    : "bg-slate-100 text-slate-500"
+                                }`}
+                              >
+                                <Star
+                                  size={12}
+                                  className={
+                                    product.isFeatured
+                                      ? "text-blue-500 fill-blue-400"
+                                      : "text-slate-400"
+                                  }
+                                />
+                                {product.isFeatured ? "Yes" : "No"}
+                              </span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-xs uppercase text-slate-400">
                                 Stock
                               </span>
                               <span
@@ -1086,13 +1141,13 @@ const AdminProductsPage = () => {
       <AnimatePresence>
         {viewProduct && (
           <motion.div
-            className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-900/40 px-4 py-8 md:items-center"
+            className="fixed inset-0 z-50 flex items-start justify-center bg-slate-900/40 px-4 py-8 md:items-center"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
           >
             <motion.div
-              className="relative w-full max-w-3xl rounded-3xl bg-white shadow-2xl md:my-0"
+              className="relative w-full max-w-3xl rounded-3xl bg-white shadow-2xl md:my-0 max-h-[calc(100vh-4rem)] overflow-y-auto"
               initial={{ scale: 0.95, opacity: 0, y: 24 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.95, opacity: 0, y: 24 }}
@@ -1153,6 +1208,20 @@ const AdminProductsPage = () => {
                         <p className="text-xs text-slate-400">Status</p>
                         <p className="text-base font-semibold text-slate-900">
                           {viewProduct.status || "--"}
+                        </p>
+                      </div>
+                      <div className="rounded-xl bg-white px-3 py-2 shadow-sm">
+                        <p className="text-xs text-slate-400">Featured</p>
+                        <p className="mt-1 inline-flex items-center gap-1 text-sm font-semibold text-slate-900">
+                          <Star
+                            size={14}
+                            className={
+                              viewProduct.isFeatured
+                                ? "text-blue-500 fill-blue-400"
+                                : "text-slate-300"
+                            }
+                          />
+                          {viewProduct.isFeatured ? "Yes" : "No"}
                         </p>
                       </div>
                     </div>

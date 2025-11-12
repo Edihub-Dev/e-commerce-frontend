@@ -47,6 +47,8 @@ const defaultFormState = {
   lowStockThreshold: "",
   thumbnail: "",
   gallery: [],
+  isFeatured: false,
+  keyFeatures: [""],
 };
 
 const AdminAddProductPage = () => {
@@ -95,12 +97,21 @@ const AdminAddProductPage = () => {
     setFormState((prev) => {
       const next = { ...prev, [field]: value };
 
-      if (field === "availabilityStatus" && isStockLockedForStatus(value)) {
-        next.stock = "0";
+      if (field === "availabilityStatus") {
+        if (isStockLockedForStatus(value)) {
+          next.stock = "0";
+        } else if (isStockLockedForStatus(prev.availabilityStatus)) {
+          next.stock = "";
+        }
       }
 
       return next;
     });
+  };
+
+  const handleToggleChange = (field) => (event) => {
+    const { checked } = event.target;
+    setFormState((prev) => ({ ...prev, [field]: checked }));
   };
 
   const handlePricingChange = (field) => (event) => {
@@ -108,7 +119,8 @@ const AdminAddProductPage = () => {
     setFormState((prev) => {
       const next = { ...prev, [field]: value };
       const priceValue = field === "price" ? value : next.price;
-      const originalValue = field === "originalPrice" ? value : next.originalPrice;
+      const originalValue =
+        field === "originalPrice" ? value : next.originalPrice;
 
       const priceNum = parseFloat(priceValue);
       const originalNum = parseFloat(originalValue);
@@ -120,7 +132,9 @@ const AdminAddProductPage = () => {
         originalNum > 0
       ) {
         const save = originalNum - priceNum;
-        next.discountPercentage = Math.round((save / originalNum) * 100).toString();
+        next.discountPercentage = Math.round(
+          (save / originalNum) * 100
+        ).toString();
         next.saveAmount = save.toFixed(2);
       } else {
         next.discountPercentage = "";
@@ -196,7 +210,9 @@ const AdminAddProductPage = () => {
         const additions = images.filter((image) => !existing.includes(image));
         return { ...prev, gallery: [...existing, ...additions] };
       });
-      toast.success(`Added ${images.length} image${images.length > 1 ? "s" : ""}`);
+      toast.success(
+        `Added ${images.length} image${images.length > 1 ? "s" : ""}`
+      );
     } catch (error) {
       toast.error("Failed to load gallery images");
     } finally {
@@ -207,8 +223,41 @@ const AdminAddProductPage = () => {
 
   const handleRemoveGalleryImage = (index) => {
     setFormState((prev) => {
-      const nextGallery = (prev.gallery || []).filter((_, idx) => idx !== index);
+      const nextGallery = (prev.gallery || []).filter(
+        (_, idx) => idx !== index
+      );
       return { ...prev, gallery: nextGallery };
+    });
+  };
+
+  const handleKeyFeatureChange = (index, value) => {
+    setFormState((prev) => {
+      const nextFeatures = Array.isArray(prev.keyFeatures)
+        ? [...prev.keyFeatures]
+        : [""];
+      nextFeatures[index] = value;
+      return { ...prev, keyFeatures: nextFeatures };
+    });
+  };
+
+  const handleAddKeyFeature = () => {
+    setFormState((prev) => ({
+      ...prev,
+      keyFeatures: Array.isArray(prev.keyFeatures)
+        ? [...prev.keyFeatures, ""]
+        : ["", ""],
+    }));
+  };
+
+  const handleRemoveKeyFeature = (index) => {
+    setFormState((prev) => {
+      const nextFeatures = Array.isArray(prev.keyFeatures)
+        ? prev.keyFeatures.filter((_, idx) => idx !== index)
+        : [];
+      return {
+        ...prev,
+        keyFeatures: nextFeatures.length ? nextFeatures : [""],
+      };
     });
   };
 
@@ -245,7 +294,8 @@ const AdminAddProductPage = () => {
       if (Number.isNaN(originalNum) || originalNum <= 0) {
         errors.originalPrice = "Original price must be a positive number";
       } else if (originalNum < priceNum) {
-        errors.originalPrice = "Original price should be greater than or equal to price";
+        errors.originalPrice =
+          "Original price should be greater than or equal to price";
       }
     }
 
@@ -283,6 +333,14 @@ const AdminAddProductPage = () => {
       errors.gallery = "Add at least one gallery image";
     }
 
+    const keyFeatures = Array.isArray(formState.keyFeatures)
+      ? formState.keyFeatures.map((feature) => feature.trim()).filter(Boolean)
+      : [];
+
+    if (!keyFeatures.length) {
+      errors.keyFeatures = "Add at least one key feature";
+    }
+
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -311,7 +369,9 @@ const AdminAddProductPage = () => {
       discountPercentage: formState.discountPercentage
         ? Number(formState.discountPercentage)
         : undefined,
-      saveAmount: formState.saveAmount ? Number(formState.saveAmount) : undefined,
+      saveAmount: formState.saveAmount
+        ? Number(formState.saveAmount)
+        : undefined,
       rating: formState.rating ? Number(formState.rating) : undefined,
       reviews: formState.reviews ? Number(formState.reviews) : undefined,
       sku: formState.sku.trim(),
@@ -323,6 +383,10 @@ const AdminAddProductPage = () => {
         : undefined,
       thumbnail: formState.thumbnail,
       gallery: formState.gallery,
+      isFeatured: Boolean(formState.isFeatured),
+      keyFeatures: Array.isArray(formState.keyFeatures)
+        ? formState.keyFeatures.map((feature) => feature.trim()).filter(Boolean)
+        : [],
     };
 
     try {
@@ -429,6 +493,51 @@ const AdminAddProductPage = () => {
                       {formErrors.name && (
                         <p className="mt-1 text-xs text-rose-500">
                           {formErrors.name}
+                        </p>
+                      )}
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-slate-500">
+                        Key Features
+                      </label>
+                      <div className="mt-2 space-y-2">
+                        {(formState.keyFeatures || []).map((feature, index) => (
+                          <div key={index} className="flex gap-2">
+                            <input
+                              type="text"
+                              value={feature}
+                              onChange={(event) =>
+                                handleKeyFeatureChange(
+                                  index,
+                                  event.target.value
+                                )
+                              }
+                              placeholder="E.g. Premium breathable fabric"
+                              className="flex-1 rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveKeyFeature(index)}
+                              className="inline-flex items-center justify-center rounded-xl border border-slate-200 px-2 py-2 text-xs font-medium text-slate-500 hover:border-rose-200 hover:text-rose-500"
+                              disabled={
+                                (formState.keyFeatures || []).length === 1
+                              }
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        ))}
+                        <button
+                          type="button"
+                          onClick={handleAddKeyFeature}
+                          className="inline-flex items-center gap-2 rounded-xl border border-dashed border-blue-300 px-3 py-2 text-xs font-semibold text-blue-600 hover:bg-blue-50"
+                        >
+                          Add Feature
+                        </button>
+                      </div>
+                      {formErrors.keyFeatures && (
+                        <p className="mt-1 text-xs text-rose-500">
+                          {formErrors.keyFeatures}
                         </p>
                       )}
                     </div>
@@ -626,7 +735,9 @@ const AdminAddProductPage = () => {
                     </div>
                     <label className="inline-flex items-center gap-2 rounded-xl border border-dashed border-blue-300 px-4 py-2 text-sm font-semibold text-blue-600 hover:bg-blue-50">
                       <UploadCloud size={16} />
-                      {isGalleryUploading ? "Uploading..." : "Add Gallery Images"}
+                      {isGalleryUploading
+                        ? "Uploading..."
+                        : "Add Gallery Images"}
                       <input
                         type="file"
                         accept="image/*"
@@ -636,7 +747,9 @@ const AdminAddProductPage = () => {
                       />
                     </label>
                     {formErrors.gallery && (
-                      <p className="text-xs text-rose-500">{formErrors.gallery}</p>
+                      <p className="text-xs text-rose-500">
+                        {formErrors.gallery}
+                      </p>
                     )}
                   </div>
                 </section>
@@ -727,19 +840,57 @@ const AdminAddProductPage = () => {
                   <h2 className="text-base font-semibold text-slate-900">
                     Stock Settings
                   </h2>
-                  <div className="mt-4 space-y-3">
-                    <label className="text-xs font-medium text-slate-500">
-                      Low Stock Threshold
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      step="1"
-                      value={formState.lowStockThreshold}
-                      onChange={handleChange("lowStockThreshold")}
-                      className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none"
-                      placeholder="Optional (default 10)"
-                    />
+                  <div className="mt-4 space-y-4">
+                    <div>
+                      <label className="text-xs font-medium text-slate-500">
+                        Available Stock
+                      </label>
+                      <div className="mt-1 flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
+                        <input
+                          type="number"
+                          min="0"
+                          step="1"
+                          value={formState.stock}
+                          onChange={handleChange("stock")}
+                          disabled={isStockLocked}
+                          className={`w-full rounded-xl border px-3 py-2 text-sm focus:border-blue-400 focus:outline-none ${
+                            formErrors.stock
+                              ? "border-rose-300"
+                              : "border-slate-200"
+                          } ${
+                            isStockLocked ? "bg-slate-100 text-slate-500" : ""
+                          }`}
+                          placeholder={
+                            isStockLocked ? "Managed automatically" : "e.g. 150"
+                          }
+                        />
+                        {isStockLocked && (
+                          <span className="text-xs text-slate-500">
+                            Stock is locked for the selected status
+                          </span>
+                        )}
+                      </div>
+                      {formErrors.stock && (
+                        <p className="text-xs text-rose-500">
+                          {formErrors.stock}
+                        </p>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-medium text-slate-500">
+                        Low Stock Threshold
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="1"
+                        value={formState.lowStockThreshold}
+                        onChange={handleChange("lowStockThreshold")}
+                        className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none"
+                        placeholder="Optional (default 10)"
+                      />
+                    </div>
                   </div>
                 </section>
               </div>
@@ -815,6 +966,23 @@ const AdminAddProductPage = () => {
                         </option>
                       ))}
                     </select>
+                    <label className="mt-3 flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
+                      <span className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                        Featured Product
+                      </span>
+                      <span className="inline-flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={Boolean(formState.isFeatured)}
+                          onChange={handleToggleChange("isFeatured")}
+                          className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                          aria-label="Mark product as featured"
+                        />
+                        <span className="text-xs text-slate-600">
+                          {formState.isFeatured ? "Yes" : "No"}
+                        </span>
+                      </span>
+                    </label>
                   </div>
                 </section>
 

@@ -95,6 +95,10 @@ const mapProductCard = (product = {}) => {
   const gallery = Array.isArray(product.gallery) ? product.gallery : [];
   const primaryImage = product.thumbnail || product.image || gallery[0] || "";
 
+  const keyFeatures = Array.isArray(product.keyFeatures)
+    ? product.keyFeatures.map((feature) => feature?.toString().trim()).filter(Boolean)
+    : [];
+
   return {
     id: product.slug || product._id,
     slug: product.slug || "",
@@ -113,11 +117,15 @@ const mapProductCard = (product = {}) => {
     brand: product.brand || "",
     category: product.category || "",
     currency: product.currency || "INR",
+    keyFeatures,
   };
 };
 
 const mapProductDetail = (product = {}) => {
   const card = mapProductCard(product);
+  const keyFeatures = Array.isArray(product.keyFeatures)
+    ? product.keyFeatures.map((feature) => feature?.toString().trim()).filter(Boolean)
+    : card.keyFeatures || [];
   return {
     ...card,
     description: product.description || card.description,
@@ -126,6 +134,8 @@ const mapProductDetail = (product = {}) => {
     attributes: product.attributes || {},
     variants: product.variants || [],
     stock: product.stock ?? 0,
+    keyFeatures,
+    features: keyFeatures,
   };
 };
 

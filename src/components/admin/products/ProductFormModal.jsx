@@ -20,6 +20,8 @@ const DEFAULT_FORM = {
   thumbnail: "",
   description: "",
   gallery: [],
+  isFeatured: false,
+  keyFeatures: [""],
 };
 
 const statusOptions = [
@@ -74,6 +76,11 @@ const ProductFormModal = ({
         gallery: Array.isArray(normalizedInitial.gallery)
           ? [...normalizedInitial.gallery]
           : [...DEFAULT_FORM.gallery],
+        keyFeatures: Array.isArray(normalizedInitial.keyFeatures)
+          ? normalizedInitial.keyFeatures.length
+            ? [...normalizedInitial.keyFeatures]
+            : [""]
+          : [...DEFAULT_FORM.keyFeatures],
       });
       setLocalError("");
     }
@@ -90,15 +97,26 @@ const ProductFormModal = ({
     setFormState((prev) => {
       const next = { ...prev, [field]: value };
 
-      if (
-        field === "availabilityStatus" &&
-        ["out_of_stock", "preorder"].includes(value)
-      ) {
-        next.stock = "0";
+      if (field === "availabilityStatus") {
+        const isLocked = ["out_of_stock", "preorder"].includes(value);
+        const wasLocked = ["out_of_stock", "preorder"].includes(
+          prev.availabilityStatus
+        );
+
+        if (isLocked) {
+          next.stock = "0";
+        } else if (wasLocked) {
+          next.stock = "";
+        }
       }
 
       return next;
     });
+  };
+
+  const handleToggleChange = (field) => (event) => {
+    const { checked } = event.target;
+    setFormState((prev) => ({ ...prev, [field]: checked }));
   };
 
   const handlePricingChange = (field) => (event) => {
@@ -106,7 +124,8 @@ const ProductFormModal = ({
     setFormState((prev) => {
       const next = { ...prev, [field]: value };
       const priceValue = field === "price" ? value : next.price;
-      const originalValue = field === "originalPrice" ? value : next.originalPrice;
+      const originalValue =
+        field === "originalPrice" ? value : next.originalPrice;
 
       const priceNum = parseFloat(priceValue);
       const originalNum = parseFloat(originalValue);
@@ -118,7 +137,9 @@ const ProductFormModal = ({
         originalNum > 0
       ) {
         const save = originalNum - priceNum;
-        next.discountPercentage = Math.round((save / originalNum) * 100).toString();
+        next.discountPercentage = Math.round(
+          (save / originalNum) * 100
+        ).toString();
         next.saveAmount = save.toFixed(2);
       } else {
         next.discountPercentage = "";
@@ -204,7 +225,9 @@ const ProductFormModal = ({
 
   const handleRemoveGalleryImage = (index) => {
     setFormState((prev) => {
-      const nextGallery = (prev.gallery || []).filter((_, idx) => idx !== index);
+      const nextGallery = (prev.gallery || []).filter(
+        (_, idx) => idx !== index
+      );
       return { ...prev, gallery: nextGallery };
     });
   };
@@ -233,12 +256,23 @@ const ProductFormModal = ({
       return;
     }
 
+    const keyFeatures = Array.isArray(formState.keyFeatures)
+      ? formState.keyFeatures.map((feature) => feature.trim()).filter(Boolean)
+      : [];
+
+    if (!keyFeatures.length) {
+      setLocalError("Add at least one key feature");
+      return;
+    }
+
     if (
       formState.originalPrice &&
       (Number.isNaN(Number(formState.originalPrice)) ||
         Number(formState.originalPrice) < Number(formState.price))
     ) {
-      setLocalError("Original price must be a valid number greater than or equal to price");
+      setLocalError(
+        "Original price must be a valid number greater than or equal to price"
+      );
       return;
     }
 
@@ -266,11 +300,15 @@ const ProductFormModal = ({
     onSubmit({
       ...formState,
       price: Number(formState.price),
-      originalPrice: formState.originalPrice ? Number(formState.originalPrice) : undefined,
+      originalPrice: formState.originalPrice
+        ? Number(formState.originalPrice)
+        : undefined,
       discountPercentage: formState.discountPercentage
         ? Number(formState.discountPercentage)
         : undefined,
-      saveAmount: formState.saveAmount ? Number(formState.saveAmount) : undefined,
+      saveAmount: formState.saveAmount
+        ? Number(formState.saveAmount)
+        : undefined,
       rating: formState.rating ? Number(formState.rating) : undefined,
       reviews: formState.reviews ? Number(formState.reviews) : undefined,
       stock: Number(
@@ -279,6 +317,8 @@ const ProductFormModal = ({
           : formState.stock || 0
       ),
       gallery: Array.isArray(formState.gallery) ? formState.gallery : [],
+      isFeatured: Boolean(formState.isFeatured),
+      keyFeatures,
     });
   };
 
@@ -290,7 +330,7 @@ const ProductFormModal = ({
     <AnimatePresence>
       {isOpen && (
         <motion.div
-          className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 px-4 py-8 md:items-center"
+          className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 px-4 py-8 md:items-center"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -300,7 +340,7 @@ const ProductFormModal = ({
             initial="hidden"
             animate="visible"
             exit="exit"
-            className="w-full max-w-xl rounded-2xl bg-white p-6 shadow-xl md:my-0"
+            className="w-full max-w-xl rounded-2xl bg-white p-6 shadow-xl md:my-0 max-h-[calc(100vh-4rem)] overflow-y-auto"
           >
             <div className="flex items-start justify-between">
               <div>
@@ -335,6 +375,71 @@ const ProductFormModal = ({
                     className="rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none"
                     placeholder="Smartwatch E2"
                   />
+                </label>
+                <label className="flex flex-col gap-2 text-xs font-medium text-slate-500 md:col-span-2">
+                  Key Features
+                  <div className="space-y-2">
+                    {(formState.keyFeatures || []).map((feature, index) => (
+                      <div key={index} className="flex gap-2">
+                        <input
+                          type="text"
+                          value={feature}
+                          onChange={(event) => {
+                            const value = event.target.value;
+                            setFormState((prev) => {
+                              const nextFeatures = Array.isArray(
+                                prev.keyFeatures
+                              )
+                                ? [...prev.keyFeatures]
+                                : [""];
+                              nextFeatures[index] = value;
+                              return { ...prev, keyFeatures: nextFeatures };
+                            });
+                          }}
+                          placeholder="E.g. Premium breathable fabric"
+                          className="flex-1 rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setFormState((prev) => {
+                              const nextFeatures = Array.isArray(
+                                prev.keyFeatures
+                              )
+                                ? prev.keyFeatures.filter(
+                                    (_, idx) => idx !== index
+                                  )
+                                : [];
+                              return {
+                                ...prev,
+                                keyFeatures: nextFeatures.length
+                                  ? nextFeatures
+                                  : [""],
+                              };
+                            });
+                          }}
+                          className="inline-flex items-center justify-center rounded-xl border border-slate-200 px-2 py-2 text-xs font-medium text-slate-500 hover:border-rose-200 hover:text-rose-500"
+                          disabled={(formState.keyFeatures || []).length === 1}
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFormState((prev) => ({
+                          ...prev,
+                          keyFeatures: Array.isArray(prev.keyFeatures)
+                            ? [...prev.keyFeatures, ""]
+                            : ["", ""],
+                        }));
+                      }}
+                      className="inline-flex items-center gap-2 rounded-xl border border-dashed border-blue-300 px-3 py-2 text-xs font-semibold text-blue-600 hover:bg-blue-50"
+                    >
+                      Add Feature
+                    </button>
+                  </div>
                 </label>
                 <label className="flex flex-col gap-1 text-xs font-medium text-slate-500">
                   id
@@ -432,7 +537,7 @@ const ProductFormModal = ({
                   />
                   {isStockLocked && (
                     <span className="text-[11px] text-slate-500">
-                      Stock is controlled automatically when status is {" "}
+                      Stock is controlled automatically when status is{" "}
                       {formState.availabilityStatus === "preorder"
                         ? "Preorder"
                         : "Out of Stock"}
@@ -468,6 +573,26 @@ const ProductFormModal = ({
                     ))}
                   </select>
                 </label>
+                <label className="flex flex-col gap-1 text-xs font-medium text-slate-500">
+                  Featured Product
+                  <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+                    <span className="text-xs text-slate-600">
+                      Highlight this item in storefront collections
+                    </span>
+                    <span className="inline-flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={Boolean(formState.isFeatured)}
+                        onChange={handleToggleChange("isFeatured")}
+                        className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                        aria-label="Toggle featured product"
+                      />
+                      <span className="text-xs text-slate-600">
+                        {formState.isFeatured ? "Yes" : "No"}
+                      </span>
+                    </span>
+                  </div>
+                </label>
               </div>
 
               <section className="space-y-3 rounded-xl border border-slate-200 bg-slate-50/60 p-4">
@@ -476,7 +601,8 @@ const ProductFormModal = ({
                     Thumbnail
                   </span>
                   <p className="text-xs text-slate-500">
-                    Upload a primary image (max 2MB) that will be used as the card preview.
+                    Upload a primary image (max 2MB) that will be used as the
+                    card preview.
                   </p>
                 </div>
                 <div
@@ -536,7 +662,8 @@ const ProductFormModal = ({
                     Gallery Images
                   </span>
                   <p className="text-xs text-slate-500">
-                    Upload multiple images (under 2MB each) for the product swiper.
+                    Upload multiple images (under 2MB each) for the product
+                    swiper.
                   </p>
                 </div>
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">

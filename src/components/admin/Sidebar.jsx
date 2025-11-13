@@ -21,7 +21,7 @@ const navItems = [
 
 const MotionLink = motion.create(Link);
 
-const Sidebar = ({ active, className }) => {
+const Sidebar = ({ active, className, onNavigate }) => {
   const baseClasses =
     "bg-white border-r border-slate-200 h-full md:h-screen md:sticky md:top-0 md:left-0";
   const [currentItem, setCurrentItem] = useState(active);
@@ -48,7 +48,10 @@ const Sidebar = ({ active, className }) => {
                 key={label}
                 whileHover={{ x: 6 }}
                 to={to}
-                onClick={() => setCurrentItem(label)}
+                onClick={() => {
+                  setCurrentItem(label);
+                  onNavigate?.();
+                }}
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-150 cursor-pointer ${
                   isActive
                     ? "bg-blue-100 text-blue-700 shadow-sm"
@@ -64,6 +67,7 @@ const Sidebar = ({ active, className }) => {
             <MotionLink
               to="/"
               whileHover={{ x: 6 }}
+              onClick={() => onNavigate?.()}
               className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-500 transition-colors hover:text-blue-600 hover:bg-blue-50"
             >
               <Home size={20} />
@@ -83,11 +87,13 @@ const Sidebar = ({ active, className }) => {
 Sidebar.propTypes = {
   active: PropTypes.string,
   className: PropTypes.string,
+  onNavigate: PropTypes.func,
 };
 
 Sidebar.defaultProps = {
   active: "Dashboard",
   className: "hidden md:flex md:w-64",
+  onNavigate: undefined,
 };
 
 export default Sidebar;

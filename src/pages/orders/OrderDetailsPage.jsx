@@ -260,10 +260,10 @@ const OrderDetailsPage = () => {
       >
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-semibold text-secondary">
+            <h1 className="text-2xl font-semibold text-secondary break-all">
               Order #{order._id}
             </h1>
-            <p className="text-sm text-medium-text">
+            <p className="text-sm text-medium-text break-words">
               Placed on {new Date(order.createdAt).toLocaleString()}
             </p>
           </div>
@@ -275,16 +275,16 @@ const OrderDetailsPage = () => {
         <div className="grid md:grid-cols-2 gap-4 text-sm text-medium-text">
           <div className="flex items-center gap-3">
             <PackageCheck className="h-4 w-4 text-secondary" />
-            <div>
+            <div className="min-w-0">
               <p className="font-medium text-secondary">Items</p>
-              <p>{order.items?.length || 0}</p>
+              <p className="break-words">{order.items?.length || 0}</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
             <MapPin className="h-4 w-4 text-secondary" />
-            <div>
+            <div className="min-w-0">
               <p className="font-medium text-secondary">Estimated Delivery</p>
-              <p>{deliveryDate}</p>
+              <p className="break-words">{deliveryDate}</p>
             </div>
           </div>
         </div>
@@ -321,7 +321,7 @@ const OrderDetailsPage = () => {
       </section>
 
       <section className="rounded-3xl border border-slate-200 bg-white p-6 grid md:grid-cols-2 gap-6">
-        <div className="space-y-2 text-sm text-medium-text">
+        <div className="space-y-2 text-sm text-medium-text break-words">
           <h3 className="text-lg font-semibold text-secondary mb-2">
             Delivery Address
           </h3>
@@ -343,28 +343,29 @@ const OrderDetailsPage = () => {
           <h3 className="text-lg font-semibold text-secondary mb-2">
             Payment Summary
           </h3>
-          <p className="flex justify-between">
+          <p className="flex justify-between gap-3">
             <span>Subtotal</span>
             <span>₹{order.pricing?.subtotal?.toLocaleString?.()}</span>
           </p>
-          <p className="flex justify-between">
+          <p className="flex justify-between gap-3">
             <span>Shipping Fee</span>
             <span>₹{order.pricing?.shippingFee?.toLocaleString?.()}</span>
           </p>
-          <p className="flex justify-between">
+          <p className="flex justify-between gap-3">
             <span>Tax</span>
             <span>₹{order.pricing?.taxAmount?.toLocaleString?.()}</span>
           </p>
-          <p className="flex justify-between text-success font-medium">
+          <p className="flex justify-between text-success font-medium gap-3">
             <span>Discount</span>
             <span>-₹{order.pricing?.discount?.toLocaleString?.()}</span>
           </p>
-          <p className="flex justify-between text-base font-semibold text-secondary border-t border-slate-200 pt-3">
+          <p className="flex justify-between text-base font-semibold text-secondary border-t border-slate-200 pt-3 gap-3">
             <span>Total</span>
             <span>₹{order.pricing?.total?.toLocaleString?.()}</span>
           </p>
-          <p className="text-xs text-slate-400 pt-1">
-            Method: {order.payment?.method?.toUpperCase?.()} • Status:{" "}
+          <p className="text-xs text-slate-400 pt-1 break-words">
+            Method: {order.payment?.method?.toUpperCase?.()} • Status:{
+" "}
             {order.payment?.status}
           </p>
         </div>

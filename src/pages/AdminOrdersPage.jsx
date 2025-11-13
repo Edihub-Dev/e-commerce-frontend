@@ -954,7 +954,11 @@ const AdminOrdersPage = () => {
   return (
     <div className="min-h-screen md:h-screen bg-slate-50 text-slate-900 overflow-x-hidden md:overflow-hidden">
       <div className="flex md:h-screen">
-        <Sidebar active="Orders" className="hidden md:flex md:w-64" />
+        <Sidebar
+          active="Orders"
+          className="hidden md:flex md:w-64"
+          onNavigate={() => setIsSidebarOpen(false)}
+        />
 
         {isSidebarOpen && (
           <div className="fixed inset-0 z-40 flex md:hidden">
@@ -980,7 +984,11 @@ const AdminOrdersPage = () => {
                   </button>
                 </div>
                 <div className="flex-1 overflow-y-auto">
-                  <Sidebar active="Orders" className="flex w-full md:hidden" />
+                  <Sidebar
+                    active="Orders"
+                    className="flex w-full md:hidden"
+                    onNavigate={() => setIsSidebarOpen(false)}
+                  />
                 </div>
               </div>
             </div>

@@ -161,15 +161,15 @@ const AdminDashboard = () => {
   };
 
   useEffect(() => {
-    const overviewController = new AbortController();
-    const usersController = new AbortController();
+    let isSubscribed = true;
 
     const fetchOverview = async () => {
+      if (!isSubscribed) return;
       setOverviewLoading(true);
       try {
-        const response = await api.get("/admin/overview", {
-          signal: overviewController.signal,
-        });
+        const response = await api.get("/admin/overview");
+
+        if (!isSubscribed) return;
 
         if (response.data?.success) {
           const data = response.data.data || {};
@@ -186,30 +186,32 @@ const AdminDashboard = () => {
           );
         }
       } catch (error) {
-        if (error.code !== "ERR_CANCELED") {
-          console.error("Failed to load admin overview", error);
-          setOverviewError("Unable to load admin overview. Please try again.");
-        }
+        if (!isSubscribed) return;
+        console.error("Failed to load admin overview", error);
+        setOverviewError("Unable to load admin overview. Please try again.");
       } finally {
-        setOverviewLoading(false);
+        if (isSubscribed) {
+          setOverviewLoading(false);
+        }
       }
     };
 
     const fetchUsers = async () => {
+      if (!isSubscribed) return;
       setUsersLoading(true);
       try {
-        const response = await api.get("/admin/users", {
-          signal: usersController.signal,
-        });
+        const response = await api.get("/admin/users");
+        if (!isSubscribed) return;
         setUsers(response.data?.data || []);
         setUsersError("");
       } catch (error) {
-        if (error.code !== "ERR_CANCELED") {
-          console.error("Failed to load users", error);
-          setUsersError("Unable to load users. Please try again.");
-        }
+        if (!isSubscribed) return;
+        console.error("Failed to load users", error);
+        setUsersError("Unable to load users. Please try again.");
       } finally {
-        setUsersLoading(false);
+        if (isSubscribed) {
+          setUsersLoading(false);
+        }
       }
     };
 
@@ -217,15 +219,15 @@ const AdminDashboard = () => {
     fetchUsers();
 
     return () => {
-      overviewController.abort();
-      usersController.abort();
+      isSubscribed = false;
     };
   }, []);
 
   useEffect(() => {
-    const controller = new AbortController();
+    let isSubscribed = true;
 
     const fetchOrders = async () => {
+      if (!isSubscribed) return;
       setOrdersLoading(true);
       try {
         const params = {};
@@ -234,9 +236,11 @@ const AdminDashboard = () => {
         if (orderFilters.endDate) params.endDate = orderFilters.endDate;
 
         const response = await api.get("/orders", {
-          signal: controller.signal,
           params,
         });
+
+        if (!isSubscribed) return;
+
         const fetchedOrders = response.data?.data || [];
         setOrders(fetchedOrders);
         setStatusBreakdown((prev) => ({
@@ -245,18 +249,21 @@ const AdminDashboard = () => {
         }));
         setOrdersError("");
       } catch (error) {
-        if (error.code !== "ERR_CANCELED") {
-          console.error("Failed to fetch orders", error);
-          setOrdersError("Unable to load orders. Please try again shortly.");
-        }
+        if (!isSubscribed) return;
+        console.error("Failed to fetch orders", error);
+        setOrdersError("Unable to load orders. Please try again shortly.");
       } finally {
-        setOrdersLoading(false);
+        if (isSubscribed) {
+          setOrdersLoading(false);
+        }
       }
     };
 
     fetchOrders();
 
-    return () => controller.abort();
+    return () => {
+      isSubscribed = false;
+    };
   }, [orderFilters]);
 
   useEffect(() => {
@@ -302,6 +309,7 @@ const AdminDashboard = () => {
         <Sidebar
           active="Dashboard"
           className="hidden md:flex md:w-64 md:flex-none"
+          onNavigate={() => setIsSidebarOpen(false)}
         />
 
         <AnimatePresence>
@@ -319,7 +327,7 @@ const AdminDashboard = () => {
                 transition={{ type: "spring", stiffness: 220, damping: 24 }}
                 className="bg-white w-72 max-w-sm h-full shadow-xl"
               >
-                <Sidebar active="Dashboard" className="flex w-full" />
+                <Sidebar active="Dashboard" className="flex w-full" onNavigate={() => setIsSidebarOpen(false)} />
               </motion.div>
               <button
                 type="button"

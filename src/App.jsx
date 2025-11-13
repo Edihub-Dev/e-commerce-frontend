@@ -1,4 +1,5 @@
-import { Routes, Route } from "react-router-dom";
+import { useEffect } from "react";
+import { Routes, Route, useLocation } from "react-router-dom";
 import { SearchProvider } from "./contexts/SearchContext";
 import Layout from "./components/Layout";
 import Home from "./pages/Home";
@@ -30,9 +31,20 @@ import AdminAddProductPage from "./pages/AdminAddProductPage";
 import AdminOrdersPage from "./pages/AdminOrdersPage";
 import ProtectedRoute from "./components/ProtectedRoute";
 
+const ScrollToTop = () => {
+  const { pathname } = useLocation();
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  }, [pathname]);
+
+  return null;
+};
+
 function App() {
   return (
     <SearchProvider>
+      <ScrollToTop />
       <Routes>
         <Route path="/" element={<Layout />}>
           <Route index element={<Home />} />

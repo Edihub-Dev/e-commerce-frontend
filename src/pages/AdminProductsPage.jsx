@@ -394,6 +394,7 @@ const AdminProductsPage = () => {
         <Sidebar
           active="Products"
           className="hidden md:flex md:w-64 md:flex-none"
+          onNavigate={() => setIsSidebarOpen(false)}
         />
 
         <AnimatePresence>
@@ -411,7 +412,11 @@ const AdminProductsPage = () => {
                 transition={{ type: "spring", stiffness: 220, damping: 24 }}
                 className="bg-white w-72 max-w-sm h-full shadow-xl"
               >
-                <Sidebar active="Products" className="flex w-full" />
+                <Sidebar
+                  active="Products"
+                  className="flex w-full"
+                  onNavigate={() => setIsSidebarOpen(false)}
+                />
               </motion.div>
               <button
                 type="button"

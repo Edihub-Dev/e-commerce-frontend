@@ -474,9 +474,13 @@ const AdminAddProductPage = () => {
   const isStockLocked = isStockLockedForStatus(formState.availabilityStatus);
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 overflow-x-hidden">
-      <div className="flex">
-        <Sidebar active="Products" className="hidden md:flex md:w-64" />
+    <div className="min-h-screen md:h-screen bg-slate-50 text-slate-900 overflow-x-hidden">
+      <div className="flex md:h-screen">
+        <Sidebar
+          active="Products"
+          className="hidden md:flex md:w-64 md:flex-none"
+          onNavigate={() => setIsSidebarOpen(false)}
+        />
 
         <AnimatePresence>
           {isSidebarOpen && (
@@ -493,7 +497,11 @@ const AdminAddProductPage = () => {
                 transition={{ type: "spring", stiffness: 220, damping: 24 }}
                 className="bg-white w-72 max-w-sm h-full shadow-xl"
               >
-                <Sidebar active="Products" className="flex w-full" />
+                <Sidebar
+                  active="Products"
+                  className="flex w-full"
+                  onNavigate={() => setIsSidebarOpen(false)}
+                />
               </motion.div>
               <button
                 type="button"
@@ -505,7 +513,7 @@ const AdminAddProductPage = () => {
           )}
         </AnimatePresence>
 
-        <div className="flex-1 flex flex-col">
+        <div className="flex-1 flex flex-col overflow-hidden">
           <Navbar
             onToggleSidebar={() => setIsSidebarOpen((prev) => !prev)}
             activeRange="All Date"
@@ -522,7 +530,7 @@ const AdminAddProductPage = () => {
             onLogout={logout}
           />
 
-          <main className="flex-1 px-4 py-6 md:px-8">
+          <main className="flex-1 overflow-y-auto px-4 py-6 md:px-8">
             <div className="flex items-center justify-between gap-4">
               <div>
                 <p className="text-sm text-slate-500">

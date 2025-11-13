@@ -288,12 +288,12 @@ const Header = () => {
 
       {/* Main Header */}
       <div
-        className={`container mx-auto px-16 py-4 ${
+        className={`container mx-auto px-4 sm:px-8 lg:px-16 py-3 lg:py-4 ${
           isMenuOpen ? "hidden lg:block" : ""
         }`}
       >
-        <div className="flex justify-between items-center gap-4">
-          <div className="flex items-center gap-3">
+        <div className="flex items-center justify-between gap-3 sm:gap-4">
+          <div className="flex items-center gap-2 sm:gap-3">
             <button
               type="button"
               onClick={() => setIsMenuOpen((prev) => !prev)}
@@ -308,7 +308,7 @@ const Header = () => {
 
             <Link
               to="/"
-              className="text-3xl font-bold"
+              className="text-2xl sm:text-3xl font-bold"
               style={{ color: "#008ECC" }}
             >
               MegaMart
@@ -349,7 +349,7 @@ const Header = () => {
           </div>
 
           {/* Right: Sign In, Cart */}
-          <div className="flex items-center gap-6">
+          <div className="flex items-center gap-3 sm:gap-6">
             {/* Sign In */}
             {isAuthenticated ? (
               <div

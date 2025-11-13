@@ -336,8 +336,6 @@ const CheckoutPayment = () => {
       items: orderItems,
       pricing: {
         ...pricingPayload,
-        subtotal: resolvedTotals.subtotal,
-        total: resolvedTotals.total,
       },
       shippingAddress: sanitizedAddress,
       payment: {

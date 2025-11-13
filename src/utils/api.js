@@ -101,6 +101,11 @@ const mapProductCard = (product = {}) => {
         .filter(Boolean)
     : [];
 
+  const rawReviews = product.reviews ?? product.ratings?.totalReviews ?? 0;
+  const rawRating = product.rating ?? product.ratings?.average ?? 0;
+  const normalizedReviews = Number.isFinite(Number(rawReviews)) ? Number(rawReviews) : 0;
+  const normalizedRating = normalizedReviews > 0 ? Number(rawRating) || 0 : 0;
+
   return {
     id: product.slug || product._id,
     slug: product.slug || "",
@@ -113,8 +118,8 @@ const mapProductCard = (product = {}) => {
     originalPrice,
     discount: discountPercentage,
     saveAmount,
-    rating: product.rating ?? product.ratings?.average ?? 0,
-    reviews: product.reviews ?? product.ratings?.totalReviews ?? 0,
+    rating: normalizedRating,
+    reviews: normalizedReviews,
     availabilityStatus: product.availabilityStatus,
     brand: product.brand || "",
     category: product.category || "",
@@ -281,5 +286,10 @@ export const fetchOrderById = async (orderId) => {
 
 export const updateOrder = async (orderId, payload) => {
   const response = await api.patch(`/orders/${orderId}`, payload);
+  return response.data;
+};
+
+export const rateOrderItem = async (orderId, payload) => {
+  const response = await api.post(`/orders/${orderId}/rate`, payload);
   return response.data;
 };

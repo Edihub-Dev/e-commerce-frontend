@@ -12,8 +12,6 @@ const DEFAULT_FORM = {
   originalPrice: "",
   discountPercentage: "",
   saveAmount: "",
-  rating: "",
-  reviews: "",
   stock: "",
   status: "published",
   availabilityStatus: "in_stock",
@@ -280,22 +278,6 @@ const ProductFormModal = ({
       return;
     }
 
-    if (formState.rating) {
-      const ratingNum = Number(formState.rating);
-      if (Number.isNaN(ratingNum) || ratingNum < 0 || ratingNum > 5) {
-        setLocalError("Rating must be between 0 and 5");
-        return;
-      }
-    }
-
-    if (formState.reviews) {
-      const reviewsNum = Number(formState.reviews);
-      if (Number.isNaN(reviewsNum) || reviewsNum < 0) {
-        setLocalError("Reviews must be 0 or more");
-        return;
-      }
-    }
-
     onSubmit({
       ...formState,
       price: Number(formState.price),
@@ -308,8 +290,6 @@ const ProductFormModal = ({
       saveAmount: formState.saveAmount
         ? Number(formState.saveAmount)
         : undefined,
-      rating: formState.rating ? Number(formState.rating) : undefined,
-      reviews: formState.reviews ? Number(formState.reviews) : undefined,
       stock: Number(
         ["out_of_stock", "preorder"].includes(formState.availabilityStatus)
           ? 0
@@ -709,34 +689,6 @@ const ProductFormModal = ({
                   placeholder="A short description about this product"
                 />
               </label>
-              <div className="grid gap-4 md:grid-cols-2">
-                <label className="flex flex-col gap-1 text-xs font-medium text-slate-500">
-                  Rating (0 - 5)
-                  <input
-                    type="number"
-                    min="0"
-                    max="5"
-                    step="0.1"
-                    value={formState.rating}
-                    onChange={handleChange("rating")}
-                    className="rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none"
-                    placeholder="4.5"
-                  />
-                </label>
-                <label className="flex flex-col gap-1 text-xs font-medium text-slate-500">
-                  Reviews Count
-                  <input
-                    type="number"
-                    min="0"
-                    step="1"
-                    value={formState.reviews}
-                    onChange={handleChange("reviews")}
-                    className="rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none"
-                    placeholder="135"
-                  />
-                </label>
-              </div>
-
               {(localError || error) && (
                 <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-600">
                   {localError || error}

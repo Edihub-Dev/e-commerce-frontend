@@ -41,8 +41,6 @@ const defaultFormState = {
   originalPrice: "",
   discountPercentage: "",
   saveAmount: "",
-  rating: "",
-  reviews: "",
   stock: "",
   lowStockThreshold: "",
   thumbnail: "",
@@ -65,6 +63,7 @@ const loadPersistedFormState = () => {
     }
 
     const parsed = JSON.parse(raw);
+    const { rating, reviews, ...rest } = parsed || {};
     const keyFeatures = Array.isArray(parsed.keyFeatures) && parsed.keyFeatures.length
       ? [...parsed.keyFeatures]
       : [""];
@@ -72,7 +71,7 @@ const loadPersistedFormState = () => {
 
     return {
       ...defaultFormState,
-      ...parsed,
+      ...rest,
       keyFeatures,
       gallery,
       isFeatured: Boolean(parsed.isFeatured),
@@ -110,8 +109,9 @@ const AdminAddProductPage = () => {
     }
 
     try {
+      const { rating, reviews, ...rest } = formState;
       const payload = {
-        ...formState,
+        ...rest,
         keyFeatures:
           Array.isArray(formState.keyFeatures) && formState.keyFeatures.length
             ? formState.keyFeatures
@@ -377,20 +377,6 @@ const AdminAddProductPage = () => {
       errors.stock = "Enter available stock";
     }
 
-    if (formState.rating) {
-      const ratingNum = Number(formState.rating);
-      if (Number.isNaN(ratingNum) || ratingNum < 0 || ratingNum > 5) {
-        errors.rating = "Rating must be between 0 and 5";
-      }
-    }
-
-    if (formState.reviews) {
-      const reviewsNum = Number(formState.reviews);
-      if (Number.isNaN(reviewsNum) || reviewsNum < 0) {
-        errors.reviews = "Reviews must be 0 or more";
-      }
-    }
-
     if (!formState.thumbnail.trim()) {
       errors.thumbnail = "Upload at least one image";
     }
@@ -438,8 +424,6 @@ const AdminAddProductPage = () => {
       saveAmount: formState.saveAmount
         ? Number(formState.saveAmount)
         : undefined,
-      rating: formState.rating ? Number(formState.rating) : undefined,
-      reviews: formState.reviews ? Number(formState.reviews) : undefined,
       sku: formState.sku.trim(),
       stock: isStockLockedForStatus(formState.availabilityStatus)
         ? 0
@@ -698,55 +682,6 @@ const AdminAddProductPage = () => {
                           {formErrors.description}
                         </p>
                       )}
-                    </div>
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <div>
-                        <label className="text-xs font-medium text-slate-500">
-                          Rating (0 - 5)
-                        </label>
-                        <input
-                          type="number"
-                          min="0"
-                          max="5"
-                          step="0.1"
-                          value={formState.rating}
-                          onChange={handleChange("rating")}
-                          className={`mt-1 w-full rounded-xl border px-3 py-2 text-sm focus:border-blue-400 focus:outline-none ${
-                            formErrors.rating
-                              ? "border-rose-300"
-                              : "border-slate-200"
-                          }`}
-                          placeholder="4.5"
-                        />
-                        {formErrors.rating && (
-                          <p className="mt-1 text-xs text-rose-500">
-                            {formErrors.rating}
-                          </p>
-                        )}
-                      </div>
-                      <div>
-                        <label className="text-xs font-medium text-slate-500">
-                          Reviews Count
-                        </label>
-                        <input
-                          type="number"
-                          min="0"
-                          step="1"
-                          value={formState.reviews}
-                          onChange={handleChange("reviews")}
-                          className={`mt-1 w-full rounded-xl border px-3 py-2 text-sm focus:border-blue-400 focus:outline-none ${
-                            formErrors.reviews
-                              ? "border-rose-300"
-                              : "border-slate-200"
-                          }`}
-                          placeholder="135"
-                        />
-                        {formErrors.reviews && (
-                          <p className="mt-1 text-xs text-rose-500">
-                            {formErrors.reviews}
-                          </p>
-                        )}
-                      </div>
                     </div>
                   </div>
                 </section>

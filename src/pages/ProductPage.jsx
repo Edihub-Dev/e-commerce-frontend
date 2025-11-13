@@ -250,22 +250,25 @@ const ProductPage = () => {
                 </h1>
 
                 {/* Rating */}
-                <div className="flex items-center mb-4">
-                  <div className="flex text-yellow-400">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="flex items-center text-yellow-400">
                     {[...Array(5)].map((_, i) => (
                       <Star
                         key={i}
                         size={20}
                         className="mr-1"
                         fill={
-                          i < Math.floor(product.rating)
+                          i < Math.round(product.rating ?? 0)
                             ? "currentColor"
                             : "none"
                         }
                       />
                     ))}
                   </div>
-                  <span className="ml-2 text-gray-600 text-sm">
+                  <span className="text-sm text-secondary font-medium">
+                    {Number(product.rating ?? 0).toFixed(1)} / 5
+                  </span>
+                  <span className="text-gray-600 text-sm">
                     ({product.reviews} reviews)
                   </span>
                 </div>

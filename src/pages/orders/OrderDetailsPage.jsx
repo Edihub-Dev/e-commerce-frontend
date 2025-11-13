@@ -1,9 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
-import { fetchOrderById } from "../../utils/api";
+import { fetchOrderById, rateOrderItem } from "../../utils/api";
 import { toast } from "react-hot-toast";
-import { ArrowLeft, Download, MapPin, PackageCheck } from "lucide-react";
+import {
+  ArrowLeft,
+  Download,
+  MapPin,
+  PackageCheck,
+  Star,
+  MessageCircle,
+  Send,
+} from "lucide-react";
 
 const OrderDetailsPage = () => {
   const { orderId } = useParams();
@@ -14,6 +22,9 @@ const OrderDetailsPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [downloadingInvoice, setDownloadingInvoice] = useState(false);
+  const [activeItemIndex, setActiveItemIndex] = useState(null);
+  const [ratingDrafts, setRatingDrafts] = useState({});
+  const [submittingIndex, setSubmittingIndex] = useState(null);
 
   const apiBaseUrl = useMemo(() => {
     const configured = import.meta.env.VITE_API_URL;
@@ -118,6 +129,80 @@ const OrderDetailsPage = () => {
       day: "numeric",
     });
   }, [order?.estimatedDeliveryDate]);
+
+  const handleSelectRating = (itemIndex, value) => {
+    if (order?.items?.[itemIndex]?.ratedAt || submittingIndex !== null) {
+      return;
+    }
+    setActiveItemIndex(itemIndex);
+    setRatingDrafts((prev) => ({
+      ...prev,
+      [itemIndex]: {
+        rating: value,
+        review: prev[itemIndex]?.review || "",
+      },
+    }));
+  };
+
+  const handleReviewChange = (itemIndex, value) => {
+    setRatingDrafts((prev) => ({
+      ...prev,
+      [itemIndex]: {
+        rating: prev[itemIndex]?.rating || 0,
+        review: value,
+      },
+    }));
+  };
+
+  const handleSubmitRating = async (itemIndex) => {
+    const draft = ratingDrafts[itemIndex];
+    if (!draft?.rating || submittingIndex !== null || order?.items?.[itemIndex]?.ratedAt) {
+      return;
+    }
+
+    try {
+      setSubmittingIndex(itemIndex);
+
+      const response = await rateOrderItem(order._id, {
+        itemIndex,
+        rating: draft.rating,
+        review: draft.review?.trim(),
+      });
+
+      if (!response?.success) {
+        throw new Error(response?.message || "Unable to submit rating");
+      }
+
+      const updatedItems = order.items.map((item, index) =>
+        index === itemIndex
+          ? {
+              ...item,
+              rating: response.data?.rating,
+              review: response.data?.review,
+              ratedAt: response.data?.ratedAt,
+            }
+          : item
+      );
+
+      setOrder((prev) => ({
+        ...prev,
+        items: updatedItems,
+      }));
+
+      setActiveItemIndex(null);
+      setRatingDrafts((prev) => {
+        const copy = { ...prev };
+        delete copy[itemIndex];
+        return copy;
+      });
+      toast.success("Thank you for rating this product!");
+    } catch (ratingError) {
+      console.error("Failed to submit rating", ratingError);
+      toast.error(ratingError.message || "Unable to submit rating");
+    } finally {
+      setSubmittingIndex(null);
+    }
+  };
 
   if (loading) {
     return (
@@ -296,24 +381,115 @@ const OrderDetailsPage = () => {
         </h2>
         <div className="space-y-4">
           {order.items?.map((item, index) => (
-            <div key={`${item.name}-${index}`} className="flex gap-4">
-              <div className="h-20 w-20 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center overflow-hidden">
-                <img
-                  src={item.image}
-                  alt={item.name}
-                  className="max-w-full max-h-full object-contain"
-                />
+            <div
+              key={`${item.name}-${index}`}
+              className="flex flex-col gap-4 rounded-2xl border border-slate-200 p-4"
+            >
+              <div className="flex gap-4">
+                <div className="h-20 w-20 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center overflow-hidden">
+                  <img
+                    src={item.image}
+                    alt={item.name}
+                    className="max-w-full max-h-full object-contain"
+                  />
+                </div>
+                <div className="flex-1">
+                  <p className="font-semibold text-secondary">{item.name}</p>
+                  <p className="text-sm text-medium-text mt-1">
+                    Qty: {item.quantity}
+                    {item.size && ` • Size: ${item.size}`}
+                  </p>
+                  <p className="text-sm text-medium-text mt-1">
+                    Price: ₹{item.price.toLocaleString()} • Line Total: ₹
+                    {(item.price * item.quantity).toLocaleString()}
+                  </p>
+                </div>
               </div>
-              <div className="flex-1">
-                <p className="font-semibold text-secondary">{item.name}</p>
-                <p className="text-sm text-medium-text mt-1">
-                  Qty: {item.quantity}
-                  {item.size && ` • Size: ${item.size}`}
-                </p>
-                <p className="text-sm text-medium-text mt-1">
-                  Price: ₹{item.price.toLocaleString()} • Line Total: ₹
-                  {(item.price * item.quantity).toLocaleString()}
-                </p>
+
+              <div className="border-t border-slate-100 pt-3">
+                {item.ratedAt ? (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-sm text-secondary">
+                      {[...Array(5)].map((_, starIndex) => (
+                        <Star
+                          key={starIndex}
+                          size={18}
+                          className={
+                            starIndex < Math.round(item.rating || 0)
+                              ? "fill-yellow-400 text-yellow-400"
+                              : "text-slate-300"
+                          }
+                        />
+                      ))}
+                      <span className="text-xs text-medium-text">
+                        Rated on {new Date(item.ratedAt).toLocaleDateString()}
+                      </span>
+                    </div>
+                    {item.review && (
+                      <div className="flex items-start gap-2 rounded-xl bg-slate-50 p-3 text-sm text-medium-text">
+                        <MessageCircle className="h-4 w-4 text-secondary mt-0.5" />
+                        <p className="whitespace-pre-line break-words">{item.review}</p>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      {[...Array(5)].map((_, starIndex) => {
+                        const ratingValue = starIndex + 1;
+                        const currentDraft = ratingDrafts[index]?.rating || 0;
+                        const isActive = currentDraft >= ratingValue;
+                        return (
+                          <button
+                            key={ratingValue}
+                            type="button"
+                            onClick={() => handleSelectRating(index, ratingValue)}
+                            className="focus:outline-none"
+                            disabled={submittingIndex !== null}
+                            aria-label={`Rate ${ratingValue} star${
+                              ratingValue > 1 ? "s" : ""
+                            }`}
+                          >
+                            <Star
+                              size={24}
+                              className={
+                                isActive
+                                  ? "fill-yellow-400 text-yellow-400"
+                                  : "text-slate-300"
+                              }
+                            />
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {activeItemIndex === index && ratingDrafts[index]?.rating > 0 && (
+                      <div className="space-y-3">
+                        <textarea
+                          value={ratingDrafts[index]?.review || ""}
+                          onChange={(event) =>
+                            handleReviewChange(index, event.target.value)
+                          }
+                          placeholder="Share your experience with this product (optional)"
+                          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-medium-text focus:border-primary focus:outline-none"
+                          rows={3}
+                          maxLength={2000}
+                          disabled={submittingIndex !== null}
+                        />
+                        <div className="flex justify-end">
+                          <button
+                            type="button"
+                            onClick={() => handleSubmitRating(index)}
+                            disabled={submittingIndex !== null}
+                            className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            <Send className="h-4 w-4" />
+                            {submittingIndex === index ? "Submitting..." : "Submit review"}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           ))}

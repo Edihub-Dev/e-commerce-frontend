@@ -19,7 +19,7 @@ const Shop = () => {
     const fetchProducts = async () => {
       setLoading(true);
       try {
-        const { data } = await getAllProducts({ limit: 60 });
+        const { data } = await getAllProducts({ limit: "all" });
         if (isActive) {
           setProducts(data);
           setError("");
@@ -27,7 +27,9 @@ const Shop = () => {
       } catch (err) {
         console.error("Failed to load products", err);
         if (isActive) {
-          setError(err.message || "Unable to load products. Please try again later.");
+          setError(
+            err.message || "Unable to load products. Please try again later."
+          );
           setProducts([]);
         }
       } finally {
@@ -76,8 +78,8 @@ const Shop = () => {
       <motion.div
         className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6"
         variants={staggerContainer}
-        initial="initial"
-        animate="animate"
+        initial="hidden"
+        animate="show"
       >
         {products.map((product) => (
           <motion.div key={product.id} variants={staggerItem}>

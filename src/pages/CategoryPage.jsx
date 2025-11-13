@@ -2,12 +2,8 @@ import React, { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import ProductCard from "../components/ProductCard";
-import { getProductsByCategory } from "../utils/api";
-import {
-  pageVariants,
-  staggerContainer,
-  staggerItem,
-} from "../utils/animations";
+import { getProductsByCategory, getProductsByBrand } from "../utils/api";
+import { pageVariants } from "../utils/animations";
 
 const CategoryPage = () => {
   const { slug } = useParams();
@@ -24,17 +20,26 @@ const CategoryPage = () => {
     const fetchCategoryProducts = async () => {
       setLoading(true);
       try {
-        const { data } = await getProductsByCategory(slug, { limit: 60 });
+        let productsToShow = [];
+
+        const categoryResponse = await getProductsByCategory(slug, {
+          limit: "all",
+        });
+        productsToShow = categoryResponse.data;
+
+        if (!productsToShow.length) {
+          const brandResponse = await getProductsByBrand(slug, { limit: "all" });
+          productsToShow = brandResponse.data;
+        }
+
         if (active) {
-          setProducts(data);
+          setProducts(productsToShow);
           setError("");
         }
       } catch (err) {
         console.error("Failed to load category products", err);
         if (active) {
-          setError(
-            err.message || "Unable to load products for this category."
-          );
+          setError(err.message || "Unable to load products for this category.");
           setProducts([]);
         }
       } finally {
@@ -80,18 +85,11 @@ const CategoryPage = () => {
           No products found in this category yet.
         </div>
       )}
-      <motion.div
-        className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6"
-        variants={staggerContainer}
-        initial="initial"
-        animate="animate"
-      >
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
         {products.map((product) => (
-          <motion.div key={product.id} variants={staggerItem}>
-            <ProductCard product={product} />
-          </motion.div>
+          <ProductCard key={product.id} product={product} />
         ))}
-      </motion.div>
+      </div>
     </motion.div>
   );
 };

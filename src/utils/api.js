@@ -96,7 +96,9 @@ const mapProductCard = (product = {}) => {
   const primaryImage = product.thumbnail || product.image || gallery[0] || "";
 
   const keyFeatures = Array.isArray(product.keyFeatures)
-    ? product.keyFeatures.map((feature) => feature?.toString().trim()).filter(Boolean)
+    ? product.keyFeatures
+        .map((feature) => feature?.toString().trim())
+        .filter(Boolean)
     : [];
 
   return {
@@ -124,7 +126,9 @@ const mapProductCard = (product = {}) => {
 const mapProductDetail = (product = {}) => {
   const card = mapProductCard(product);
   const keyFeatures = Array.isArray(product.keyFeatures)
-    ? product.keyFeatures.map((feature) => feature?.toString().trim()).filter(Boolean)
+    ? product.keyFeatures
+        .map((feature) => feature?.toString().trim())
+        .filter(Boolean)
     : card.keyFeatures || [];
   return {
     ...card,
@@ -157,7 +161,7 @@ export const fetchProducts = async (params = {}) => {
 export const getAllProducts = (params = {}) => fetchProducts(params);
 
 export const getSmartphoneDeals = (params = {}) =>
-  fetchProducts({ isFeatured: true, limit: 8, ...params });
+  fetchProducts({ isFeatured: true, ...params });
 
 export const getProductsByBrand = (slug, params = {}) =>
   fetchProducts({ brand: decodeSlug(slug), ...params });

@@ -57,20 +57,23 @@ export const scaleIn = {
 
 // Stagger children animation
 export const staggerContainer = {
-  animate: {
+  hidden: { opacity: 1 },
+  show: {
+    opacity: 1,
     transition: {
-      staggerChildren: 0.1,
+      staggerChildren: 0.12,
+      delayChildren: 0.04,
     },
   },
 };
 
 // Individual stagger item
 export const staggerItem = {
-  initial: { opacity: 0, y: 20 },
-  animate: {
+  hidden: { opacity: 0, y: 16 },
+  show: {
     opacity: 1,
     y: 0,
-    transition: { duration: 0.4 },
+    transition: { duration: 0.35, ease: "easeOut" },
   },
 };
 

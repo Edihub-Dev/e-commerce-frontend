@@ -51,17 +51,82 @@ const defaultFormState = {
   keyFeatures: [""],
 };
 
+const FORM_STORAGE_KEY = "adminAddProductFormState";
+
+const loadPersistedFormState = () => {
+  if (typeof window === "undefined") {
+    return defaultFormState;
+  }
+
+  try {
+    const raw = window.localStorage.getItem(FORM_STORAGE_KEY);
+    if (!raw) {
+      return defaultFormState;
+    }
+
+    const parsed = JSON.parse(raw);
+    const keyFeatures = Array.isArray(parsed.keyFeatures) && parsed.keyFeatures.length
+      ? [...parsed.keyFeatures]
+      : [""];
+    const gallery = Array.isArray(parsed.gallery) ? [...parsed.gallery] : [];
+
+    return {
+      ...defaultFormState,
+      ...parsed,
+      keyFeatures,
+      gallery,
+      isFeatured: Boolean(parsed.isFeatured),
+    };
+  } catch (error) {
+    console.warn("Failed to restore saved admin add product form", error);
+    return defaultFormState;
+  }
+};
+
 const AdminAddProductPage = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const { items } = useAppSelector((state) => state.adminProducts);
-  const [formState, setFormState] = useState(defaultFormState);
+  const [formState, setFormState] = useState(() => loadPersistedFormState());
   const [formErrors, setFormErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isGalleryUploading, setIsGalleryUploading] = useState(false);
   const { user, logout } = useAuth();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  const handleCancel = () => {
+    setFormState(defaultFormState);
+    setFormErrors({});
+    if (typeof window !== "undefined") {
+      window.localStorage.removeItem(FORM_STORAGE_KEY);
+    }
+    navigate("/admin/products");
+  };
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    try {
+      const payload = {
+        ...formState,
+        keyFeatures:
+          Array.isArray(formState.keyFeatures) && formState.keyFeatures.length
+            ? formState.keyFeatures
+            : [""],
+        gallery: Array.isArray(formState.gallery) ? formState.gallery : [],
+      };
+
+      window.localStorage.setItem(
+        FORM_STORAGE_KEY,
+        JSON.stringify(payload)
+      );
+    } catch (error) {
+      console.warn("Failed to persist admin add product form", error);
+    }
+  }, [formState]);
 
   useEffect(() => {
     if (!items.length) {
@@ -393,6 +458,9 @@ const AdminAddProductPage = () => {
     try {
       await dispatch(createAdminProductThunk(payload)).unwrap();
       toast.success("Product added successfully!");
+      if (typeof window !== "undefined") {
+        window.localStorage.removeItem(FORM_STORAGE_KEY);
+      }
       navigate("/admin/products");
     } catch (error) {
       const message =
@@ -466,7 +534,7 @@ const AdminAddProductPage = () => {
               </div>
               <button
                 type="button"
-                onClick={() => navigate("/admin/products")}
+                onClick={handleCancel}
                 className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 hover:border-blue-200 hover:text-blue-600"
               >
                 <ArrowLeft size={16} />

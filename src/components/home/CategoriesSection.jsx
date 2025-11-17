@@ -1,15 +1,14 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import SectionHeader from "../SectionHeader";
-import { getAllProducts } from "../../utils/api";
-import { staggerContainer, staggerItem } from "../../utils/animations";
+import { fetchProducts } from "../../utils/api";
 
 const CategoriesSection = () => {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const fallbackImage = "https://placehold.co/300x300/008ECC/FFFFFF.png?text=Category";
+  const fallbackImage =
+    "https://placehold.co/300x300/008ECC/FFFFFF.png?text=Category";
 
   useEffect(() => {
     let active = true;
@@ -17,16 +16,25 @@ const CategoriesSection = () => {
     const fetchCategories = async () => {
       setLoading(true);
       try {
-        const { data } = await getAllProducts({ limit: 120 });
+        const { data } = await fetchProducts({ limit: 200 });
         if (!active) return;
 
         const categoryMap = new Map();
         data.forEach((product) => {
-          const name = (product.category || "Other").trim();
+          const rawName =
+            typeof product.category === "string" ? product.category : "Other";
+          const name = rawName.trim() || "Other";
+          const slug = encodeURIComponent(
+            name
+              .toLowerCase()
+              .replace(/[^a-z0-9]+/g, "-")
+              .replace(/^-+|-+$/g, "") || "other"
+          );
           if (!name) return;
           if (!categoryMap.has(name)) {
             categoryMap.set(name, {
               name,
+              slug,
               image: product.image || product.gallery?.[0] || fallbackImage,
             });
           }
@@ -56,66 +64,32 @@ const CategoriesSection = () => {
   }, []);
 
   return (
-    <motion.section
-      initial="initial"
-      whileInView="animate"
-      viewport={{ once: true, margin: "-100px" }}
-    >
-      <SectionHeader
-        title={
-          <>
-            Shop From <span style={{ color: "#008ECC" }}>Top Categories</span>
-          </>
-        }
-        linkTo="/categories"
-      />
+    <nav className="md:hidden">
+      <h2 className="sr-only">Top categories</h2>
 
-      <motion.div
-        className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7 gap-4 text-center"
-        variants={staggerContainer}
-      >
+      <div className="flex gap-3 overflow-y-hidden overflow-x-auto py-3">
         {loading && (
-          <div className="col-span-full py-6 text-sm text-slate-500">
-            Loading categories...
-          </div>
+          <span className="text-sm text-slate-500">Loading categories…</span>
         )}
         {error && !loading && (
-          <div className="col-span-full py-6 text-sm text-red-500">{error}</div>
+          <span className="text-sm text-red-500">{error}</span>
         )}
         {!loading && !error && categories.length === 0 && (
-          <div className="col-span-full py-6 text-sm text-slate-500">
-            No categories to display yet.
-          </div>
+          <span className="text-sm text-slate-500">
+            Categories will appear here once added.
+          </span>
         )}
         {categories.map((category) => (
-          <motion.div key={category.name} variants={staggerItem}>
-            <Link
-              to={`/category/${category.name.toLowerCase()}`}
-              className="group block"
-            >
-              <motion.div
-                className="bg-medium-bg rounded-full w-28 h-28 mx-auto flex items-center justify-center overflow-hidden border-2 border-transparent group-hover:border-primary transition-all duration-300"
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                <img
-                  src={category.image}
-                  alt={category.name}
-                  className="w-20 h-20 object-contain group-hover:scale-110 transition-transform duration-300"
-                  onError={(event) => {
-                    event.currentTarget.onerror = null;
-                    event.currentTarget.src = fallbackImage;
-                  }}
-                />
-              </motion.div>
-              <p className="mt-2 font-semibold text-dark-text group-hover:text-primary">
-                {category.name}
-              </p>
-            </Link>
-          </motion.div>
+          <Link
+            key={category.slug}
+            to={`/category/${category.slug}`}
+            className="flex-shrink-0 bg-white border border-slate-200 rounded-full px-4 py-2 text-sm font-medium text-dark-text shadow-sm"
+          >
+            {category.name}
+          </Link>
         ))}
-      </motion.div>
-    </motion.section>
+      </div>
+    </nav>
   );
 };
 

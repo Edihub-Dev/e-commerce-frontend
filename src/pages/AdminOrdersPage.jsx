@@ -32,6 +32,8 @@ import {
   ClipboardList,
   CheckCircle2,
   Ban,
+  PencilLine,
+  X,
 } from "lucide-react";
 import "react-datepicker/dist/react-datepicker.css";
 import { utils as XLSXUtils, writeFile as writeXlsxFile } from "xlsx";
@@ -42,6 +44,7 @@ import {
   deleteAdminOrder,
   deleteAdminOrdersBulk,
 } from "../services/adminOrdersApi";
+import { updateOrder as updateOrderRequest } from "../utils/api";
 
 const STATUS_LABELS = {
   processing: {
@@ -477,6 +480,14 @@ const AdminOrdersPage = () => {
   const [deletingId, setDeletingId] = useState(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSelectionDetailsOpen, setIsSelectionDetailsOpen] = useState(false);
+  const [editingOrder, setEditingOrder] = useState(null);
+  const [editForm, setEditForm] = useState({
+    status: "",
+    paymentStatus: "",
+    paymentMethod: "",
+    estimatedDeliveryDate: "",
+  });
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
   const latestParamsRef = useRef({});
 
   const socketUrl = useMemo(() => {
@@ -916,6 +927,60 @@ const AdminOrdersPage = () => {
     } catch (error) {
       console.error("Failed to delete selected orders", error);
       toast.error(error?.message || "Failed to delete selected orders");
+    }
+  };
+
+  const handleOpenEdit = useCallback((order) => {
+    if (!order) return;
+    const nextForm = {
+      status: order.status || "processing",
+      paymentStatus: order.payment?.status || "",
+      paymentMethod: order.payment?.method || "",
+      estimatedDeliveryDate: order.estimatedDeliveryDate
+        ? new Date(order.estimatedDeliveryDate).toISOString().slice(0, 10)
+        : "",
+    };
+    setEditingOrder(order);
+    setEditForm(nextForm);
+  }, []);
+
+  const handleCloseEdit = useCallback(() => {
+    if (isSavingEdit) return;
+    setEditingOrder(null);
+  }, [isSavingEdit]);
+
+  const handleEditFieldChange = (field, value) => {
+    setEditForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingOrder) return;
+    setIsSavingEdit(true);
+    try {
+      const payload = {
+        status: editForm.status || undefined,
+        paymentStatus: editForm.paymentStatus || undefined,
+        paymentMethod: editForm.paymentMethod || undefined,
+        estimatedDeliveryDate: editForm.estimatedDeliveryDate || null,
+      };
+
+      await updateOrderRequest(editingOrder._id, payload);
+
+      toast.success("Order updated successfully");
+      const params = latestParamsRef.current;
+      if (params) {
+        dispatch(fetchAdminOrdersThunk(params));
+      }
+      setEditingOrder(null);
+    } catch (error) {
+      console.error("Failed to update order", error);
+      toast.error(
+        error?.message ||
+          error?.response?.data?.message ||
+          "Failed to update order"
+      );
+    } finally {
+      setIsSavingEdit(false);
     }
   };
 
@@ -1464,6 +1529,14 @@ const AdminOrdersPage = () => {
                                         <Trash2 size={16} />
                                       )}
                                     </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleOpenEdit(order)}
+                                      className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-purple-100 text-purple-600 transition hover:border-purple-200 hover:bg-purple-50"
+                                      aria-label={`Edit order ${orderId}`}
+                                    >
+                                      <PencilLine size={16} />
+                                    </button>
                                   </div>
                                 </td>
                               </tr>
@@ -1632,6 +1705,14 @@ const AdminOrdersPage = () => {
                                 <Trash2 size={16} />
                               )}
                             </button>
+                            <button
+                              type="button"
+                              onClick={() => handleOpenEdit(order)}
+                              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-purple-100 text-purple-600 transition hover:border-purple-200 hover:bg-purple-50"
+                              aria-label={`Edit order ${orderId}`}
+                            >
+                              <PencilLine size={16} />
+                            </button>
                           </div>
                         </article>
                       );
@@ -1694,6 +1775,141 @@ const AdminOrdersPage = () => {
         )}
         renderStatus={renderStatus}
       />
+      <AnimatePresence>
+        {editingOrder && (
+          <motion.div
+            className="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/40 px-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div
+              initial={{ y: 24, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 24, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl"
+            >
+              <div className="mb-4 flex items-start justify-between">
+                <div>
+                  <h2 className="text-xl font-semibold text-slate-900">
+                    Edit Order
+                  </h2>
+                  <p className="text-xs text-slate-500">
+                    Order #{editingOrder._id}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className="rounded-full p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                  onClick={handleCloseEdit}
+                  aria-label="Close edit order"
+                  disabled={isSavingEdit}
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <label className="block text-sm font-medium text-slate-700">
+                  Order Status
+                  <select
+                    value={editForm.status}
+                    onChange={(event) =>
+                      handleEditFieldChange("status", event.target.value)
+                    }
+                    className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  >
+                    <option value="processing">Processing</option>
+                    <option value="confirmed">Confirmed</option>
+                    <option value="shipped">Shipped</option>
+                    <option value="out_for_delivery">Out for Delivery</option>
+                    <option value="delivered">Delivered</option>
+                    <option value="cancelled">Cancelled</option>
+                    <option value="returned">Returned</option>
+                  </select>
+                </label>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <label className="block text-sm font-medium text-slate-700">
+                    Payment Status
+                    <select
+                      value={editForm.paymentStatus}
+                      onChange={(event) =>
+                        handleEditFieldChange(
+                          "paymentStatus",
+                          event.target.value
+                        )
+                      }
+                      className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    >
+                      <option value="">Keep unchanged</option>
+                      <option value="pending">Pending</option>
+                      <option value="paid">Successful</option>
+                      <option value="failed">Failed</option>
+                      <option value="refunded">Refunded</option>
+                    </select>
+                  </label>
+                  <label className="block text-sm font-medium text-slate-700">
+                    Payment Method
+                    <select
+                      value={editForm.paymentMethod}
+                      onChange={(event) =>
+                        handleEditFieldChange(
+                          "paymentMethod",
+                          event.target.value
+                        )
+                      }
+                      className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    >
+                      <option value="">Keep unchanged</option>
+                      <option value="cod">Cash on Delivery</option>
+                      <option value="upi">UPI</option>
+                      <option value="qr">QR Code</option>
+                      <option value="card">Card</option>
+                      <option value="netbanking">Net Banking</option>
+                    </select>
+                  </label>
+                </div>
+
+                <label className="block text-sm font-medium text-slate-700">
+                  Estimated Delivery Date
+                  <input
+                    type="date"
+                    value={editForm.estimatedDeliveryDate}
+                    onChange={(event) =>
+                      handleEditFieldChange(
+                        "estimatedDeliveryDate",
+                        event.target.value
+                      )
+                    }
+                    className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  />
+                </label>
+              </div>
+
+              <div className="mt-6 flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  className="rounded-xl border border-slate-200 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50"
+                  onClick={handleCloseEdit}
+                  disabled={isSavingEdit}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="rounded-xl bg-blue-600 px-5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 disabled:opacity-60"
+                  onClick={handleSaveEdit}
+                  disabled={isSavingEdit}
+                >
+                  {isSavingEdit ? "Saving..." : "Save Changes"}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

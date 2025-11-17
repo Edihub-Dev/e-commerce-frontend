@@ -36,6 +36,7 @@ const ProductCard = ({ product }) => {
           <div className="absolute inset-0 flex items-center justify-center p-2 sm:p-3 md:p-4">
             <img
               src={product.image}
+              crossOrigin="anonymous"
               alt={product.name}
               className="w-full h-full object-contain transition-transform duration-500 group-hover:scale-110"
               loading="lazy"

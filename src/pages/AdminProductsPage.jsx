@@ -286,6 +286,24 @@ const AdminProductsPage = () => {
       return null;
     }
 
+    const resolveUrl = (value) => {
+      if (!value || typeof value !== "string") {
+        return value;
+      }
+
+      if (value.startsWith("http")) {
+        return value;
+      }
+
+      return `${import.meta.env.VITE_S3_PUBLIC_URL || "https://s3.ap-south-1.amazonaws.com/ecom-mega-mart"}/${value.replace(/^\/+/, "")}`;
+    };
+
+    const gallery = Array.isArray(activeProduct.gallery)
+      ? activeProduct.gallery
+      : Array.isArray(activeProduct.images)
+      ? activeProduct.images
+      : [];
+
     return {
       name: activeProduct.name || "",
       sku: activeProduct.sku || activeProduct.id || "",
@@ -301,17 +319,14 @@ const AdminProductsPage = () => {
       stock: activeProduct.stock ?? "",
       status: activeProduct.status || "published",
       availabilityStatus: activeProduct.availabilityStatus || "in_stock",
-      thumbnail:
+      thumbnail: resolveUrl(
         activeProduct.thumbnail ||
-        activeProduct.image ||
-        activeProduct.imageUrl ||
-        "",
+          activeProduct.image ||
+          activeProduct.imageUrl ||
+          ""
+      ),
       description: activeProduct.description || "",
-      gallery: Array.isArray(activeProduct.gallery)
-        ? activeProduct.gallery
-        : Array.isArray(activeProduct.images)
-        ? activeProduct.images
-        : [],
+      gallery: gallery.map((entry) => resolveUrl(entry)),
       isFeatured: Boolean(activeProduct.isFeatured),
       keyFeatures: Array.isArray(activeProduct.keyFeatures)
         ? activeProduct.keyFeatures

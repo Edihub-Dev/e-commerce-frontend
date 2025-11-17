@@ -64,9 +64,10 @@ const loadPersistedFormState = () => {
 
     const parsed = JSON.parse(raw);
     const { rating, reviews, ...rest } = parsed || {};
-    const keyFeatures = Array.isArray(parsed.keyFeatures) && parsed.keyFeatures.length
-      ? [...parsed.keyFeatures]
-      : [""];
+    const keyFeatures =
+      Array.isArray(parsed.keyFeatures) && parsed.keyFeatures.length
+        ? [...parsed.keyFeatures]
+        : [""];
     const gallery = Array.isArray(parsed.gallery) ? [...parsed.gallery] : [];
 
     return {
@@ -119,10 +120,7 @@ const AdminAddProductPage = () => {
         gallery: Array.isArray(formState.gallery) ? formState.gallery : [],
       };
 
-      window.localStorage.setItem(
-        FORM_STORAGE_KEY,
-        JSON.stringify(payload)
-      );
+      window.localStorage.setItem(FORM_STORAGE_KEY, JSON.stringify(payload));
     } catch (error) {
       console.warn("Failed to persist admin add product form", error);
     }
@@ -211,7 +209,7 @@ const AdminAddProductPage = () => {
     });
   };
 
-  const MAX_IMAGE_SIZE = 2 * 1024 * 1024; // 2MB
+  const MAX_IMAGE_SIZE = 3 * 1024 * 1024; // 3MB
 
   const readFileAsDataURL = (file) =>
     new Promise((resolve, reject) => {
@@ -232,7 +230,7 @@ const AdminAddProductPage = () => {
     }
 
     if (file.size > MAX_IMAGE_SIZE) {
-      toast.error("Image must be smaller than 2MB");
+      toast.error("Image must be smaller than 3MB");
       event.target.value = "";
       return;
     }
@@ -263,7 +261,7 @@ const AdminAddProductPage = () => {
 
     const oversize = files.find((file) => file.size > MAX_IMAGE_SIZE);
     if (oversize) {
-      toast.error("Each image must be under 2MB");
+      toast.error("Each image must be under 3MB");
       event.target.value = "";
       return;
     }
@@ -324,6 +322,26 @@ const AdminAddProductPage = () => {
         ...prev,
         keyFeatures: nextFeatures.length ? nextFeatures : [""],
       };
+    });
+  };
+
+  const handleMoveKeyFeature = (fromIndex, toIndex) => {
+    setFormState((prev) => {
+      const features = Array.isArray(prev.keyFeatures)
+        ? [...prev.keyFeatures]
+        : [];
+      if (
+        fromIndex < 0 ||
+        toIndex < 0 ||
+        fromIndex >= features.length ||
+        toIndex >= features.length ||
+        fromIndex === toIndex
+      ) {
+        return prev;
+      }
+      const [moved] = features.splice(fromIndex, 1);
+      features.splice(toIndex, 0, moved);
+      return { ...prev, keyFeatures: features.length ? features : [""] };
     });
   };
 
@@ -750,7 +768,7 @@ const AdminAddProductPage = () => {
                         Gallery Images
                       </h3>
                       <p className="text-xs text-slate-500">
-                        Used for product swiper (max 2MB each)
+                        Used for product swiper (max 3MB each)
                       </p>
                     </div>
                     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">

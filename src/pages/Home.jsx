@@ -10,14 +10,14 @@ import { pageVariants } from "../utils/animations";
 const Home = () => {
   return (
     <motion.div
-      className="space-y-12 md:space-y-24 mb-12"
+      className="space-y-8 md:space-y-12 mb-8"
       variants={pageVariants}
       initial="initial"
       animate="animate"
       exit="exit"
     >
       <HeroCarousel />
-      <div className="container mx-auto px-4 space-y-12 md:space-y-24">
+      <div className="container mx-auto px-4 space-y-8 md:space-y-12">
         <DealsSection />
         {/* Commented out sections as per request
         <CategoriesSection />

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 import ProductCard from "../components/ProductCard";
 import { getAllProducts } from "../utils/api";
@@ -46,6 +46,17 @@ const Shop = () => {
     };
   }, []);
 
+  const categories = useMemo(() => {
+    const set = new Set();
+    for (const product of products) {
+      const category = (product.category || "").trim();
+      if (category) {
+        set.add(category);
+      }
+    }
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [products]);
+
   return (
     <motion.div
       className="container mx-auto px-4 py-8"
@@ -55,7 +66,7 @@ const Shop = () => {
       exit="exit"
     >
       <motion.h1
-        className="text-3xl font-bold mb-8"
+        className="text-3xl font-bold mb-6"
         initial={{ opacity: 0, x: -20 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ delay: 0.2 }}
@@ -75,18 +86,38 @@ const Shop = () => {
           No products found. Check back soon!
         </div>
       )}
-      <motion.div
-        className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6"
-        variants={staggerContainer}
-        initial="hidden"
-        animate="show"
-      >
-        {products.map((product) => (
-          <motion.div key={product.id} variants={staggerItem}>
-            <ProductCard product={product} />
-          </motion.div>
-        ))}
-      </motion.div>
+
+      {!loading && !error && products.length > 0 && (
+        <div className="space-y-8">
+          {categories.map((category) => {
+            const categoryProducts = products.filter(
+              (product) => (product.category || "").trim() === category
+            );
+
+            if (!categoryProducts.length) return null;
+
+            return (
+              <section key={category} className="space-y-3">
+                <h2 className="text-xl font-semibold text-slate-800">
+                  {category}
+                </h2>
+                <motion.div
+                  className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6"
+                  variants={staggerContainer}
+                  initial="hidden"
+                  animate="show"
+                >
+                  {categoryProducts.map((product) => (
+                    <motion.div key={product.id} variants={staggerItem}>
+                      <ProductCard product={product} />
+                    </motion.div>
+                  ))}
+                </motion.div>
+              </section>
+            );
+          })}
+        </div>
+      )}
     </motion.div>
   );
 };

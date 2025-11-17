@@ -50,6 +50,7 @@ const ProductFormModal = ({
   error,
 }) => {
   const [formState, setFormState] = useState(DEFAULT_FORM);
+  const [draggingFeatureIndex, setDraggingFeatureIndex] = useState(null);
   const [localError, setLocalError] = useState("");
   const [isUploading, setIsUploading] = useState(false);
   const [isGalleryUploading, setIsGalleryUploading] = useState(false);
@@ -359,7 +360,42 @@ const ProductFormModal = ({
                   Key Features
                   <div className="space-y-2">
                     {(formState.keyFeatures || []).map((feature, index) => (
-                      <div key={index} className="flex gap-2">
+                      <div
+                        key={index}
+                        className="flex gap-2 rounded-xl border border-slate-200 bg-white px-2 py-1"
+                        draggable
+                        onDragStart={() => setDraggingFeatureIndex(index)}
+                        onDragOver={(event) => {
+                          event.preventDefault();
+                        }}
+                        onDrop={(event) => {
+                          event.preventDefault();
+                          setFormState((prev) => {
+                            const features = Array.isArray(prev.keyFeatures)
+                              ? [...prev.keyFeatures]
+                              : [];
+                            const fromIndex = draggingFeatureIndex;
+                            const toIndex = index;
+                            if (
+                              fromIndex == null ||
+                              fromIndex === toIndex ||
+                              fromIndex < 0 ||
+                              toIndex < 0 ||
+                              fromIndex >= features.length ||
+                              toIndex >= features.length
+                            ) {
+                              return prev;
+                            }
+                            const [moved] = features.splice(fromIndex, 1);
+                            features.splice(toIndex, 0, moved);
+                            return {
+                              ...prev,
+                              keyFeatures: features.length ? features : [""],
+                            };
+                          });
+                          setDraggingFeatureIndex(null);
+                        }}
+                      >
                         <input
                           type="text"
                           value={feature}

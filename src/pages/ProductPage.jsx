@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { getProductById } from "../utils/api";
 import { useCart } from "../contexts/CartContext";
-import { Star } from "lucide-react";
+import { Star, StarHalf, MessageCircle } from "lucide-react";
 import {
   pageVariants,
   fadeInLeft,
@@ -32,6 +32,7 @@ import {
 const ProductPage = () => {
   const { id } = useParams();
   const [product, setProduct] = useState(null);
+  const [showAllReviews, setShowAllReviews] = useState(false);
   const [quantity, setQuantity] = useState(1);
   const sizes = ["S", "M", "L", "XL", "XXL"];
   const [selectedSize, setSelectedSize] = useState(sizes[1]);
@@ -41,8 +42,85 @@ const ProductPage = () => {
 
   const LOCKED_AVAILABILITY_STATUSES = ["out_of_stock", "preorder"];
   const availabilityStatus = product?.availabilityStatus || "in_stock";
-  const isNotReadyToShip = LOCKED_AVAILABILITY_STATUSES.includes(availabilityStatus);
+  const isNotReadyToShip =
+    LOCKED_AVAILABILITY_STATUSES.includes(availabilityStatus);
   const isPurchaseDisabled = !product || isNotReadyToShip;
+
+  const reviewsList = Array.isArray(product?.reviewsList)
+    ? product.reviewsList
+    : [];
+  const commentReviews = reviewsList.filter(
+    (review) => review?.review && review.review.trim().length > 0
+  );
+  const reviewsSummary = product?.reviewsSummary || {
+    totalReviews: Number(product?.reviews ?? reviewsList.length ?? 0) || 0,
+    average: Number(product?.rating ?? 0) || 0,
+    totalScore:
+      (Number(product?.reviews ?? reviewsList.length ?? 0) || 0) *
+      (Number(product?.rating ?? 0) || 0),
+  };
+
+  const averageRating = Number(reviewsSummary.average ?? 0);
+  const totalReviews = Number(
+    reviewsSummary.totalReviews ?? reviewsList.length ?? 0
+  );
+  const totalCommentReviews = commentReviews.length;
+  const formattedTotalReviews = String(Math.max(totalReviews, 0)).padStart(
+    2,
+    "0"
+  );
+  const displayedReviews = showAllReviews
+    ? commentReviews
+    : commentReviews.slice(0, 3);
+
+  const renderStarIcons = (rating, { size = 20, prefix = "star" } = {}) => {
+    const icons = [];
+    const normalized = Math.max(0, Math.min(Number(rating) || 0, 5));
+    let fullStars = Math.floor(normalized);
+    const remainder = normalized - fullStars;
+
+    if (remainder >= 0.75 && fullStars < 5) {
+      fullStars = Math.min(5, fullStars + 1);
+    }
+
+    const hasHalf = remainder >= 0.25 && remainder < 0.75 && fullStars < 5;
+
+    for (let i = 0; i < fullStars && icons.length < 5; i += 1) {
+      icons.push(
+        <Star
+          key={`${prefix}-full-${i}`}
+          size={size}
+          className="mr-1 text-yellow-400"
+          fill="currentColor"
+        />
+      );
+    }
+
+    if (hasHalf && icons.length < 5) {
+      icons.push(
+        <StarHalf
+          key={`${prefix}-half`}
+          size={size}
+          className="mr-1 text-yellow-400"
+          fill="currentColor"
+        />
+      );
+    }
+
+    while (icons.length < 5) {
+      const index = icons.length;
+      icons.push(
+        <Star
+          key={`${prefix}-empty-${index}`}
+          size={size}
+          className="mr-1 text-slate-300"
+          fill="none"
+        />
+      );
+    }
+
+    return icons;
+  };
 
   // Product images - show only database-provided sources (gallery, thumbnail, fallback image)
   const galleryImages = Array.isArray(product?.gallery)
@@ -139,7 +217,19 @@ const ProductPage = () => {
               "Fit Type: Regular / Athletic",
               "Sizes Available: S, M, L, XL, XXL",
             ],
+            reviewsList: Array.isArray(fetched.reviewsList)
+              ? fetched.reviewsList
+              : [],
+            reviewsSummary: fetched.reviewsSummary || {
+              totalReviews:
+                Number(fetched.reviews ?? fetched.ratings?.totalReviews ?? 0) ||
+                0,
+              average:
+                Number(fetched.rating ?? fetched.ratings?.average ?? 0) || 0,
+              totalScore: Number(fetched.ratings?.totalScore ?? 0) || 0,
+            },
           });
+          setShowAllReviews(false);
           return;
         }
       } catch (error) {
@@ -161,6 +251,19 @@ const ProductPage = () => {
           reviews: 24,
           availabilityStatus: "in_stock",
           stock: 120,
+          reviewsList: [
+            {
+              reviewerName: "John D.",
+              rating: 5,
+              review: "Excellent quality and very comfortable to wear!",
+              ratedAt: new Date().toISOString(),
+            },
+          ],
+          reviewsSummary: {
+            totalReviews: 24,
+            average: 4.5,
+            totalScore: 108,
+          },
           features: [
             "Material: 100% Polyester",
             "Color: White with Red Printed MST Logo",
@@ -168,13 +271,18 @@ const ProductPage = () => {
             "Sizes Available: S, M, L, XL, XXL",
           ],
         });
+        setShowAllReviews(false);
       }
     };
 
     loadProduct();
+    const intervalId = setInterval(() => {
+      loadProduct();
+    }, 30000);
 
     return () => {
       isCancelled = true;
+      clearInterval(intervalId);
     };
   }, [id]);
 
@@ -190,7 +298,7 @@ const ProductPage = () => {
 
   return (
     <motion.div
-      className="container mx-auto px-4 py-8 min-h-[80vh] flex items-center"
+      className="container mx-auto px-4 py-8 min-h-[80vh] flex flex-col items-center"
       variants={pageVariants}
       initial="initial"
       animate="animate"
@@ -251,25 +359,14 @@ const ProductPage = () => {
 
                 {/* Rating */}
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="flex items-center text-yellow-400">
-                    {[...Array(5)].map((_, i) => (
-                      <Star
-                        key={i}
-                        size={20}
-                        className="mr-1"
-                        fill={
-                          i < Math.round(product.rating ?? 0)
-                            ? "currentColor"
-                            : "none"
-                        }
-                      />
-                    ))}
+                  <div className="flex items-center">
+                    {renderStarIcons(averageRating, {
+                      size: 20,
+                      prefix: "average-rating",
+                    })}
                   </div>
-                  <span className="text-sm text-secondary font-medium">
-                    {Number(product.rating ?? 0).toFixed(1)} / 5
-                  </span>
                   <span className="text-gray-600 text-sm">
-                    ({product.reviews} reviews)
+                    ({formattedTotalReviews})
                   </span>
                 </div>
 
@@ -286,10 +383,15 @@ const ProductPage = () => {
                     )}
                   </div>
                   {product.discount > 0 && (
-                    <span className="inline-block bg-green-100 text-green-800 text-sm font-medium px-2.5 py-0.5 rounded">
-                      Save ₹{product.saveAmount.toLocaleString()} (
-                      {product.discount}% OFF)
-                    </span>
+                    <div className="flex flex-col items-start gap-1">
+                      <span className="inline-block bg-green-100 text-green-800 text-sm font-medium px-2.5 py-0.5 rounded">
+                        Save ₹{product.saveAmount.toLocaleString()} (
+                        {product.discount}% OFF)
+                      </span>
+                      <p className="text-xs text-slate-600">
+                        Price excludes GST (added at checkout)
+                      </p>
+                    </div>
                   )}
                 </div>
 
@@ -429,8 +531,8 @@ const ProductPage = () => {
 
                 {isNotReadyToShip && (
                   <div className="mt-3 rounded-lg border border-rose-100 bg-rose-50 px-3 py-2 text-sm text-rose-600">
-                    This item is currently unavailable for purchase. Please check
-                    back soon.
+                    This item is currently unavailable for purchase. Please
+                    check back soon.
                   </div>
                 )}
 
@@ -457,6 +559,83 @@ const ProductPage = () => {
               </div>
             </motion.div>
           </div>
+        </div>
+      </div>
+
+      <div className="w-full max-w-7xl mx-auto mt-8">
+        <div className="bg-white rounded-xl shadow-lg overflow-hidden p-6">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="text-2xl font-semibold text-gray-900">
+                Customer Reviews
+              </h2>
+              <p className="text-sm text-gray-500">
+                Hear from shoppers who bought this product.
+              </p>
+            </div>
+            <div className="rounded-lg bg-slate-50 px-4 py-2 text-xs text-gray-500 font-medium">
+              {totalCommentReviews > 0
+                ? `${totalCommentReviews} customer review${
+                    totalCommentReviews > 1 ? "s" : ""
+                  }`
+                : "No customer reviews yet"}
+            </div>
+          </div>
+
+          <div className="mt-6 space-y-4">
+            {totalCommentReviews > 0 && displayedReviews.length > 0 ? (
+              displayedReviews.map((review, index) => (
+                <div
+                  key={`${review.reviewerName || "reviewer"}-${index}`}
+                  className="border border-slate-100 rounded-xl p-4 bg-slate-50"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="font-semibold text-secondary text-sm">
+                      {review.reviewerName || "Verified Buyer"}
+                    </div>
+                    <div className="flex items-center">
+                      {renderStarIcons(review.rating, {
+                        size: 16,
+                        prefix: `review-${index}`,
+                      })}
+                      <span className="ml-2 text-xs text-gray-500">
+                        {review.ratedAt
+                          ? new Date(review.ratedAt).toLocaleDateString()
+                          : ""}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="mt-3 flex items-start gap-3 text-sm text-medium-text">
+                    <MessageCircle className="h-4 w-4 text-secondary mt-0.5" />
+                    <p className="whitespace-pre-line break-words">
+                      {review.review?.trim()
+                        ? review.review
+                        : "No additional comments provided."}
+                    </p>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p className="text-sm text-gray-500">
+                No reviews yet. Be the first to share your experience after
+                purchasing!
+              </p>
+            )}
+          </div>
+
+          {totalCommentReviews > 3 && (
+            <div className="mt-6 flex justify-center">
+              <button
+                type="button"
+                onClick={() => setShowAllReviews((prev) => !prev)}
+                className="px-4 py-2 text-sm font-medium text-primary border border-primary rounded-lg hover:bg-primary/10 transition"
+              >
+                {showAllReviews
+                  ? "Show Less"
+                  : `Show All Reviews (${totalCommentReviews})`}
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </motion.div>

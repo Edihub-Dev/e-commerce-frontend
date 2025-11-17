@@ -56,7 +56,7 @@ const DealsSection = () => {
               <span style={{ color: "#008ECC" }}>T-Shirt</span>
             </>
           }
-          linkTo="/category/mst-blockchain-official-polo-t-shirt"
+          linkTo="/shop"
           linkText="Shop Collection"
         />
         <motion.div
@@ -94,7 +94,7 @@ const DealsSection = () => {
           {/* View All Button - Only visible on small screens */}
           <div className="sm:hidden mt-4 w-full">
             <a
-              href="/category/mst-blockchain-official-polo-t-shirt"
+              href="/shop"
               className="w-full block text-center bg-gray-100 hover:bg-gray-200 text-gray-800 font-medium py-3 px-4 rounded-lg transition-colors duration-200"
             >
               View All

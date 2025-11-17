@@ -22,7 +22,7 @@ import {
   setAddressLoading,
   setAddressError,
 } from "../store/slices/addressSlice";
-import { fetchAddresses } from "../utils/api";
+import { fetchAddresses, fetchProducts } from "../utils/api";
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -33,6 +33,7 @@ const Header = () => {
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [localSearchQuery, setLocalSearchQuery] = useState("");
   const [locationLabel, setLocationLabel] = useState("Deliver to 423651");
+  const [navCategories, setNavCategories] = useState([]);
   const searchInputRef = useRef(null);
   const { isAuthenticated, user, logout, isAdmin } = useAuth();
   const { cartCount } = useCart();
@@ -89,6 +90,50 @@ const Header = () => {
       setIsProfilePinned(false);
     }
   }, [isAuthenticated]);
+
+  useEffect(() => {
+    let active = true;
+
+    const loadCategories = async () => {
+      try {
+        const { data } = await fetchProducts({ limit: 200 });
+        if (!active) return;
+
+        const categoryMap = new Map();
+        data.forEach((product) => {
+          const rawName =
+            typeof product.category === "string" ? product.category : "Other";
+          const name = rawName.trim();
+          if (!name) return;
+
+          const slug = encodeURIComponent(
+            name
+              .toLowerCase()
+              .replace(/[^a-z0-9]+/g, "-")
+              .replace(/^-+|-+$/g, "") || "other"
+          );
+
+          if (!categoryMap.has(name)) {
+            categoryMap.set(name, { name, slug });
+          }
+        });
+
+        const categoriesList = Array.from(categoryMap.values()).slice(0, 12);
+        setNavCategories(categoriesList);
+      } catch (error) {
+        console.error("Failed to load navigation categories", error);
+        if (active) {
+          setNavCategories([]);
+        }
+      }
+    };
+
+    loadCategories();
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (!isAuthenticated || addresses.length || addressesLoading) {
@@ -243,16 +288,9 @@ const Header = () => {
     }
   };
 
-  const navCategories = [
-    { name: "Groceries", dropdown: true },
-    { name: "Premium Fruits", dropdown: true },
-    { name: "Home & Kitchen", dropdown: true },
-    { name: "Fashion", dropdown: true },
-    { name: "Electronics", dropdown: true },
-    { name: "Beauty", dropdown: true },
-    { name: "Home Improvement", dropdown: true },
-    { name: "Sports, Toys & Luggage", dropdown: true },
-  ];
+  const renderedCategories = navCategories.length
+    ? navCategories
+    : [{ name: "All Products", slug: "" }];
 
   return (
     <header
@@ -463,32 +501,6 @@ const Header = () => {
         </div>
       </div>
 
-      {/* Bottom Nav */}
-      <nav className="hidden lg:block border-t border-gray-200">
-        <div className="container mx-auto px-16">
-          <ul className="flex items-center justify-evenly">
-            {navCategories.map((cat, index) => (
-              <li key={index} className="py-3">
-                <Link
-                  to={`/category/${cat.name
-                    .toLowerCase()
-                    .replace(/ & /g, "-")}`}
-                  className="group flex items-center text-sm font-medium px-4 py-2 rounded-full border border-gray-300 text-dark-text transition-all duration-200 hover:bg-[#008ECC] hover:text-white hover:border-[#008ECC]"
-                >
-                  {cat.name}
-                  {cat.dropdown && (
-                    <ChevronDown
-                      size={16}
-                      className="ml-1 text-[#008ECC] transition-colors duration-200 group-hover:text-white"
-                    />
-                  )}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </nav>
-
       {/* Mobile Menu */}
       <AnimatePresence>
         {isMenuOpen && (
@@ -527,17 +539,14 @@ const Header = () => {
             </div>
             <nav>
               <ul>
-                {navCategories.map((cat, index) => (
-                  <li key={index} className="border-b">
+                {renderedCategories.map((cat, index) => (
+                  <li key={cat.slug || index} className="border-b">
                     <Link
-                      to={`/category/${cat.name
-                        .toLowerCase()
-                        .replace(/ & /g, "-")}`}
+                      to={cat.slug ? `/category/${cat.slug}` : "/shop"}
                       className="flex justify-between items-center py-3"
                       onClick={() => setIsMenuOpen(false)}
                     >
                       {cat.name}
-                      {cat.dropdown && <ChevronDown size={16} />}
                     </Link>
                   </li>
                 ))}

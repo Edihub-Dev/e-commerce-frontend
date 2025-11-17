@@ -33,6 +33,68 @@
 
 import axios from "axios";
 
+const S3_BUCKET = import.meta.env.VITE_S3_BUCKET || "ecom-mega-mart";
+const S3_REGION = import.meta.env.VITE_S3_REGION || "ap-south-1";
+const DEFAULT_S3_BASE = `https://${S3_BUCKET}.s3.${S3_REGION}.amazonaws.com`;
+const S3_PUBLIC_URL = (
+  import.meta.env.VITE_S3_PUBLIC_URL ||
+  import.meta.env.VITE_S3_PUBLIC_ENDPOINT ||
+  DEFAULT_S3_BASE
+).replace(/\/$/, "");
+const LEGACY_HOST = `${S3_BUCKET}.s3.amazonaws.com`;
+const LEGACY_PATH_HOST = `s3.${S3_REGION}.amazonaws.com`;
+const GLOBAL_PATH_HOST = "s3.amazonaws.com";
+
+const ensureS3Url = (value) => {
+  if (!value || typeof value !== "string") {
+    return value;
+  }
+
+  if (value.startsWith("http")) {
+    try {
+      const url = new URL(value);
+      const pathname = url.pathname?.replace(/^\/+/, "");
+
+      if (!pathname) {
+        return `${S3_PUBLIC_URL}/`;
+      }
+
+      if (url.hostname === LEGACY_HOST) {
+        return `${S3_PUBLIC_URL}/${pathname}`;
+      }
+
+      if (
+        url.hostname === LEGACY_PATH_HOST &&
+        pathname.startsWith(`${S3_BUCKET}/`)
+      ) {
+        return `${S3_PUBLIC_URL}/${pathname.slice(S3_BUCKET.length + 1)}`;
+      }
+
+      if (
+        url.hostname === GLOBAL_PATH_HOST &&
+        pathname.startsWith(`${S3_BUCKET}/`)
+      ) {
+        return `${S3_PUBLIC_URL}/${pathname.slice(S3_BUCKET.length + 1)}`;
+      }
+
+      return value;
+    } catch (_error) {
+      return value;
+    }
+  }
+
+  if (value.startsWith("data:")) {
+    return value;
+  }
+
+  if (value.startsWith("blob:")) {
+    return value;
+  }
+
+  const sanitized = value.replace(/^\/+/, "");
+  return `${S3_PUBLIC_URL}/${sanitized}`;
+};
+
 // Create Axios instance with base URL from environment
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || "http://localhost:3001/api",
@@ -92,8 +154,12 @@ const mapProductCard = (product = {}) => {
   const { price, originalPrice, discountPercentage, saveAmount } =
     ensurePriceFields(product);
 
-  const gallery = Array.isArray(product.gallery) ? product.gallery : [];
-  const primaryImage = product.thumbnail || product.image || gallery[0] || "";
+  const gallery = Array.isArray(product.gallery)
+    ? product.gallery.map((entry) => ensureS3Url(entry))
+    : [];
+  const primaryImage = ensureS3Url(
+    product.thumbnail || product.image || gallery[0] || ""
+  );
 
   const keyFeatures = Array.isArray(product.keyFeatures)
     ? product.keyFeatures
@@ -135,16 +201,38 @@ const mapProductDetail = (product = {}) => {
         .map((feature) => feature?.toString().trim())
         .filter(Boolean)
     : card.keyFeatures || [];
+  const gallery = Array.isArray(product.gallery)
+    ? product.gallery.map((entry) => ensureS3Url(entry))
+    : card.gallery || [];
+  const images = Array.isArray(product.images)
+    ? product.images.map((entry) => ensureS3Url(entry))
+    : [];
+  const variants = Array.isArray(product.variants)
+    ? product.variants.map((variant) => ({
+        ...variant,
+        imageUrl: ensureS3Url(variant?.imageUrl),
+      }))
+    : [];
   return {
     ...card,
     description: product.description || card.description,
     shortDescription: product.shortDescription || card.description,
+    gallery,
+    images,
+    thumbnail: ensureS3Url(product.thumbnail) || card.image,
     metadata: product.metadata || {},
     attributes: product.attributes || {},
-    variants: product.variants || [],
+    variants,
     stock: product.stock ?? 0,
     keyFeatures,
     features: keyFeatures,
+    reviewsList: Array.isArray(product.reviewsList) ? product.reviewsList : [],
+    reviewsSummary: product.reviewsSummary || {
+      totalReviews: card.reviews ?? 0,
+      average: card.rating ?? 0,
+      totalScore:
+        (card.reviews ?? 0) * ((card.rating ?? 0) || 0),
+    },
   };
 };
 

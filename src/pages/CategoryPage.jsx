@@ -10,9 +10,17 @@ const CategoryPage = () => {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const categoryName = slug
-    .replace(/-/g, " ")
-    .replace(/\b\w/g, (l) => l.toUpperCase());
+  let fallbackName = "";
+  try {
+    fallbackName = decodeURIComponent(slug || "");
+  } catch (_error) {
+    fallbackName = slug || "";
+  }
+  fallbackName = fallbackName
+    .replace(/[-_]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const [categoryTitle, setCategoryTitle] = useState(fallbackName);
 
   useEffect(() => {
     let active = true;
@@ -28,12 +36,20 @@ const CategoryPage = () => {
         productsToShow = categoryResponse.data;
 
         if (!productsToShow.length) {
-          const brandResponse = await getProductsByBrand(slug, { limit: "all" });
+          const brandResponse = await getProductsByBrand(slug, {
+            limit: "all",
+          });
           productsToShow = brandResponse.data;
         }
 
         if (active) {
           setProducts(productsToShow);
+          const nameFromProduct = productsToShow.find((item) => item?.category)?.category;
+          const brandFromProduct = productsToShow.find((item) => item?.brand)?.brand;
+          const resolvedTitle = (nameFromProduct || brandFromProduct || fallbackName || "")
+            .toString()
+            .trim();
+          setCategoryTitle(resolvedTitle);
           setError("");
         }
       } catch (err) {
@@ -41,6 +57,7 @@ const CategoryPage = () => {
         if (active) {
           setError(err.message || "Unable to load products for this category.");
           setProducts([]);
+          setCategoryTitle(fallbackName);
         }
       } finally {
         if (active) {
@@ -70,7 +87,7 @@ const CategoryPage = () => {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2 }}
       >
-        Category: {categoryName}
+        Category: {categoryTitle}
       </motion.h1>
       {loading && (
         <div className="py-6 text-center text-sm text-slate-500">

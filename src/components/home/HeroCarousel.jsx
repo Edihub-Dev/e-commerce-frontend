@@ -72,7 +72,7 @@ const BackgroundRemovedImage = ({ src, threshold = 240, ...props }) => {
 
 const HeroCarousel = () => {
   return (
-    <div className="container mx-auto px-4 mt-8">
+    <div className="container mx-auto px-4 mt-3 md:mt-5">
       <Swiper
         modules={[Navigation, Pagination, Autoplay]}
         spaceBetween={30}
@@ -89,18 +89,18 @@ const HeroCarousel = () => {
       >
         {slides.map((slide, index) => (
           <SwiperSlide key={index} className="bg-secondary rounded-lg">
-            <div className="flex flex-col md:flex-row items-center justify-between p-8 md:p-16 h-[500px] md:h-[316px]">
-              <div className="text-white text-center md:text-left z-10 mb-8 md:mb-0">
-                <p className="text-lg md:text-2xl font-semibold">
+            <div className="flex flex-col md:flex-row items-center justify-between p-5 md:p-8 h-[320px] md:h-[240px]">
+              <div className="text-white text-center md:text-left z-10 mb-6 md:mb-0">
+                <p className="text-sm md:text-lg font-semibold">
                   {slide.superTitle}
                 </p>
-                <h1 className="text-4xl md:text-6xl font-bold my-4">
+                <h1 className="text-3xl md:text-5xl font-bold my-2">
                   {slide.title}
                 </h1>
-                <p className="text-lg md:text-2xl font-semibold">
+                <p className="text-sm md:text-lg font-semibold">
                   {slide.subTitle}
                 </p>
-                <button className="mt-6 bg-primary text-white font-bold py-3 px-6 rounded-md hover:bg-primary-dark transition-colors flex items-center mx-auto md:mx-0">
+                <button className="mt-4 bg-primary text-white font-bold py-3 px-5 rounded-md hover:bg-primary-dark transition-colors flex items-center mx-auto md:mx-0">
                   Shop Now <ChevronRight size={20} className="ml-2" />
                 </button>
               </div>

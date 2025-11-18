@@ -12,6 +12,28 @@ const buildDefaultSizes = () =>
     stock: 0,
   }));
 
+const normalizeCategoryPriority = (value) => {
+  if (value === undefined || value === null) {
+    return "";
+  }
+
+  const raw = value.toString().trim().toUpperCase();
+  if (!raw) {
+    return "";
+  }
+
+  if (/^P\d{1,2}$/.test(raw)) {
+    return raw;
+  }
+
+  const numeric = parseInt(raw.replace(/[^0-9]/g, ""), 10);
+  if (!Number.isNaN(numeric) && numeric > 0) {
+    return `P${numeric}`;
+  }
+
+  return "";
+};
+
 const normalizeSizes = (value) => {
   if (!Array.isArray(value) || !value.length) {
     return buildDefaultSizes();
@@ -61,6 +83,7 @@ const DEFAULT_FORM = {
   sku: "",
   category: "",
   brand: "",
+  categoryPriority: "",
   price: "",
   originalPrice: "",
   discountPercentage: "",
@@ -136,6 +159,9 @@ const ProductFormModal = ({
           : [...DEFAULT_FORM.keyFeatures],
         sizes: normalizeSizes(normalizedInitial.sizes),
         showSizes: Boolean(normalizedInitial.showSizes),
+        categoryPriority: normalizeCategoryPriority(
+          normalizedInitial.categoryPriority
+        ),
       });
       setLocalError("");
     }
@@ -346,12 +372,12 @@ const ProductFormModal = ({
   };
 
   const handleSizeStockChange = (label) => (event) => {
-    const { value } = event.target;
+    const rawValue = event.target.value ?? "";
+    const digitsOnly = rawValue.toString().replace(/[^0-9]/g, "");
+    const numericValue = Math.max(Number(digitsOnly || 0), 0);
     setFormState((prev) => {
       const updated = normalizeSizes(prev.sizes).map((size) =>
-        size.label === label
-          ? { ...size, stock: Math.max(Number(value ?? 0), 0) }
-          : size
+        size.label === label ? { ...size, stock: numericValue } : size
       );
       const totalStock = computeSizeStockTotal(updated);
       return {
@@ -370,6 +396,16 @@ const ProductFormModal = ({
 
     if (!formState.name.trim()) {
       setLocalError("Product name is required");
+      return;
+    }
+
+    if (!formState.category.trim()) {
+      setLocalError("Category is required");
+      return;
+    }
+
+    if (!formState.categoryPriority.trim()) {
+      setLocalError("Set a category priority (e.g. P1, P2)");
       return;
     }
 
@@ -447,6 +483,9 @@ const ProductFormModal = ({
       keyFeatures,
       sizes: normalizedFormSizes,
       showSizes: Boolean(formState.showSizes),
+      category: formState.category,
+      categoryPriority: normalizeCategoryPriority(formState.categoryPriority),
+      brand: formState.brand,
     });
   };
 
@@ -617,8 +656,21 @@ const ProductFormModal = ({
                     value={formState.category}
                     onChange={handleChange("category")}
                     className="rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none"
-                    placeholder="Smartwatch"
+                    placeholder="Menswear"
                   />
+                </label>
+                <label className="flex flex-col gap-1 text-xs font-medium text-slate-500">
+                  Category Priority
+                  <input
+                    type="text"
+                    value={formState.categoryPriority}
+                    onChange={handleChange("categoryPriority")}
+                    placeholder="P1"
+                    className="rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none"
+                  />
+                  <span className="text-[11px] text-slate-500">
+                    Use P1, P2, P3… Higher priority appears first in listings.
+                  </span>
                 </label>
                 <label className="flex flex-col gap-1 text-xs font-medium text-slate-500">
                   Brand
@@ -839,12 +891,21 @@ const ProductFormModal = ({
                                 )}
                               </button>
                               <input
-                                type="number"
+                                type="tel"
+                                inputMode="numeric"
+                                pattern="[0-9]*"
                                 min="0"
-                                step="1"
-                                value={isActive ? stockValue : 0}
+                                value={
+                                  isActive && !isStockLocked
+                                    ? stockValue > 0
+                                      ? stockValue
+                                      : ""
+                                    : ""
+                                }
+                                onFocus={(event) => event.target.select()}
                                 onChange={handleSizeStockChange(size.label)}
                                 disabled={!isActive || isStockLocked}
+                                placeholder="0"
                                 className={`w-24 rounded-lg border px-2 py-1 text-xs font-semibold focus:border-blue-400 focus:outline-none ${
                                   isActive && !isStockLocked
                                     ? "border-slate-200 bg-white text-slate-700"

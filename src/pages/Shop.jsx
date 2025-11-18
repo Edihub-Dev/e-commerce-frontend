@@ -47,14 +47,31 @@ const Shop = () => {
   }, []);
 
   const categories = useMemo(() => {
-    const set = new Set();
+    const categoryMap = new Map();
+    const parsePriority = (value) => {
+      const raw = String(value || "")
+        .trim()
+        .toUpperCase();
+      if (/^P\d{1,2}$/.test(raw)) {
+        return parseInt(raw.slice(1), 10);
+      }
+      const numeric = parseInt(raw.replace(/[^0-9]/g, ""), 10);
+      return Number.isNaN(numeric) ? 99 : numeric;
+    };
+
     for (const product of products) {
       const category = (product.category || "").trim();
-      if (category) {
-        set.add(category);
+      if (!category) continue;
+
+      const priority = parsePriority(product.categoryPriority);
+      if (!categoryMap.has(category) || priority < categoryMap.get(category)) {
+        categoryMap.set(category, priority);
       }
     }
-    return Array.from(set).sort((a, b) => a.localeCompare(b));
+
+    return Array.from(categoryMap.entries())
+      .sort((a, b) => a[1] - b[1] || a[0].localeCompare(b[0]))
+      .map(([name]) => name);
   }, [products]);
 
   return (
@@ -90,9 +107,25 @@ const Shop = () => {
       {!loading && !error && products.length > 0 && (
         <div className="space-y-8">
           {categories.map((category) => {
-            const categoryProducts = products.filter(
-              (product) => (product.category || "").trim() === category
-            );
+            const categoryProducts = products
+              .filter((product) => (product.category || "").trim() === category)
+              .sort((a, b) => {
+                const parsePriority = (value) => {
+                  const raw = String(value || "")
+                    .trim()
+                    .toUpperCase();
+                  if (/^P\d{1,2}$/.test(raw)) {
+                    return parseInt(raw.slice(1), 10);
+                  }
+                  const numeric = parseInt(raw.replace(/[^0-9]/g, ""), 10);
+                  return Number.isNaN(numeric) ? 99 : numeric;
+                };
+
+                return (
+                  parsePriority(a.categoryPriority) -
+                  parsePriority(b.categoryPriority)
+                );
+              });
 
             if (!categoryProducts.length) return null;
 

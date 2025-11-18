@@ -31,6 +31,30 @@ const availabilityOptions = [
 
 const STANDARD_SIZE_LABELS = ["S", "M", "L", "XL", "XXL"];
 
+const normalizeCategoryPriority = (value) => {
+  if (value === undefined || value === null) {
+    return "P5";
+  }
+
+  const raw = value.toString().trim().toUpperCase();
+  if (/^P\d{1,2}$/.test(raw)) {
+    return raw;
+  }
+
+  const numeric = parseInt(raw.replace(/[^0-9]/g, ""), 10);
+  if (!Number.isNaN(numeric) && numeric > 0) {
+    return `P${numeric}`;
+  }
+
+  return "P5";
+};
+
+const parsePriorityValue = (value) => {
+  const normalized = normalizeCategoryPriority(value);
+  const numeric = parseInt(normalized.slice(1), 10);
+  return Number.isNaN(numeric) ? Number.POSITIVE_INFINITY : numeric;
+};
+
 const buildDefaultSizes = () =>
   STANDARD_SIZE_LABELS.map((label) => ({
     label,
@@ -104,6 +128,7 @@ const defaultFormState = {
   keyFeatures: [""],
   sizes: buildDefaultSizes(),
   showSizes: true,
+  categoryPriority: "",
 };
 
 const FORM_STORAGE_KEY = "adminAddProductFormState";
@@ -138,6 +163,13 @@ const loadPersistedFormState = () => {
           ? parsed.showSizes
           : defaultFormState.showSizes,
       sizes: normalizeSizes(parsed.sizes),
+      categoryPriority: (() => {
+        const stored = parsed.categoryPriority;
+        if (typeof stored === "string" && stored.trim()) {
+          return normalizeCategoryPriority(stored);
+        }
+        return defaultFormState.categoryPriority;
+      })(),
     };
   } catch (error) {
     console.warn("Failed to restore saved admin add product form", error);
@@ -150,6 +182,8 @@ const AdminAddProductPage = () => {
   const navigate = useNavigate();
   const { items } = useAppSelector((state) => state.adminProducts);
   const [formState, setFormState] = useState(() => loadPersistedFormState());
+  const [hasManualCategoryPriority, setHasManualCategoryPriority] =
+    useState(false);
   const [formErrors, setFormErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -159,6 +193,7 @@ const AdminAddProductPage = () => {
 
   const handleCancel = () => {
     setFormState(defaultFormState);
+    setHasManualCategoryPriority(false);
     setFormErrors({});
     if (typeof window !== "undefined") {
       window.localStorage.removeItem(FORM_STORAGE_KEY);
@@ -183,6 +218,13 @@ const AdminAddProductPage = () => {
         gallery: Array.isArray(formState.gallery) ? formState.gallery : [],
         sizes: normalizedSizesForStorage,
         showSizes: Boolean(formState.showSizes),
+        categoryPriority: (() => {
+          const raw = formState.categoryPriority;
+          if (typeof raw === "string" && raw.trim()) {
+            return normalizeCategoryPriority(raw);
+          }
+          return "";
+        })(),
       };
 
       window.localStorage.setItem(FORM_STORAGE_KEY, JSON.stringify(payload));
@@ -205,6 +247,26 @@ const AdminAddProductPage = () => {
       }
     });
     return Array.from(uniqueCategories);
+  }, [items]);
+
+  const categoryPriorityLookup = useMemo(() => {
+    const map = new Map();
+    items.forEach((product) => {
+      const category = product?.category?.toString().trim();
+      if (!category) {
+        return;
+      }
+
+      const label = normalizeCategoryPriority(product?.categoryPriority);
+      const numeric = parsePriorityValue(label);
+      const existing = map.get(category);
+
+      if (!existing || numeric < existing.numeric) {
+        map.set(category, { label, numeric });
+      }
+    });
+
+    return map;
   }, [items]);
 
   const brandOptions = useMemo(() => {
@@ -233,6 +295,13 @@ const AdminAddProductPage = () => {
 
   const handleChange = (field) => (event) => {
     const value = event.target.value;
+
+    if (field === "categoryPriority") {
+      setHasManualCategoryPriority(true);
+    } else if (field === "category") {
+      setHasManualCategoryPriority(false);
+    }
+
     setFormState((prev) => {
       const next = { ...prev, [field]: value };
 
@@ -242,6 +311,18 @@ const AdminAddProductPage = () => {
         } else {
           const totalStock = computeSizeStockTotal(normalizeSizes(prev.sizes));
           next.stock = totalStock.toString();
+        }
+      }
+
+      if (field === "category") {
+        const normalizedCategory = value?.toString().trim();
+        if (!normalizedCategory) {
+          next.categoryPriority = defaultFormState.categoryPriority;
+        } else {
+          const match = categoryPriorityLookup.get(normalizedCategory);
+          next.categoryPriority = match
+            ? match.label
+            : defaultFormState.categoryPriority;
         }
       }
 
@@ -404,14 +485,17 @@ const AdminAddProductPage = () => {
   };
 
   const handleSizeStockChange = (label) => (event) => {
-    const { value } = event.target;
+    const rawValue = event.target.value ?? "";
+    const digitsOnly = rawValue.toString().replace(/[^0-9]/g, "");
+    const numericValue = Math.max(Number(digitsOnly || 0), 0);
+
     setFormState((prev) => {
       const normalized = normalizeSizes(prev.sizes);
       const updated = normalized.map((size) =>
         size.label === label
           ? {
               ...size,
-              stock: Math.max(Number(value ?? 0), 0),
+              stock: numericValue,
             }
           : size
       );
@@ -439,6 +523,33 @@ const AdminAddProductPage = () => {
       };
     });
   };
+
+  useEffect(() => {
+    const selectedCategory = formState.category?.toString().trim();
+    if (!selectedCategory || hasManualCategoryPriority) {
+      return;
+    }
+
+    const match = categoryPriorityLookup.get(selectedCategory);
+    if (!match) {
+      return;
+    }
+
+    setFormState((prev) => {
+      const currentCategory = prev.category?.toString().trim();
+      if (currentCategory !== selectedCategory) {
+        return prev;
+      }
+
+      const currentPriority = normalizeCategoryPriority(prev.categoryPriority);
+
+      if (currentPriority === match.label) {
+        return prev;
+      }
+
+      return { ...prev, categoryPriority: match.label };
+    });
+  }, [categoryPriorityLookup, formState.category, hasManualCategoryPriority]);
 
   const handleKeyFeatureChange = (index, value) => {
     setFormState((prev) => {
@@ -508,6 +619,10 @@ const AdminAddProductPage = () => {
 
     if (!formState.category.trim()) {
       errors.category = "Select a category";
+    }
+
+    if (!formState.categoryPriority.trim()) {
+      errors.categoryPriority = "Set a priority (e.g. P1, P2)";
     }
 
     if (!formState.brand.trim()) {
@@ -612,6 +727,7 @@ const AdminAddProductPage = () => {
         : [],
       sizes: normalizedFormSizes,
       showSizes: Boolean(formState.showSizes),
+      categoryPriority: normalizeCategoryPriority(formState.categoryPriority),
     };
 
     try {
@@ -803,6 +919,31 @@ const AdminAddProductPage = () => {
                       {formErrors.keyFeatures && (
                         <p className="mt-1 text-xs text-rose-500">
                           {formErrors.keyFeatures}
+                        </p>
+                      )}
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-slate-500">
+                        Category Priority
+                      </label>
+                      <input
+                        type="text"
+                        value={formState.categoryPriority}
+                        onChange={handleChange("categoryPriority")}
+                        placeholder="P1"
+                        className={`mt-1 w-full rounded-xl border px-3 py-2 text-sm focus:border-blue-400 focus:outline-none ${
+                          formErrors.categoryPriority
+                            ? "border-rose-300"
+                            : "border-slate-200"
+                        }`}
+                      />
+                      {formErrors.categoryPriority ? (
+                        <p className="mt-1 text-xs text-rose-500">
+                          {formErrors.categoryPriority}
+                        </p>
+                      ) : (
+                        <p className="mt-1 text-[11px] text-slate-500">
+                          Use priorities like P1, P2… Lower number shows first.
                         </p>
                       )}
                     </div>
@@ -1201,12 +1342,21 @@ const AdminAddProductPage = () => {
                                   )}
                                 </button>
                                 <input
-                                  type="number"
+                                  type="tel"
+                                  inputMode="numeric"
+                                  pattern="[0-9]*"
                                   min="0"
-                                  step="1"
-                                  value={isActive ? stockValue : 0}
+                                  value={
+                                    isActive
+                                      ? stockValue > 0
+                                        ? stockValue
+                                        : ""
+                                      : ""
+                                  }
+                                  onFocus={(event) => event.target.select()}
                                   onChange={handleSizeStockChange(size.label)}
                                   disabled={!isActive}
+                                  placeholder="0"
                                   className={`w-24 rounded-lg border px-2 py-1 text-xs font-semibold focus:border-blue-400 focus:outline-none ${
                                     isActive
                                       ? "border-slate-200 bg-white text-slate-700"

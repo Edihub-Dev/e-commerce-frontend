@@ -16,9 +16,28 @@ const DealsSection = () => {
     const fetchDeals = async () => {
       setLoading(true);
       try {
-        const { data } = await getMerchDeals({ limit: 6 });
+        const { data } = await getMerchDeals({ limit: 50 });
         if (isMounted) {
-          setProducts(Array.isArray(data) ? data.slice(0, 6) : []);
+          const sorted = Array.isArray(data)
+            ? [...data].sort((a, b) => {
+                const parsePriority = (value) => {
+                  const raw = String(value || "")
+                    .trim()
+                    .toUpperCase();
+                  if (/^P\d{1,2}$/.test(raw)) {
+                    return parseInt(raw.slice(1), 10);
+                  }
+                  const numeric = parseInt(raw.replace(/[^0-9]/g, ""), 10);
+                  return Number.isNaN(numeric) ? 99 : numeric;
+                };
+
+                return (
+                  parsePriority(a.categoryPriority) -
+                  parsePriority(b.categoryPriority)
+                );
+              })
+            : [];
+          setProducts(sorted.slice(0, 6));
           setError("");
         }
       } catch (err) {

@@ -311,6 +311,7 @@ const AdminProductsPage = () => {
       name: activeProduct.name || "",
       sku: activeProduct.sku || activeProduct.id || "",
       category: activeProduct.category || "",
+      categoryPriority: activeProduct.categoryPriority || "P5",
       brand: activeProduct.brand || "",
       price: activeProduct.price ?? "",
       originalPrice: activeProduct.originalPrice ?? "",

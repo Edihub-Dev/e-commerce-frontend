@@ -209,6 +209,7 @@ const mapProductCard = (product = {}) => {
     availabilityStatus: product.availabilityStatus,
     brand: product.brand || "",
     category: product.category || "",
+    categoryPriority: product.categoryPriority || "P5",
     currency: product.currency || "INR",
     keyFeatures,
     sizes: normalizeSizes(product.sizes),
@@ -250,6 +251,7 @@ const mapProductDetail = (product = {}) => {
     features: keyFeatures,
     sizes: card.sizes,
     showSizes: card.showSizes,
+    categoryPriority: card.categoryPriority,
     reviewsList: Array.isArray(product.reviewsList) ? product.reviewsList : [],
     reviewsSummary: product.reviewsSummary || {
       totalReviews: card.reviews ?? 0,

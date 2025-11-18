@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { getProductById } from "../utils/api";
@@ -8,6 +8,7 @@ import {
   pageVariants,
   fadeInLeft,
   fadeInRight,
+  fadeInUp,
   buttonHover,
 } from "../utils/animations";
 import { Swiper, SwiperSlide } from "swiper/react";
@@ -34,8 +35,8 @@ const ProductPage = () => {
   const [product, setProduct] = useState(null);
   const [showAllReviews, setShowAllReviews] = useState(false);
   const [quantity, setQuantity] = useState(1);
-  const sizes = ["S", "M", "L", "XL", "XXL"];
-  const [selectedSize, setSelectedSize] = useState(sizes[1]);
+  const [selectedSize, setSelectedSize] = useState("");
+  const [sizeError, setSizeError] = useState("");
   const { addItem } = useCart();
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
@@ -152,14 +153,156 @@ const ProductPage = () => {
     return "text-green-500";
   })();
 
+  const normalizedSizes = useMemo(() => {
+    if (!product?.showSizes) {
+      return [];
+    }
+
+    const STANDARD_SIZE_ORDER = ["XS", "S", "M", "L", "XL", "XXL", "3XL"];
+    const orderMap = STANDARD_SIZE_ORDER.reduce((acc, label, index) => {
+      acc[label] = index;
+      return acc;
+    }, {});
+
+    const entries = Array.isArray(product?.sizes) ? product.sizes : [];
+    const seen = new Set();
+    const normalized = entries
+      .map((entry) => {
+        const label = entry?.label?.toString().trim().toUpperCase();
+        if (!label || seen.has(label)) {
+          return null;
+        }
+        seen.add(label);
+        const stock = Math.max(Number(entry?.stock ?? 0), 0);
+        const isAvailable = Boolean(entry?.isAvailable ?? true) && stock > 0;
+        return {
+          label,
+          isAvailable,
+          stock,
+        };
+      })
+      .filter(Boolean);
+
+    return normalized.sort((a, b) => {
+      const aOrder = orderMap[a.label] ?? STANDARD_SIZE_ORDER.length;
+      const bOrder = orderMap[b.label] ?? STANDARD_SIZE_ORDER.length;
+      if (aOrder === bOrder) {
+        return a.label.localeCompare(b.label);
+      }
+      return aOrder - bOrder;
+    });
+  }, [product]);
+
+  const selectedSizeInfo = useMemo(() => {
+    if (!selectedSize) {
+      return null;
+    }
+
+    return normalizedSizes.find((size) => size.label === selectedSize) || null;
+  }, [normalizedSizes, selectedSize]);
+
+  const isQuantityExceeded =
+    Boolean(selectedSizeInfo) &&
+    selectedSizeInfo.stock > 0 &&
+    quantity > selectedSizeInfo.stock;
+
+  useEffect(() => {
+    if (!normalizedSizes.length) {
+      if (selectedSize) {
+        setSelectedSize("");
+      }
+      return;
+    }
+
+    const isCurrentValid = normalizedSizes.some(
+      (size) => size.label === selectedSize && size.isAvailable
+    );
+
+    if (!isCurrentValid) {
+      const fallback =
+        normalizedSizes.find((size) => size.isAvailable) || normalizedSizes[0];
+      setSelectedSize(fallback?.label || "");
+      if (fallback) {
+        setQuantity((prevQuantity) => {
+          const fallbackStock = Math.max(Number(fallback.stock ?? 0), 0);
+          if (fallbackStock > 0) {
+            return Math.max(1, Math.min(prevQuantity, fallbackStock));
+          }
+          return 1;
+        });
+      } else {
+        setQuantity(1);
+      }
+      setSizeError("");
+      return;
+    }
+
+    setSizeError("");
+  }, [normalizedSizes, selectedSize]);
+
+  useEffect(() => {
+    if (!selectedSizeInfo) {
+      return;
+    }
+
+    if (selectedSizeInfo.stock > 0 && quantity > selectedSizeInfo.stock) {
+      const capped = Math.max(selectedSizeInfo.stock || 1, 1);
+      setQuantity(capped);
+      setSizeError(`Quantity unavailable.`);
+    } else {
+      setSizeError("");
+    }
+  }, [selectedSizeInfo, quantity]);
+
+  const handleQuantityChange = (nextQuantity) => {
+    setQuantity((prevQuantity) => {
+      const sanitized = Math.max(1, nextQuantity);
+
+      if (
+        selectedSizeInfo &&
+        selectedSizeInfo.isAvailable &&
+        selectedSizeInfo.stock > 0 &&
+        sanitized > selectedSizeInfo.stock
+      ) {
+        setSizeError(`Quantity unavailable.`);
+        return Math.max(selectedSizeInfo.stock, 1);
+      }
+
+      setSizeError("");
+      return sanitized;
+    });
+  };
+
   const handleAddToCart = () => {
     if (isPurchaseDisabled) {
       return;
     }
+
+    if (
+      selectedSizeInfo &&
+      (selectedSizeInfo.stock <= 0 || !selectedSizeInfo.isAvailable)
+    ) {
+      setSizeError(`Size ${selectedSizeInfo.label} is currently unavailable.`);
+      return;
+    }
+
+    if (
+      selectedSizeInfo &&
+      selectedSizeInfo.stock > 0 &&
+      quantity > selectedSizeInfo.stock
+    ) {
+      setSizeError(
+        `Quantity unavailable. Max ${selectedSizeInfo.stock} for size ${selectedSizeInfo.label}.`
+      );
+      return;
+    }
+
+    setSizeError("");
+
     addItem({
       ...product,
       quantity,
-      size: selectedSize,
+      size: selectedSize || undefined,
       image: primaryImage,
     });
   };
@@ -178,7 +321,7 @@ const ProductPage = () => {
       image: primaryImage,
       price: product.price,
       quantity,
-      size: selectedSize,
+      size: selectedSize || undefined,
     };
 
     if (rawProductId && mongoIdRegex.test(rawProductId)) {
@@ -215,7 +358,6 @@ const ProductPage = () => {
               "Material: 100% Polyester",
               "Color: White with Red Printed MST Logo",
               "Fit Type: Regular / Athletic",
-              "Sizes Available: S, M, L, XL, XXL",
             ],
             reviewsList: Array.isArray(fetched.reviewsList)
               ? fetched.reviewsList
@@ -251,6 +393,14 @@ const ProductPage = () => {
           reviews: 24,
           availabilityStatus: "in_stock",
           stock: 120,
+          showSizes: true,
+          sizes: [
+            { label: "S", isAvailable: true },
+            { label: "M", isAvailable: true },
+            { label: "L", isAvailable: true },
+            { label: "XL", isAvailable: true },
+            { label: "XXL", isAvailable: false },
+          ],
           reviewsList: [
             {
               reviewerName: "John D.",
@@ -268,7 +418,6 @@ const ProductPage = () => {
             "Material: 100% Polyester",
             "Color: White with Red Printed MST Logo",
             "Fit Type: Regular / Athletic",
-            "Sizes Available: S, M, L, XL, XXL",
           ],
         });
         setShowAllReviews(false);
@@ -425,85 +574,166 @@ const ProductPage = () => {
                   </ul>
                 </div>
               </div>
-
               {/* Quantity and Add to Cart */}
               <div className="mt-auto pt-6 border-t border-gray-100">
                 <div className="flex flex-col gap-4">
                   <div className="flex flex-col sm:flex-row flex-wrap items-start sm:items-center gap-4">
-                    <div className="flex items-center border rounded-lg overflow-hidden">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          !isPurchaseDisabled &&
-                          setQuantity((q) => Math.max(1, q - 1))
-                        }
-                        disabled={isPurchaseDisabled}
-                        className={`px-4 py-2 text-xl font-medium transition-colors ${
-                          isPurchaseDisabled
-                            ? "cursor-not-allowed text-gray-300"
-                            : "text-gray-600 hover:bg-gray-50"
-                        }`}
-                        aria-label="Decrease quantity"
-                      >
-                        -
-                      </button>
-                      <span className="w-12 text-center text-lg font-semibold">
-                        {quantity}
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm font-medium text-slate-600">
+                        Qty
                       </span>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          !isPurchaseDisabled && setQuantity((q) => q + 1)
-                        }
-                        disabled={isPurchaseDisabled}
-                        className={`px-4 py-2 text-xl font-medium transition-colors ${
-                          isPurchaseDisabled
-                            ? "cursor-not-allowed text-gray-300"
-                            : "text-gray-600 hover:bg-gray-50"
-                        }`}
-                        aria-label="Increase quantity"
-                      >
-                        +
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            !isPurchaseDisabled &&
+                            handleQuantityChange(quantity - 1)
+                          }
+                          disabled={isPurchaseDisabled || quantity <= 1}
+                          className={`h-9 w-9 rounded-full border text-lg font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 ${
+                            isPurchaseDisabled || quantity <= 1
+                              ? "cursor-not-allowed border-slate-200 text-slate-300"
+                              : "border-slate-300 text-slate-700 hover:border-blue-500 hover:text-blue-600"
+                          }`}
+                          aria-label="Decrease quantity"
+                        >
+                          −
+                        </button>
+                        <div className="flex h-10 w-16 items-center justify-center rounded-md border border-slate-300 bg-white shadow-sm focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-200">
+                          <input
+                            type="tel"
+                            min="1"
+                            value={quantity}
+                            onFocus={(event) => {
+                              event.target.select();
+                            }}
+                            onChange={(event) => {
+                              if (isPurchaseDisabled) {
+                                return;
+                              }
+
+                              const digitsOnly = event.target.value.replace(
+                                /[^0-9]/g,
+                                ""
+                              );
+                              if (!digitsOnly.length) {
+                                setQuantity("");
+                                return;
+                              }
+
+                              const raw = Number(digitsOnly);
+                              if (Number.isNaN(raw)) {
+                                return;
+                              }
+
+                              handleQuantityChange(raw);
+                            }}
+                            className="w-full bg-transparent text-center text-lg font-semibold text-slate-700 focus:outline-none"
+                            inputMode="numeric"
+                            pattern="[0-9]*"
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            !isPurchaseDisabled &&
+                            handleQuantityChange(quantity + 1)
+                          }
+                          disabled={isPurchaseDisabled}
+                          className={`h-9 w-9 rounded-full border text-lg font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 ${
+                            isPurchaseDisabled
+                              ? "cursor-not-allowed border-slate-200 text-slate-300"
+                              : "border-slate-300 text-slate-700 hover:border-blue-500 hover:text-blue-600"
+                          }`}
+                          aria-label="Increase quantity"
+                        >
+                          +
+                        </button>
+                      </div>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="text-sm font-medium text-slate-600">
-                        Sizes Available:
-                      </span>
-                      {sizes.map((size) => {
-                        const isActive = selectedSize === size;
-                        return (
-                          <button
-                            key={size}
-                            type="button"
-                            onClick={() => setSelectedSize(size)}
-                            className={`inline-flex items-center justify-center rounded-full border px-4 py-1.5 text-sm font-semibold transition ${
-                              isActive
-                                ? "border-blue-600 bg-blue-50 text-blue-600"
-                                : "border-slate-200 bg-white text-slate-600 hover:border-blue-200 hover:text-blue-600"
-                            }`}
-                          >
-                            {size}
-                          </button>
-                        );
-                      })}
-                    </div>
+                    {normalizedSizes.length > 0 && (
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-sm font-medium text-slate-600">
+                          Sizes Available:
+                        </span>
+                        {normalizedSizes.map((size) => {
+                          const isActive = selectedSize === size.label;
+                          const isDisabled =
+                            !size.isAvailable || isPurchaseDisabled;
+                          return (
+                            <button
+                              key={size.label}
+                              type="button"
+                              onClick={() => {
+                                if (isDisabled) {
+                                  return;
+                                }
+                                setSelectedSize(size.label);
+                                setQuantity((current) => {
+                                  const safeQuantity = Math.max(1, current);
+                                  if (
+                                    size.stock > 0 &&
+                                    safeQuantity > size.stock
+                                  ) {
+                                    setSizeError(
+                                      `Only ${size.stock} unit${
+                                        size.stock === 1 ? "" : "s"
+                                      } available for size ${size.label}.`
+                                    );
+                                    return size.stock;
+                                  }
+                                  setSizeError("");
+                                  return safeQuantity;
+                                });
+                              }}
+                              disabled={isDisabled}
+                              title={
+                                !size.isAvailable
+                                  ? "Currently unavailable"
+                                  : undefined
+                              }
+                              className={`inline-flex items-center justify-center rounded-full border px-4 py-1.5 text-sm font-semibold transition ${
+                                isActive
+                                  ? "border-blue-600 bg-blue-50 text-blue-600"
+                                  : "border-slate-200 bg-white text-slate-600 hover:border-blue-200 hover:text-blue-600"
+                              } ${
+                                !size.isAvailable
+                                  ? "cursor-not-allowed opacity-50"
+                                  : ""
+                              }`}
+                            >
+                              {size.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    {sizeError && (
+                      <div className="w-full rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-700">
+                        {sizeError}
+                      </div>
+                    )}
 
                     <motion.button
                       type="button"
                       className={`flex-1 px-6 py-3 rounded-lg font-medium transition-colors text-center whitespace-nowrap ${
-                        isPurchaseDisabled
+                        isPurchaseDisabled || isQuantityExceeded
                           ? "bg-slate-200 text-slate-500 cursor-not-allowed"
                           : "bg-primary text-white hover:bg-primary/90"
                       }`}
                       whileHover={
-                        isPurchaseDisabled ? undefined : buttonHover.whileHover
+                        isPurchaseDisabled || isQuantityExceeded
+                          ? undefined
+                          : buttonHover.whileHover
                       }
                       whileTap={
-                        isPurchaseDisabled ? undefined : buttonHover.whileTap
+                        isPurchaseDisabled || isQuantityExceeded
+                          ? undefined
+                          : buttonHover.whileTap
                       }
-                      disabled={isPurchaseDisabled}
+                      disabled={isPurchaseDisabled || isQuantityExceeded}
                       onClick={handleAddToCart}
                     >
                       {isNotReadyToShip ? "Unavailable" : "Add to Cart"}
@@ -511,17 +741,21 @@ const ProductPage = () => {
                     <motion.button
                       type="button"
                       className={`flex-1 px-6 py-3 rounded-lg font-medium transition-colors text-center whitespace-nowrap ${
-                        isPurchaseDisabled
+                        isPurchaseDisabled || isQuantityExceeded
                           ? "bg-slate-200 text-slate-500 cursor-not-allowed"
                           : "bg-blue-500 text-white hover:bg-blue-600"
                       }`}
                       whileHover={
-                        isPurchaseDisabled ? undefined : buttonHover.whileHover
+                        isPurchaseDisabled || isQuantityExceeded
+                          ? undefined
+                          : buttonHover.whileHover
                       }
                       whileTap={
-                        isPurchaseDisabled ? undefined : buttonHover.whileTap
+                        isPurchaseDisabled || isQuantityExceeded
+                          ? undefined
+                          : buttonHover.whileTap
                       }
-                      disabled={isPurchaseDisabled}
+                      disabled={isPurchaseDisabled || isQuantityExceeded}
                       onClick={goToCheckout}
                     >
                       {isNotReadyToShip ? "Notify Me" : "Buy Now"}

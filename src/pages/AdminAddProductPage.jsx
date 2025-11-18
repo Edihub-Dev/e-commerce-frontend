@@ -29,6 +29,61 @@ const availabilityOptions = [
   { label: "Preorder", value: "preorder" },
 ];
 
+const STANDARD_SIZE_LABELS = ["S", "M", "L", "XL", "XXL"];
+
+const buildDefaultSizes = () =>
+  STANDARD_SIZE_LABELS.map((label) => ({
+    label,
+    isAvailable: true,
+    stock: 0,
+  }));
+
+const normalizeSizes = (value) => {
+  if (!Array.isArray(value) || !value.length) {
+    return buildDefaultSizes();
+  }
+
+  const seen = new Set();
+  const normalized = value
+    .map((entry) => {
+      const label = entry?.label?.toString().trim().toUpperCase();
+      if (!label || seen.has(label)) {
+        return null;
+      }
+      seen.add(label);
+      return {
+        label,
+        isAvailable: Boolean(entry?.isAvailable ?? true),
+        stock: Math.max(Number(entry?.stock ?? 0), 0),
+      };
+    })
+    .filter(Boolean);
+
+  STANDARD_SIZE_LABELS.forEach((label) => {
+    if (!seen.has(label)) {
+      normalized.push({ label, isAvailable: true, stock: 0 });
+    }
+  });
+
+  return normalized.length ? normalized : buildDefaultSizes();
+};
+
+const computeSizeStockTotal = (sizes) => {
+  const list = Array.isArray(sizes) ? sizes : [];
+  return list.reduce((total, entry) => {
+    if (!entry || !entry.isAvailable) {
+      return total;
+    }
+
+    const numeric = Number(entry.stock ?? 0);
+    if (!Number.isFinite(numeric)) {
+      return total;
+    }
+
+    return total + Math.max(numeric, 0);
+  }, 0);
+};
+
 const defaultFormState = {
   name: "",
   sku: "",
@@ -47,6 +102,8 @@ const defaultFormState = {
   gallery: [],
   isFeatured: false,
   keyFeatures: [""],
+  sizes: buildDefaultSizes(),
+  showSizes: true,
 };
 
 const FORM_STORAGE_KEY = "adminAddProductFormState";
@@ -76,6 +133,11 @@ const loadPersistedFormState = () => {
       keyFeatures,
       gallery,
       isFeatured: Boolean(parsed.isFeatured),
+      showSizes:
+        typeof parsed.showSizes === "boolean"
+          ? parsed.showSizes
+          : defaultFormState.showSizes,
+      sizes: normalizeSizes(parsed.sizes),
     };
   } catch (error) {
     console.warn("Failed to restore saved admin add product form", error);
@@ -111,6 +173,7 @@ const AdminAddProductPage = () => {
 
     try {
       const { rating, reviews, ...rest } = formState;
+      const normalizedSizesForStorage = normalizeSizes(formState.sizes);
       const payload = {
         ...rest,
         keyFeatures:
@@ -118,6 +181,8 @@ const AdminAddProductPage = () => {
             ? formState.keyFeatures
             : [""],
         gallery: Array.isArray(formState.gallery) ? formState.gallery : [],
+        sizes: normalizedSizesForStorage,
+        showSizes: Boolean(formState.showSizes),
       };
 
       window.localStorage.setItem(FORM_STORAGE_KEY, JSON.stringify(payload));
@@ -152,6 +217,16 @@ const AdminAddProductPage = () => {
     return Array.from(uniqueBrands);
   }, [items]);
 
+  const normalizedFormSizes = useMemo(
+    () => normalizeSizes(formState.sizes),
+    [formState.sizes]
+  );
+
+  const sizeStockTotal = useMemo(
+    () => computeSizeStockTotal(normalizedFormSizes),
+    [normalizedFormSizes]
+  );
+
   const LOCKED_AVAILABILITY_STATUSES = ["out_of_stock", "preorder"];
   const isStockLockedForStatus = (status) =>
     LOCKED_AVAILABILITY_STATUSES.includes(status);
@@ -164,8 +239,9 @@ const AdminAddProductPage = () => {
       if (field === "availabilityStatus") {
         if (isStockLockedForStatus(value)) {
           next.stock = "0";
-        } else if (isStockLockedForStatus(prev.availabilityStatus)) {
-          next.stock = "";
+        } else {
+          const totalStock = computeSizeStockTotal(normalizeSizes(prev.sizes));
+          next.stock = totalStock.toString();
         }
       }
 
@@ -175,7 +251,21 @@ const AdminAddProductPage = () => {
 
   const handleToggleChange = (field) => (event) => {
     const { checked } = event.target;
-    setFormState((prev) => ({ ...prev, [field]: checked }));
+    setFormState((prev) => {
+      if (field === "showSizes") {
+        const totalStock = computeSizeStockTotal(normalizeSizes(prev.sizes));
+        return {
+          ...prev,
+          [field]: checked,
+          stock:
+            checked && !isStockLockedForStatus(prev.availabilityStatus)
+              ? totalStock.toString()
+              : prev.stock,
+        };
+      }
+
+      return { ...prev, [field]: checked };
+    });
   };
 
   const handlePricingChange = (field) => (event) => {
@@ -291,6 +381,62 @@ const AdminAddProductPage = () => {
         (_, idx) => idx !== index
       );
       return { ...prev, gallery: nextGallery };
+    });
+  };
+
+  const handleToggleSizeAvailability = (label) => {
+    setFormState((prev) => {
+      const normalized = normalizeSizes(prev.sizes);
+      const updated = normalized.map((size) =>
+        size.label === label
+          ? { ...size, isAvailable: !size.isAvailable }
+          : size
+      );
+      const totalStock = computeSizeStockTotal(updated);
+      return {
+        ...prev,
+        sizes: updated,
+        stock: isStockLockedForStatus(prev.availabilityStatus)
+          ? prev.stock
+          : totalStock.toString(),
+      };
+    });
+  };
+
+  const handleSizeStockChange = (label) => (event) => {
+    const { value } = event.target;
+    setFormState((prev) => {
+      const normalized = normalizeSizes(prev.sizes);
+      const updated = normalized.map((size) =>
+        size.label === label
+          ? {
+              ...size,
+              stock: Math.max(Number(value ?? 0), 0),
+            }
+          : size
+      );
+      const totalStock = computeSizeStockTotal(updated);
+      return {
+        ...prev,
+        sizes: updated,
+        stock: isStockLockedForStatus(prev.availabilityStatus)
+          ? prev.stock
+          : totalStock.toString(),
+      };
+    });
+  };
+
+  const handleResetSizes = () => {
+    setFormState((prev) => {
+      const defaults = buildDefaultSizes();
+      const totalStock = computeSizeStockTotal(defaults);
+      return {
+        ...prev,
+        sizes: defaults,
+        stock: isStockLockedForStatus(prev.availabilityStatus)
+          ? prev.stock
+          : totalStock.toString() || "0",
+      };
     });
   };
 
@@ -411,6 +557,15 @@ const AdminAddProductPage = () => {
       errors.keyFeatures = "Add at least one key feature";
     }
 
+    if (formState.showSizes) {
+      const enabledSizes = normalizeSizes(formState.sizes).filter(
+        (size) => size.isAvailable
+      );
+      if (!enabledSizes.length) {
+        errors.sizes = "Enable at least one size or turn off the size selector";
+      }
+    }
+
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -455,6 +610,8 @@ const AdminAddProductPage = () => {
       keyFeatures: Array.isArray(formState.keyFeatures)
         ? formState.keyFeatures.map((feature) => feature.trim()).filter(Boolean)
         : [],
+      sizes: normalizedFormSizes,
+      showSizes: Boolean(formState.showSizes),
     };
 
     try {
@@ -912,15 +1069,27 @@ const AdminAddProductPage = () => {
                           value={formState.stock}
                           onChange={handleChange("stock")}
                           disabled={isStockLocked}
+                          readOnly={formState.showSizes && !isStockLocked}
+                          title={
+                            formState.showSizes && !isStockLocked
+                              ? "Auto-calculated from per-size stock"
+                              : undefined
+                          }
                           className={`w-full rounded-xl border px-3 py-2 text-sm focus:border-blue-400 focus:outline-none ${
                             formErrors.stock
                               ? "border-rose-300"
                               : "border-slate-200"
                           } ${
-                            isStockLocked ? "bg-slate-100 text-slate-500" : ""
+                            isStockLocked || formState.showSizes
+                              ? "bg-slate-100 text-slate-500"
+                              : ""
                           }`}
                           placeholder={
-                            isStockLocked ? "Managed automatically" : "e.g. 150"
+                            isStockLocked
+                              ? "Managed automatically"
+                              : formState.showSizes
+                              ? "Calculated from sizes"
+                              : "e.g. 150"
                           }
                         />
                         {isStockLocked && (
@@ -932,6 +1101,14 @@ const AdminAddProductPage = () => {
                       {formErrors.stock && (
                         <p className="text-xs text-rose-500">
                           {formErrors.stock}
+                        </p>
+                      )}
+                      {formState.showSizes && !isStockLocked && (
+                        <p className="text-xs text-slate-500">
+                          Total from size quantities:{" "}
+                          <span className="font-semibold text-slate-700">
+                            {sizeStockTotal}
+                          </span>
                         </p>
                       )}
                     </div>
@@ -951,6 +1128,114 @@ const AdminAddProductPage = () => {
                       />
                     </div>
                   </div>
+                </section>
+
+                <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <h2 className="text-base font-semibold text-slate-900">
+                        Size Availability
+                      </h2>
+                      <p className="text-xs text-slate-500">
+                        Configure which standard sizes are in stock and whether
+                        to show them on the product page.
+                      </p>
+                    </div>
+                    <label className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-medium text-slate-600">
+                      <input
+                        type="checkbox"
+                        checked={Boolean(formState.showSizes)}
+                        onChange={handleToggleChange("showSizes")}
+                        className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                      />
+                      {formState.showSizes
+                        ? "Showing on product page"
+                        : "Hidden on product page"}
+                    </label>
+                  </div>
+
+                  {formState.showSizes ? (
+                    <div className="mt-4 space-y-4">
+                      <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-slate-600">
+                        <span className="font-medium">
+                          Total available size stock:{" "}
+                          <span className="text-slate-900">
+                            {sizeStockTotal}
+                          </span>
+                        </span>
+                        <button
+                          type="button"
+                          onClick={handleResetSizes}
+                          className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:border-blue-200 hover:text-blue-600"
+                        >
+                          Reset to defaults
+                        </button>
+                      </div>
+
+                      <div className="grid gap-3 md:grid-cols-2">
+                        {normalizedFormSizes.map((size) => {
+                          const isActive = Boolean(size.isAvailable);
+                          const stockValue = Number(size.stock ?? 0);
+                          return (
+                            <div
+                              key={size.label}
+                              className="flex flex-col gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3"
+                            >
+                              <div className="flex items-center justify-between gap-3">
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    handleToggleSizeAvailability(size.label)
+                                  }
+                                  className={`inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 ${
+                                    isActive
+                                      ? "border-blue-600 bg-blue-50 text-blue-600 hover:border-blue-700 hover:bg-blue-100"
+                                      : "border-rose-200 bg-rose-50 text-rose-500 hover:border-rose-300 hover:bg-rose-100"
+                                  }`}
+                                >
+                                  <span>{size.label}</span>
+                                  {!isActive && (
+                                    <span className="rounded-full bg-white px-2 py-0.5 text-[10px] font-semibold uppercase text-rose-500 shadow-sm">
+                                      Blocked
+                                    </span>
+                                  )}
+                                </button>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  step="1"
+                                  value={isActive ? stockValue : 0}
+                                  onChange={handleSizeStockChange(size.label)}
+                                  disabled={!isActive}
+                                  className={`w-24 rounded-lg border px-2 py-1 text-xs font-semibold focus:border-blue-400 focus:outline-none ${
+                                    isActive
+                                      ? "border-slate-200 bg-white text-slate-700"
+                                      : "cursor-not-allowed border-slate-100 bg-slate-100 text-slate-400"
+                                  }`}
+                                  aria-label={`${size.label} stock quantity`}
+                                />
+                              </div>
+                              <p className="text-[11px] text-slate-500">
+                                {isActive
+                                  ? "Adjust available units for this size."
+                                  : "Blocked sizes are hidden from shoppers."}
+                              </p>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      <p className="text-[11px] text-slate-500">
+                        Tip: Stock is the sum of all enabled sizes. Disable a
+                        size to remove it from the total.
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="mt-4 rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-500">
+                      Enable the toggle to manage per-size availability for this
+                      product.
+                    </p>
+                  )}
                 </section>
               </div>
 

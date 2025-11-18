@@ -150,6 +150,24 @@ const ensurePriceFields = (product = {}) => {
   return { price, originalPrice, discountPercentage, saveAmount };
 };
 
+const normalizeSizes = (value) =>
+  Array.isArray(value)
+    ? value
+        .map((entry) => {
+          const label = entry?.label?.toString().trim();
+          if (!label) {
+            return null;
+          }
+          const stock = Math.max(Number(entry?.stock ?? 0), 0);
+          return {
+            label,
+            isAvailable: Boolean(entry?.isAvailable ?? true),
+            stock,
+          };
+        })
+        .filter(Boolean)
+    : [];
+
 const mapProductCard = (product = {}) => {
   const { price, originalPrice, discountPercentage, saveAmount } =
     ensurePriceFields(product);
@@ -169,7 +187,9 @@ const mapProductCard = (product = {}) => {
 
   const rawReviews = product.reviews ?? product.ratings?.totalReviews ?? 0;
   const rawRating = product.rating ?? product.ratings?.average ?? 0;
-  const normalizedReviews = Number.isFinite(Number(rawReviews)) ? Number(rawReviews) : 0;
+  const normalizedReviews = Number.isFinite(Number(rawReviews))
+    ? Number(rawReviews)
+    : 0;
   const normalizedRating = normalizedReviews > 0 ? Number(rawRating) || 0 : 0;
 
   return {
@@ -191,6 +211,8 @@ const mapProductCard = (product = {}) => {
     category: product.category || "",
     currency: product.currency || "INR",
     keyFeatures,
+    sizes: normalizeSizes(product.sizes),
+    showSizes: Boolean(product.showSizes),
   };
 };
 
@@ -226,12 +248,13 @@ const mapProductDetail = (product = {}) => {
     stock: product.stock ?? 0,
     keyFeatures,
     features: keyFeatures,
+    sizes: card.sizes,
+    showSizes: card.showSizes,
     reviewsList: Array.isArray(product.reviewsList) ? product.reviewsList : [],
     reviewsSummary: product.reviewsSummary || {
       totalReviews: card.reviews ?? 0,
       average: card.rating ?? 0,
-      totalScore:
-        (card.reviews ?? 0) * ((card.rating ?? 0) || 0),
+      totalScore: (card.reviews ?? 0) * ((card.rating ?? 0) || 0),
     },
   };
 };

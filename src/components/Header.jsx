@@ -183,6 +183,14 @@ const Header = () => {
   useEffect(() => {
     const formatLocation = (addressLike) => {
       if (!addressLike) return null;
+
+      const formatted = addressLike.formattedAddress?.trim();
+      if (formatted) {
+        return formatted.length > 55
+          ? `${formatted.slice(0, 52)}...`
+          : formatted;
+      }
+
       const city = addressLike.city?.trim();
       const state = addressLike.state?.trim();
       const pincode =

@@ -295,7 +295,10 @@ const AdminProductsPage = () => {
         return value;
       }
 
-      return `${import.meta.env.VITE_S3_PUBLIC_URL || "https://s3.ap-south-1.amazonaws.com/ecom-mega-mart"}/${value.replace(/^\/+/, "")}`;
+      return `${
+        import.meta.env.VITE_S3_PUBLIC_URL ||
+        "https://s3.ap-south-1.amazonaws.com/ecom-mega-mart"
+      }/${value.replace(/^\/+/, "")}`;
     };
 
     const gallery = Array.isArray(activeProduct.gallery)
@@ -331,6 +334,14 @@ const AdminProductsPage = () => {
       keyFeatures: Array.isArray(activeProduct.keyFeatures)
         ? activeProduct.keyFeatures
         : [],
+      sizes: Array.isArray(activeProduct.sizes)
+        ? activeProduct.sizes.map((size) => ({
+            label: size?.label ?? "",
+            isAvailable: Boolean(size?.isAvailable ?? true),
+            stock: Math.max(Number(size?.stock ?? 0), 0),
+          }))
+        : [],
+      showSizes: Boolean(activeProduct.showSizes),
     };
   }, [activeProduct]);
 

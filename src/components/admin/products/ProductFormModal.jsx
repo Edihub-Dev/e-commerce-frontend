@@ -3,6 +3,59 @@ import PropTypes from "prop-types";
 import { AnimatePresence, motion } from "framer-motion";
 import { X, UploadCloud, Image as ImageIcon, Loader2 } from "lucide-react";
 
+const STANDARD_SIZE_LABELS = ["S", "M", "L", "XL", "XXL"];
+
+const buildDefaultSizes = () =>
+  STANDARD_SIZE_LABELS.map((label) => ({
+    label,
+    isAvailable: true,
+    stock: 0,
+  }));
+
+const normalizeSizes = (value) => {
+  if (!Array.isArray(value) || !value.length) {
+    return buildDefaultSizes();
+  }
+
+  const seen = new Set();
+  const normalized = value
+    .map((entry) => {
+      const label = entry?.label?.toString().trim().toUpperCase();
+      if (!label || seen.has(label)) {
+        return null;
+      }
+      seen.add(label);
+      return {
+        label,
+        isAvailable: Boolean(entry?.isAvailable ?? true),
+        stock: Math.max(Number(entry?.stock ?? 0), 0),
+      };
+    })
+    .filter(Boolean);
+
+  STANDARD_SIZE_LABELS.forEach((label) => {
+    if (!seen.has(label)) {
+      normalized.push({ label, isAvailable: true, stock: 0 });
+    }
+  });
+
+  return normalized.length ? normalized : buildDefaultSizes();
+};
+
+const computeSizeStockTotal = (sizes) => {
+  const list = Array.isArray(sizes) ? sizes : [];
+  return list.reduce((total, entry) => {
+    if (!entry || !entry.isAvailable) {
+      return total;
+    }
+    const numeric = Number(entry.stock ?? 0);
+    if (!Number.isFinite(numeric)) {
+      return total;
+    }
+    return total + Math.max(numeric, 0);
+  }, 0);
+};
+
 const DEFAULT_FORM = {
   name: "",
   sku: "",
@@ -20,6 +73,8 @@ const DEFAULT_FORM = {
   gallery: [],
   isFeatured: false,
   keyFeatures: [""],
+  sizes: buildDefaultSizes(),
+  showSizes: false,
 };
 
 const statusOptions = [
@@ -79,6 +134,8 @@ const ProductFormModal = ({
             ? [...normalizedInitial.keyFeatures]
             : [""]
           : [...DEFAULT_FORM.keyFeatures],
+        sizes: normalizeSizes(normalizedInitial.sizes),
+        showSizes: Boolean(normalizedInitial.showSizes),
       });
       setLocalError("");
     }
@@ -90,21 +147,22 @@ const ProductFormModal = ({
     }
   }, [error]);
 
+  const LOCKED_AVAILABILITY_STATUSES = ["out_of_stock", "preorder"];
+  const isStockLocked = LOCKED_AVAILABILITY_STATUSES.includes(
+    formState.availabilityStatus
+  );
+
   const handleChange = (field) => (event) => {
     const value = event.target.value;
     setFormState((prev) => {
       const next = { ...prev, [field]: value };
 
       if (field === "availabilityStatus") {
-        const isLocked = ["out_of_stock", "preorder"].includes(value);
-        const wasLocked = ["out_of_stock", "preorder"].includes(
-          prev.availabilityStatus
-        );
-
-        if (isLocked) {
+        if (LOCKED_AVAILABILITY_STATUSES.includes(value)) {
           next.stock = "0";
-        } else if (wasLocked) {
-          next.stock = "";
+        } else {
+          const totalStock = computeSizeStockTotal(normalizeSizes(prev.sizes));
+          next.stock = totalStock.toString();
         }
       }
 
@@ -114,7 +172,22 @@ const ProductFormModal = ({
 
   const handleToggleChange = (field) => (event) => {
     const { checked } = event.target;
-    setFormState((prev) => ({ ...prev, [field]: checked }));
+    setFormState((prev) => {
+      if (field === "showSizes") {
+        const totalStock = computeSizeStockTotal(normalizeSizes(prev.sizes));
+        return {
+          ...prev,
+          [field]: checked,
+          stock:
+            checked &&
+            !LOCKED_AVAILABILITY_STATUSES.includes(prev.availabilityStatus)
+              ? totalStock.toString()
+              : prev.stock,
+        };
+      }
+
+      return { ...prev, [field]: checked };
+    });
   };
 
   const handlePricingChange = (field) => (event) => {
@@ -230,6 +303,67 @@ const ProductFormModal = ({
     });
   };
 
+  const normalizedSizes = useMemo(
+    () => normalizeSizes(formState.sizes),
+    [formState.sizes]
+  );
+
+  const sizeStockTotal = useMemo(
+    () => computeSizeStockTotal(normalizedSizes),
+    [normalizedSizes]
+  );
+
+  const handleToggleSizeAvailability = (label) => {
+    setFormState((prev) => {
+      const updated = normalizeSizes(prev.sizes).map((size) =>
+        size.label === label
+          ? { ...size, isAvailable: !size.isAvailable }
+          : size
+      );
+      const totalStock = computeSizeStockTotal(updated);
+      return {
+        ...prev,
+        sizes: updated,
+        stock: LOCKED_AVAILABILITY_STATUSES.includes(prev.availabilityStatus)
+          ? prev.stock
+          : totalStock.toString(),
+      };
+    });
+  };
+
+  const handleResetSizes = () => {
+    setFormState((prev) => {
+      const defaults = buildDefaultSizes();
+      const totalStock = computeSizeStockTotal(defaults);
+      return {
+        ...prev,
+        sizes: defaults,
+        stock: LOCKED_AVAILABILITY_STATUSES.includes(prev.availabilityStatus)
+          ? prev.stock
+          : totalStock.toString(),
+      };
+    });
+  };
+
+  const handleSizeStockChange = (label) => (event) => {
+    const { value } = event.target;
+    setFormState((prev) => {
+      const updated = normalizeSizes(prev.sizes).map((size) =>
+        size.label === label
+          ? { ...size, stock: Math.max(Number(value ?? 0), 0) }
+          : size
+      );
+      const totalStock = computeSizeStockTotal(updated);
+      return {
+        ...prev,
+        sizes: updated,
+        stock: LOCKED_AVAILABILITY_STATUSES.includes(prev.availabilityStatus)
+          ? prev.stock
+          : totalStock.toString(),
+      };
+    });
+  };
+
   const handleSubmit = (event) => {
     event.preventDefault();
     setLocalError("");
@@ -260,6 +394,18 @@ const ProductFormModal = ({
 
     if (!keyFeatures.length) {
       setLocalError("Add at least one key feature");
+      return;
+    }
+
+    const normalizedFormSizes = normalizeSizes(formState.sizes);
+
+    if (
+      formState.showSizes &&
+      !normalizedFormSizes.some((size) => size.isAvailable)
+    ) {
+      setLocalError(
+        "Enable at least one size or turn off the size selector before saving"
+      );
       return;
     }
 
@@ -299,12 +445,10 @@ const ProductFormModal = ({
       gallery: Array.isArray(formState.gallery) ? formState.gallery : [],
       isFeatured: Boolean(formState.isFeatured),
       keyFeatures,
+      sizes: normalizedFormSizes,
+      showSizes: Boolean(formState.showSizes),
     });
   };
-
-  const isStockLocked = ["out_of_stock", "preorder"].includes(
-    formState.availabilityStatus
-  );
 
   return (
     <AnimatePresence>
@@ -543,12 +687,24 @@ const ProductFormModal = ({
                     value={formState.stock}
                     onChange={handleChange("stock")}
                     disabled={isStockLocked}
+                    readOnly={formState.showSizes && !isStockLocked}
+                    title={
+                      formState.showSizes && !isStockLocked
+                        ? "Auto-calculated from per-size stock"
+                        : undefined
+                    }
                     className={`rounded-xl border px-3 py-2 text-sm focus:border-blue-400 focus:outline-none ${
-                      isStockLocked
-                        ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400"
+                      isStockLocked || formState.showSizes
+                        ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-500"
                         : "border-slate-200"
                     }`}
-                    placeholder="40"
+                    placeholder={
+                      isStockLocked
+                        ? "Managed automatically"
+                        : formState.showSizes
+                        ? "Calculated from sizes"
+                        : "40"
+                    }
                   />
                   {isStockLocked && (
                     <span className="text-[11px] text-slate-500">
@@ -557,6 +713,11 @@ const ProductFormModal = ({
                         ? "Preorder"
                         : "Out of Stock"}
                       .
+                    </span>
+                  )}
+                  {formState.showSizes && !isStockLocked && (
+                    <span className="text-[11px] text-slate-500">
+                      Total from size quantities: {sizeStockTotal}
                     </span>
                   )}
                 </label>
@@ -609,6 +770,111 @@ const ProductFormModal = ({
                   </div>
                 </label>
               </div>
+
+              <section className="space-y-3 rounded-xl border border-slate-200 bg-slate-50/60 p-4">
+                <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+                  <div>
+                    <span className="text-xs font-semibold uppercase text-slate-500">
+                      Size Availability
+                    </span>
+                    <p className="text-[11px] text-slate-500">
+                      Toggle which sizes are purchasable and whether the
+                      selector appears on the product page.
+                    </p>
+                  </div>
+                  <label className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-medium text-slate-600">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(formState.showSizes)}
+                      onChange={handleToggleChange("showSizes")}
+                      className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    {formState.showSizes
+                      ? "Shown on product page"
+                      : "Hidden on product page"}
+                  </label>
+                </div>
+
+                {formState.showSizes ? (
+                  <div className="space-y-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-500">
+                      <span className="font-medium text-slate-600">
+                        Total size stock: {sizeStockTotal}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={handleResetSizes}
+                        className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-1.5 text-[11px] font-semibold text-slate-600 hover:border-blue-200 hover:text-blue-600"
+                      >
+                        Reset sizes
+                      </button>
+                    </div>
+
+                    <div className="grid gap-3 md:grid-cols-2">
+                      {normalizedSizes.map((size) => {
+                        const isActive = Boolean(size.isAvailable);
+                        const stockValue = Number(size.stock ?? 0);
+                        return (
+                          <div
+                            key={size.label}
+                            className="flex flex-col gap-2 rounded-xl border border-slate-200 bg-white p-3"
+                          >
+                            <div className="flex items-center justify-between gap-3">
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  handleToggleSizeAvailability(size.label)
+                                }
+                                className={`inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 ${
+                                  isActive
+                                    ? "border-blue-600 bg-blue-50 text-blue-600 hover:border-blue-700 hover:bg-blue-100"
+                                    : "border-rose-200 bg-rose-50 text-rose-500 hover:border-rose-300 hover:bg-rose-100"
+                                }`}
+                              >
+                                <span>{size.label}</span>
+                                {!isActive && (
+                                  <span className="rounded-full bg-white px-2 py-0.5 text-[9px] font-semibold uppercase text-rose-500 shadow-sm">
+                                    Blocked
+                                  </span>
+                                )}
+                              </button>
+                              <input
+                                type="number"
+                                min="0"
+                                step="1"
+                                value={isActive ? stockValue : 0}
+                                onChange={handleSizeStockChange(size.label)}
+                                disabled={!isActive || isStockLocked}
+                                className={`w-24 rounded-lg border px-2 py-1 text-xs font-semibold focus:border-blue-400 focus:outline-none ${
+                                  isActive && !isStockLocked
+                                    ? "border-slate-200 bg-white text-slate-700"
+                                    : "cursor-not-allowed border-slate-100 bg-slate-100 text-slate-400"
+                                }`}
+                                aria-label={`${size.label} stock quantity`}
+                              />
+                            </div>
+                            <p className="text-[11px] text-slate-500">
+                              {isActive
+                                ? "Adjust units for this size when available."
+                                : "Blocked sizes stay hidden for shoppers."}
+                            </p>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    <p className="text-[11px] text-slate-500">
+                      Tip: Total stock equals the sum of enabled size
+                      quantities.
+                    </p>
+                  </div>
+                ) : (
+                  <p className="rounded-lg border border-dashed border-slate-200 bg-white px-3 py-2 text-[11px] text-slate-500">
+                    Enable the toggle to manage per-size availability for this
+                    listing.
+                  </p>
+                )}
+              </section>
 
               <section className="space-y-3 rounded-xl border border-slate-200 bg-slate-50/60 p-4">
                 <div className="flex flex-col gap-1">

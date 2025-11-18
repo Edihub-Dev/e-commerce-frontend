@@ -29,6 +29,7 @@ import AdminDashboard from "./pages/AdminDashboard";
 import AdminProductsPage from "./pages/AdminProductsPage";
 import AdminAddProductPage from "./pages/AdminAddProductPage";
 import AdminOrdersPage from "./pages/AdminOrdersPage";
+import AdminOrderDetailsPage from "./pages/AdminOrderDetailsPage";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 const ScrollToTop = () => {
@@ -75,7 +76,10 @@ function App() {
             <Route path="address" element={<CheckoutAddress />} />
             <Route path="payment" element={<CheckoutPayment />} />
             <Route path="confirmation" element={<CheckoutConfirmation />} />
-            <Route path="confirmation/:orderId" element={<CheckoutConfirmation />} />
+            <Route
+              path="confirmation/:orderId"
+              element={<CheckoutConfirmation />}
+            />
           </Route>
           <Route
             path="orders"
@@ -125,6 +129,14 @@ function App() {
           element={
             <ProtectedRoute requireAdmin>
               <AdminOrdersPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/orders/:orderId"
+          element={
+            <ProtectedRoute requireAdmin>
+              <AdminOrderDetailsPage />
             </ProtectedRoute>
           }
         />

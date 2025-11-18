@@ -193,6 +193,11 @@ const ProductPage = () => {
     });
   }, [product]);
 
+  const productStock = useMemo(() => {
+    const rawStock = Number(product?.stock ?? 0);
+    return Number.isFinite(rawStock) ? Math.max(rawStock, 0) : 0;
+  }, [product]);
+
   const selectedSizeInfo = useMemo(() => {
     if (!selectedSize) {
       return null;
@@ -201,10 +206,17 @@ const ProductPage = () => {
     return normalizedSizes.find((size) => size.label === selectedSize) || null;
   }, [normalizedSizes, selectedSize]);
 
-  const isQuantityExceeded =
-    Boolean(selectedSizeInfo) &&
-    selectedSizeInfo.stock > 0 &&
-    quantity > selectedSizeInfo.stock;
+  const isQuantityExceeded = useMemo(() => {
+    if (product?.showSizes) {
+      return (
+        Boolean(selectedSizeInfo) &&
+        selectedSizeInfo.stock > 0 &&
+        quantity > selectedSizeInfo.stock
+      );
+    }
+
+    return productStock > 0 && quantity > productStock;
+  }, [product?.showSizes, selectedSizeInfo, quantity, productStock]);
 
   useEffect(() => {
     if (!normalizedSizes.length) {
@@ -241,31 +253,52 @@ const ProductPage = () => {
   }, [normalizedSizes, selectedSize]);
 
   useEffect(() => {
-    if (!selectedSizeInfo) {
+    if (product?.showSizes) {
+      if (!selectedSizeInfo) {
+        return;
+      }
+
+      if (selectedSizeInfo.stock > 0 && quantity > selectedSizeInfo.stock) {
+        const capped = Math.max(selectedSizeInfo.stock || 1, 1);
+        setQuantity(capped);
+        setSizeError(`Quantity unavailable.`);
+      } else {
+        setSizeError("");
+      }
       return;
     }
 
-    if (selectedSizeInfo.stock > 0 && quantity > selectedSizeInfo.stock) {
-      const capped = Math.max(selectedSizeInfo.stock || 1, 1);
+    if (productStock > 0 && quantity > productStock) {
+      const capped = Math.max(productStock || 1, 1);
       setQuantity(capped);
       setSizeError(`Quantity unavailable.`);
     } else {
       setSizeError("");
     }
-  }, [selectedSizeInfo, quantity]);
+  }, [product?.showSizes, productStock, selectedSizeInfo, quantity]);
 
   const handleQuantityChange = (nextQuantity) => {
     setQuantity((prevQuantity) => {
       const sanitized = Math.max(1, nextQuantity);
 
-      if (
-        selectedSizeInfo &&
-        selectedSizeInfo.isAvailable &&
-        selectedSizeInfo.stock > 0 &&
-        sanitized > selectedSizeInfo.stock
-      ) {
+      if (product?.showSizes) {
+        if (
+          selectedSizeInfo &&
+          selectedSizeInfo.isAvailable &&
+          selectedSizeInfo.stock > 0 &&
+          sanitized > selectedSizeInfo.stock
+        ) {
+          setSizeError(`Quantity unavailable.`);
+          return Math.max(selectedSizeInfo.stock, 1);
+        }
+
+        setSizeError("");
+        return sanitized;
+      }
+
+      if (productStock > 0 && sanitized > productStock) {
         setSizeError(`Quantity unavailable.`);
-        return Math.max(selectedSizeInfo.stock, 1);
+        return Math.max(productStock || 1, 1);
       }
 
       setSizeError("");
@@ -293,6 +326,15 @@ const ProductPage = () => {
     ) {
       setSizeError(
         `Quantity unavailable. Max ${selectedSizeInfo.stock} for size ${selectedSizeInfo.label}.`
+      );
+      return;
+    }
+
+    if (!product?.showSizes && productStock > 0 && quantity > productStock) {
+      setSizeError(
+        `Quantity unavailable. Max ${productStock} unit${
+          productStock === 1 ? "" : "s"
+        } available.`
       );
       return;
     }

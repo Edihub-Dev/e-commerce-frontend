@@ -34,6 +34,7 @@ import {
   Ban,
   PencilLine,
   X,
+  CreditCard,
 } from "lucide-react";
 import "react-datepicker/dist/react-datepicker.css";
 import { utils as XLSXUtils, writeFile as writeXlsxFile } from "xlsx";
@@ -44,7 +45,7 @@ import {
   deleteAdminOrder,
   deleteAdminOrdersBulk,
 } from "../services/adminOrdersApi";
-import { updateOrder as updateOrderRequest } from "../utils/api";
+import api, { updateOrder as updateOrderRequest } from "../utils/api";
 
 const STATUS_LABELS = {
   processing: {
@@ -77,6 +78,12 @@ const SUMMARY_CONFIG = [
     label: "Shipped Orders",
     icon: Truck,
     iconClasses: "bg-sky-100 text-sky-600",
+  },
+  {
+    key: "paid",
+    label: "Paid Orders",
+    icon: CreditCard,
+    iconClasses: "bg-emerald-100 text-emerald-600",
   },
   {
     key: "delivered",
@@ -488,6 +495,7 @@ const AdminOrdersPage = () => {
     estimatedDeliveryDate: "",
   });
   const [isSavingEdit, setIsSavingEdit] = useState(false);
+  const [downloadingInvoiceId, setDownloadingInvoiceId] = useState(null);
   const latestParamsRef = useRef({});
 
   const socketUrl = useMemo(() => {
@@ -880,7 +888,55 @@ const AdminOrdersPage = () => {
   };
 
   const handleView = (orderId) => {
-    navigate(`/orders/${orderId}`, { state: { from: "admin-orders" } });
+    navigate(`/admin/orders/${orderId}`);
+  };
+
+  const handleDownloadInvoice = async (order) => {
+    const orderId = order?._id;
+    if (!orderId) {
+      toast.error("Order details unavailable");
+      return;
+    }
+
+    const paymentStatus = (order.payment?.status || "pending").toLowerCase();
+    if (paymentStatus !== "paid") {
+      toast.error("Invoice will be available once the payment is successful.");
+      return;
+    }
+
+    try {
+      setDownloadingInvoiceId(orderId);
+      const response = await api.get(`/orders/${orderId}/invoice`, {
+        responseType: "blob",
+        headers: {
+          Accept: "application/pdf",
+        },
+      });
+
+      const blob = response.data;
+      const disposition = response.headers?.["content-disposition"] || "";
+      const match = disposition.match(/filename="?([^";]+)"?/i);
+      const fileName = match?.[1] || `invoice-${orderId}.pdf`;
+
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      toast.success("Invoice downloaded");
+    } catch (errorDownload) {
+      console.error("Invoice download failed", errorDownload);
+      const message =
+        errorDownload?.response?.data?.message ||
+        errorDownload?.message ||
+        "Unable to download invoice. Please try again.";
+      toast.error(message);
+    } finally {
+      setDownloadingInvoiceId(null);
+    }
   };
 
   const handleDelete = async (orderId) => {
@@ -1429,6 +1485,10 @@ const AdminOrdersPage = () => {
                               0;
                             const isSelected =
                               selection.selectedIds.includes(orderId);
+                            const paymentStatus = (
+                              order.payment?.status || "pending"
+                            ).toLowerCase();
+                            const isPaymentPaid = paymentStatus === "paid";
 
                             return (
                               <tr
@@ -1495,7 +1555,19 @@ const AdminOrdersPage = () => {
                                   {formatCurrency(totalAmount)}
                                 </td>
                                 <td className="px-4 py-3">
-                                  {renderStatus?.(order.status)}
+                                  <div className="flex flex-col items-start gap-1">
+                                    {renderStatus?.(order.status)}
+                                    <span
+                                      className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-medium ${
+                                        isPaymentPaid
+                                          ? "bg-emerald-100 text-emerald-600"
+                                          : "bg-amber-100 text-amber-600"
+                                      }`}
+                                    >
+                                      Payment:{" "}
+                                      {isPaymentPaid ? "Paid" : paymentStatus}
+                                    </span>
+                                  </div>
                                 </td>
                                 <td className="px-4 py-3 text-right">
                                   <div className="flex justify-end gap-3 text-sm">
@@ -1509,6 +1581,32 @@ const AdminOrdersPage = () => {
                                         View order {orderId}
                                       </span>
                                       <Eye size={16} />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        handleDownloadInvoice(order)
+                                      }
+                                      disabled={
+                                        !isPaymentPaid ||
+                                        downloadingInvoiceId === orderId
+                                      }
+                                      className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover-border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                                      aria-label={`Download invoice for order ${orderId}`}
+                                      title={
+                                        isPaymentPaid
+                                          ? "Download invoice"
+                                          : "Invoice available after payment"
+                                      }
+                                    >
+                                      {downloadingInvoiceId === orderId ? (
+                                        <Loader2
+                                          size={16}
+                                          className="animate-spin"
+                                        />
+                                      ) : (
+                                        <Download size={16} />
+                                      )}
                                     </button>
                                     <button
                                       type="button"
@@ -1594,6 +1692,10 @@ const AdminOrdersPage = () => {
                         0;
                       const isSelected =
                         selection.selectedIds.includes(orderId);
+                      const paymentStatus = (
+                        order.payment?.status || "pending"
+                      ).toLowerCase();
+                      const isPaymentPaid = paymentStatus === "paid";
 
                       return (
                         <article
@@ -1675,10 +1777,20 @@ const AdminOrdersPage = () => {
                                 {formatCurrency(totalAmount)}
                               </dd>
                             </div>
-                            <div>
+                            <div className="space-y-1">
                               <dt className="text-slate-400">Status</dt>
-                              <dd className="mt-1">
-                                {renderStatus(order.status)}
+                              <dd>{renderStatus(order.status)}</dd>
+                              <dd>
+                                <span
+                                  className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-medium ${
+                                    isPaymentPaid
+                                      ? "bg-emerald-100 text-emerald-600"
+                                      : "bg-amber-100 text-amber-600"
+                                  }`}
+                                >
+                                  Payment:{" "}
+                                  {isPaymentPaid ? "Paid" : paymentStatus}
+                                </span>
                               </dd>
                             </div>
                           </dl>
@@ -1691,6 +1803,27 @@ const AdminOrdersPage = () => {
                               aria-label={`View order ${orderId}`}
                             >
                               <Eye size={16} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDownloadInvoice(order)}
+                              disabled={
+                                !isPaymentPaid ||
+                                downloadingInvoiceId === orderId
+                              }
+                              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                              aria-label={`Download invoice for order ${orderId}`}
+                              title={
+                                isPaymentPaid
+                                  ? "Download invoice"
+                                  : "Invoice available after payment"
+                              }
+                            >
+                              {downloadingInvoiceId === orderId ? (
+                                <Loader2 size={16} className="animate-spin" />
+                              ) : (
+                                <Download size={16} />
+                              )}
                             </button>
                             <button
                               type="button"

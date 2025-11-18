@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
-import { fetchOrderById, rateOrderItem } from "../../utils/api";
+import api, { fetchOrderById, rateOrderItem } from "../../utils/api";
 import { toast } from "react-hot-toast";
 import {
   ArrowLeft,
@@ -156,7 +156,11 @@ const OrderDetailsPage = () => {
 
   const handleSubmitRating = async (itemIndex) => {
     const draft = ratingDrafts[itemIndex];
-    if (!draft?.rating || submittingIndex !== null || order?.items?.[itemIndex]?.ratedAt) {
+    if (
+      !draft?.rating ||
+      submittingIndex !== null ||
+      order?.items?.[itemIndex]?.ratedAt
+    ) {
       return;
     }
 
@@ -229,31 +233,32 @@ const OrderDetailsPage = () => {
     );
   }
 
+  const isPaymentPaid =
+    (order?.payment?.status || "pending").toLowerCase() === "paid";
+
   const handleDownloadInvoice = async () => {
     if (!order?._id) {
       toast.error("Order details unavailable");
       return;
     }
 
+    if (!isPaymentPaid) {
+      toast.error("Invoice will be available once the payment is successful.");
+      return;
+    }
+
     setDownloadingInvoice(true);
 
     try {
-      const token = localStorage.getItem("authToken");
-      const response = await fetch(`${apiBaseUrl}/orders/${order._id}/invoice`, {
-        method: "GET",
+      const response = await api.get(`/orders/${order._id}/invoice`, {
+        responseType: "blob",
         headers: {
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          Accept: "application/pdf",
         },
-        credentials: "include",
       });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(errorText || "Failed to download invoice");
-      }
-
-      const blob = await response.blob();
-      const disposition = response.headers.get("content-disposition") || "";
+      const blob = response.data;
+      const disposition = response.headers?.["content-disposition"] || "";
       const match = disposition.match(/filename="?([^";]+)"?/i);
       const fileName = match?.[1] || `invoice-${order._id}.pdf`;
 
@@ -267,7 +272,11 @@ const OrderDetailsPage = () => {
       window.URL.revokeObjectURL(url);
     } catch (downloadError) {
       console.error("Invoice download failed", downloadError);
-      toast.error("Unable to download invoice. Please try again.");
+      const message =
+        downloadError?.response?.data?.message ||
+        downloadError?.message ||
+        "Unable to download invoice. Please try again.";
+      toast.error(message);
     } finally {
       setDownloadingInvoice(false);
     }
@@ -428,7 +437,9 @@ const OrderDetailsPage = () => {
                     {item.review && (
                       <div className="flex items-start gap-2 rounded-xl bg-slate-50 p-3 text-sm text-medium-text">
                         <MessageCircle className="h-4 w-4 text-secondary mt-0.5" />
-                        <p className="whitespace-pre-line break-words">{item.review}</p>
+                        <p className="whitespace-pre-line break-words">
+                          {item.review}
+                        </p>
                       </div>
                     )}
                   </div>
@@ -443,7 +454,9 @@ const OrderDetailsPage = () => {
                           <button
                             key={ratingValue}
                             type="button"
-                            onClick={() => handleSelectRating(index, ratingValue)}
+                            onClick={() =>
+                              handleSelectRating(index, ratingValue)
+                            }
                             className="focus:outline-none"
                             disabled={submittingIndex !== null}
                             aria-label={`Rate ${ratingValue} star${
@@ -462,32 +475,35 @@ const OrderDetailsPage = () => {
                         );
                       })}
                     </div>
-                    {activeItemIndex === index && ratingDrafts[index]?.rating > 0 && (
-                      <div className="space-y-3">
-                        <textarea
-                          value={ratingDrafts[index]?.review || ""}
-                          onChange={(event) =>
-                            handleReviewChange(index, event.target.value)
-                          }
-                          placeholder="Share your experience with this product (optional)"
-                          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-medium-text focus:border-primary focus:outline-none"
-                          rows={3}
-                          maxLength={2000}
-                          disabled={submittingIndex !== null}
-                        />
-                        <div className="flex justify-end">
-                          <button
-                            type="button"
-                            onClick={() => handleSubmitRating(index)}
+                    {activeItemIndex === index &&
+                      ratingDrafts[index]?.rating > 0 && (
+                        <div className="space-y-3">
+                          <textarea
+                            value={ratingDrafts[index]?.review || ""}
+                            onChange={(event) =>
+                              handleReviewChange(index, event.target.value)
+                            }
+                            placeholder="Share your experience with this product (optional)"
+                            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-medium-text focus:border-primary focus:outline-none"
+                            rows={3}
+                            maxLength={2000}
                             disabled={submittingIndex !== null}
-                            className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
-                          >
-                            <Send className="h-4 w-4" />
-                            {submittingIndex === index ? "Submitting..." : "Submit review"}
-                          </button>
+                          />
+                          <div className="flex justify-end">
+                            <button
+                              type="button"
+                              onClick={() => handleSubmitRating(index)}
+                              disabled={submittingIndex !== null}
+                              className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                              <Send className="h-4 w-4" />
+                              {submittingIndex === index
+                                ? "Submitting..."
+                                : "Submit review"}
+                            </button>
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      )}
                   </div>
                 )}
               </div>
@@ -540,8 +556,7 @@ const OrderDetailsPage = () => {
             <span>₹{order.pricing?.total?.toLocaleString?.()}</span>
           </p>
           <p className="text-xs text-slate-400 pt-1 break-words">
-            Method: {order.payment?.method?.toUpperCase?.()} • Status:{
-" "}
+            Method: {order.payment?.method?.toUpperCase?.()} • Status:{" "}
             {order.payment?.status}
           </p>
         </div>
@@ -554,21 +569,18 @@ const OrderDetailsPage = () => {
         >
           Back to Orders
         </button>
-        {/* <button
-          type="button"
-          onClick={handleDownloadCsv}
-          className="px-5 py-3 rounded-xl border border-blue-200 text-blue-600 hover:bg-blue-50 inline-flex items-center gap-2"
-        >
-          <Download className="h-4 w-4" /> Export CSV
-        </button> */}
         <button
           type="button"
           onClick={handleDownloadInvoice}
-          disabled={downloadingInvoice}
-          className="px-5 py-3 rounded-xl bg-primary text-white hover:bg-primary-dark disabled:opacity-60 disabled:cursor-not-allowed inline-flex items-center gap-2"
+          disabled={downloadingInvoice || !isPaymentPaid}
+          className="px-5 py-3 rounded-xl bg-primary text-white hover:bg-primary-dark disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
         >
           <Download className="h-4 w-4" />
-          {downloadingInvoice ? "Preparing Invoice..." : "Download Invoice"}
+          {downloadingInvoice
+            ? "Preparing Invoice..."
+            : isPaymentPaid
+            ? "Download Invoice"
+            : "Invoice available after payment"}
         </button>
       </div>
     </div>

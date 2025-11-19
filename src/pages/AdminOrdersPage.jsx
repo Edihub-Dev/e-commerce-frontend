@@ -62,7 +62,6 @@ const STATUS_LABELS = {
     label: "Delivered",
     className: "bg-emerald-100 text-emerald-600",
   },
-  cancelled: { label: "Cancelled", className: "bg-rose-100 text-rose-600" },
   returned: { label: "Returned", className: "bg-rose-100 text-rose-600" },
 };
 
@@ -92,8 +91,8 @@ const SUMMARY_CONFIG = [
     iconClasses: "bg-emerald-100 text-emerald-600",
   },
   {
-    key: "cancelled",
-    label: "Cancelled Orders",
+    key: "returned",
+    label: "Return/Replace",
     icon: Ban,
     iconClasses: "bg-rose-100 text-rose-600",
   },
@@ -104,7 +103,7 @@ const STATUS_OPTIONS = [
   { value: "processing", label: "Processing" },
   { value: "shipped", label: "Shipped" },
   { value: "delivered", label: "Delivered" },
-  { value: "cancelled", label: "Cancelled" },
+  { value: "returned", label: "Return / Replace" },
 ];
 
 const formatCurrency = (value) => {
@@ -1958,7 +1957,6 @@ const AdminOrdersPage = () => {
                     <option value="shipped">Shipped</option>
                     <option value="out_for_delivery">Out for Delivery</option>
                     <option value="delivered">Delivered</option>
-                    <option value="cancelled">Cancelled</option>
                     <option value="returned">Returned</option>
                   </select>
                 </label>
@@ -1980,7 +1978,6 @@ const AdminOrdersPage = () => {
                       <option value="pending">Pending</option>
                       <option value="paid">Successful</option>
                       <option value="failed">Failed</option>
-                      <option value="refunded">Refunded</option>
                     </select>
                   </label>
                   <label className="block text-sm font-medium text-slate-700">

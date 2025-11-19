@@ -11,7 +11,154 @@ import {
   Star,
   MessageCircle,
   Send,
+  Circle,
+  CheckCircle2,
 } from "lucide-react";
+
+const TIMELINE_SEQUENCE = [
+  {
+    key: "order_confirmed",
+    label: "Order Confirmed",
+    defaultDescription: "Your order has been placed.",
+  },
+  {
+    key: "processed",
+    label: "Processed",
+    defaultDescription: "Seller has processed your order.",
+  },
+  {
+    key: "picked_up",
+    label: "Picked Up",
+    defaultDescription: "Your item has been picked up by delivery partner.",
+  },
+  {
+    key: "shipped",
+    label: "Shipped",
+    defaultDescription: "Package is on the way to the nearest hub.",
+  },
+  {
+    key: "out_for_delivery",
+    label: "Out For Delivery",
+    defaultDescription: "Your order is out for delivery.",
+  },
+  {
+    key: "delivered",
+    label: "Delivered",
+    defaultDescription: "Your item has been delivered.",
+  },
+];
+
+const formatTimelineDate = (value) =>
+  value ? new Date(value).toLocaleString("en-IN") : "--";
+
+const TIMELINE_ALIAS_MAP = {
+  "order placed": "order_confirmed",
+  "order confirmed": "order_confirmed",
+  processed: "processed",
+  "seller processed": "processed",
+  packed: "processed",
+  "picked up": "picked_up",
+  "item picked up": "picked_up",
+  shipped: "shipped",
+  dispatched: "shipped",
+  "out for delivery": "out_for_delivery",
+  delivered: "delivered",
+};
+
+const resolveStepKey = (label = "") => {
+  const normalized = String(label).trim().toLowerCase();
+  if (!normalized) {
+    return null;
+  }
+
+  if (TIMELINE_ALIAS_MAP[normalized]) {
+    return TIMELINE_ALIAS_MAP[normalized];
+  }
+
+  const matched = TIMELINE_SEQUENCE.find(
+    (step) =>
+      step.label.toLowerCase() === normalized ||
+      step.key.replace(/_/g, " ") === normalized
+  );
+
+  return matched?.key || null;
+};
+
+const buildTimeline = (order) => {
+  if (!order) return [];
+
+  const timelineMap = new Map();
+  (order.statusTimeline || []).forEach((entry = {}) => {
+    const stepKey = resolveStepKey(entry.label);
+    if (!stepKey || timelineMap.has(stepKey)) {
+      return;
+    }
+
+    timelineMap.set(stepKey, {
+      label: entry.label,
+      description: entry.description,
+      at: entry.at,
+    });
+  });
+
+  const statusLookup = {
+    processing: "order confirmed",
+    confirmed: "order confirmed",
+    shipped: "shipped",
+    out_for_delivery: "out for delivery",
+    delivered: "delivered",
+    cancelled: "cancelled",
+    returned: "returned",
+  };
+
+  const normalizedStatus = String(order.status || "").toLowerCase();
+  const mappedStatus = statusLookup[normalizedStatus] || normalizedStatus;
+  const resolvedCurrentKey = resolveStepKey(mappedStatus) || "order_confirmed";
+  const currentIndex = TIMELINE_SEQUENCE.findIndex(
+    (step) => step.key === resolvedCurrentKey
+  );
+  const fallbackCurrentIndex = currentIndex === -1 ? 0 : currentIndex;
+  const hasTimelineHistory = timelineMap.size > 0;
+
+  return TIMELINE_SEQUENCE.map((step) => {
+    const timelineEntry = timelineMap.get(step.key) || null;
+    const stepIndex = TIMELINE_SEQUENCE.findIndex(
+      (sequenceStep) => sequenceStep.key === step.key
+    );
+    const effectiveCurrentIndex = hasTimelineHistory
+      ? currentIndex
+      : fallbackCurrentIndex;
+    const isDeliveredState = resolvedCurrentKey === "delivered";
+
+    let isCompleted = Boolean(timelineEntry?.at);
+    let isCurrent = false;
+
+    if (!timelineEntry?.at) {
+      if (effectiveCurrentIndex !== -1) {
+        if (stepIndex < effectiveCurrentIndex) {
+          isCompleted = true;
+        } else if (stepIndex === effectiveCurrentIndex && !isDeliveredState) {
+          isCurrent = true;
+        }
+      } else if (!hasTimelineHistory && stepIndex === 0) {
+        isCurrent = true;
+      }
+    }
+
+    if (isDeliveredState && effectiveCurrentIndex !== -1) {
+      isCompleted = stepIndex <= effectiveCurrentIndex;
+      isCurrent = false;
+    }
+
+    return {
+      ...step,
+      isCompleted,
+      isCurrent,
+      description: timelineEntry?.description || step.defaultDescription,
+      at: timelineEntry?.at || null,
+    };
+  });
+};
 
 const OrderDetailsPage = () => {
   const { orderId } = useParams();
@@ -86,7 +233,6 @@ const OrderDetailsPage = () => {
       paid: "Successful",
       pending: "Pending",
       failed: "Failed",
-      refunded: "Refunded",
     };
 
     const paymentMethodLabels = {
@@ -129,6 +275,8 @@ const OrderDetailsPage = () => {
       day: "numeric",
     });
   }, [order?.estimatedDeliveryDate]);
+
+  const timelineSteps = useMemo(() => buildTimeline(order), [order]);
 
   const handleSelectRating = (itemIndex, value) => {
     if (order?.items?.[itemIndex]?.ratedAt || submittingIndex !== null) {
@@ -383,6 +531,85 @@ const OrderDetailsPage = () => {
           </div>
         </div>
       </motion.div>
+
+      <section className="rounded-3xl border border-slate-200 bg-white p-6 space-y-6">
+        <header className="space-y-1">
+          <h2 className="text-lg font-semibold text-secondary">
+            Tracking Updates
+          </h2>
+          <p className="text-sm text-medium-text">
+            Tracking ID: {order?.shipping?.trackingId || "To be assigned"}
+          </p>
+          <p className="text-xs text-slate-400">
+            Courier: {order?.shipping?.courier || "Ekart Logistics"}
+          </p>
+        </header>
+        <div className="relative">
+          <div className="absolute left-[12px] top-0 bottom-0 w-[2px] bg-slate-200" />
+          <ul className="space-y-6">
+            {timelineSteps.map((step, index) => {
+              const Icon = step.isCompleted ? CheckCircle2 : Circle;
+              const isLast = index === timelineSteps.length - 1;
+              const showConnector = !isLast;
+              return (
+                <li key={step.key} className="relative flex gap-4">
+                  <div className="flex flex-col items-center">
+                    <span
+                      className={`relative z-10 inline-flex h-6 w-6 items-center justify-center rounded-full border-2 ${
+                        step.isCompleted
+                          ? "border-emerald-500 bg-emerald-500 text-white"
+                          : step.isCurrent
+                          ? "border-primary bg-white text-primary"
+                          : "border-slate-300 bg-white text-slate-300"
+                      }`}
+                    >
+                      <Icon className="h-3.5 w-3.5" />
+                    </span>
+                    {showConnector && (
+                      <span
+                        className={`flex-1 w-[2px] ${
+                          step.isCompleted
+                            ? "bg-emerald-200"
+                            : step.isCurrent
+                            ? "bg-primary/40"
+                            : "bg-slate-200"
+                        }`}
+                      />
+                    )}
+                  </div>
+                  <div className="flex-1 space-y-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="text-sm font-semibold text-secondary">
+                        {step.label}
+                      </p>
+                      {step.at && (
+                        <span className="text-xs text-slate-400">
+                          {formatTimelineDate(step.at)}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-sm text-medium-text whitespace-pre-line">
+                      {step.description}
+                    </p>
+                    {step.key === "shipped" && order?.shipping?.trackingId && (
+                      <div className="rounded-xl bg-slate-50 px-3 py-2 text-xs text-medium-text">
+                        <p>
+                          {order.shipping.courier || "Ekart Logistics"} •{" "}
+                          {order.shipping.trackingId}
+                        </p>
+                        <p className="mt-1 text-slate-400">
+                          Last updated{" "}
+                          {formatTimelineDate(order.shipping.updatedAt)}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      </section>
 
       <section className="rounded-3xl border border-slate-200 bg-white p-6 space-y-4">
         <h2 className="text-lg font-semibold text-secondary">

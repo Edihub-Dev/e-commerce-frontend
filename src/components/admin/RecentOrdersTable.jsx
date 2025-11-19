@@ -11,7 +11,7 @@ const statusOptions = [
   { label: "Processing", value: "processing" },
   { label: "Shipped", value: "shipped" },
   { label: "Delivered", value: "delivered" },
-  { label: "Cancelled", value: "cancelled" },
+  { label: "Return / Replace", value: "returned" },
 ];
 
 const formatCurrency = (amount) => {
@@ -28,7 +28,6 @@ const statusBadgeClasses = {
   shipped: "bg-blue-100 text-blue-600",
   out_for_delivery: "bg-blue-100 text-blue-600",
   delivered: "bg-green-100 text-green-600",
-  cancelled: "bg-slate-100 text-slate-500",
   returned: "bg-slate-100 text-slate-500",
 };
 
@@ -36,14 +35,12 @@ const paymentStatusClasses = {
   paid: "bg-emerald-100 text-emerald-600",
   pending: "bg-amber-100 text-amber-600",
   failed: "bg-rose-100 text-rose-600",
-  refunded: "bg-slate-100 text-slate-500",
 };
 
 const paymentStatusLabels = {
   paid: "Successful",
   pending: "Pending",
   failed: "Failed",
-  refunded: "Refunded",
 };
 
 const paymentMethodLabels = {
@@ -60,7 +57,6 @@ const orderStatusOptions = [
   { label: "Shipped", value: "shipped" },
   { label: "Out for Delivery", value: "out_for_delivery" },
   { label: "Delivered", value: "delivered" },
-  { label: "Cancelled", value: "cancelled" },
   { label: "Returned", value: "returned" },
 ];
 
@@ -68,7 +64,6 @@ const paymentStatusOptions = [
   { label: "Pending", value: "pending" },
   { label: "Successful", value: "paid" },
   { label: "Failed", value: "failed" },
-  { label: "Refunded", value: "refunded" },
 ];
 
 const paymentMethodOptions = [
@@ -244,8 +239,8 @@ const RecentOrdersTable = ({
       className: "bg-green-100 text-green-600",
     },
     {
-      key: "cancelled",
-      label: "Cancelled",
+      key: "returned",
+      label: "Return/Replace",
       className: "bg-slate-100 text-slate-500",
     },
   ];

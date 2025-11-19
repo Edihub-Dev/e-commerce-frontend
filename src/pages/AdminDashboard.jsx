@@ -33,12 +33,12 @@ const mapStatusForBreakdown = (status = "processing") => {
   if (["confirmed"].includes(normalized)) return "processing";
   if (["shipped", "out_for_delivery"].includes(normalized)) return "shipped";
   if (["delivered"].includes(normalized)) return "delivered";
-  if (["cancelled", "returned"].includes(normalized)) return "cancelled";
+  if (["returned"].includes(normalized)) return "returned";
   return "processing";
 };
 
 const computeStatusBreakdown = (orders = []) => {
-  const base = { processing: 0, shipped: 0, delivered: 0, cancelled: 0 };
+  const base = { processing: 0, shipped: 0, delivered: 0, returned: 0 };
   orders.forEach((order) => {
     const key = mapStatusForBreakdown(order.status);
     if (base[key] !== undefined) {
@@ -63,7 +63,7 @@ const AdminDashboard = () => {
     processing: 0,
     shipped: 0,
     delivered: 0,
-    cancelled: 0,
+    returned: 0,
   });
   const [notifications, setNotifications] = useState({
     pendingOrders: 0,
@@ -327,7 +327,11 @@ const AdminDashboard = () => {
                 transition={{ type: "spring", stiffness: 220, damping: 24 }}
                 className="bg-white w-72 max-w-sm h-full shadow-xl"
               >
-                <Sidebar active="Dashboard" className="flex w-full" onNavigate={() => setIsSidebarOpen(false)} />
+                <Sidebar
+                  active="Dashboard"
+                  className="flex w-full"
+                  onNavigate={() => setIsSidebarOpen(false)}
+                />
               </motion.div>
               <button
                 type="button"
@@ -378,8 +382,8 @@ const AdminDashboard = () => {
                     chipClass: "bg-emerald-50 text-emerald-600",
                   },
                   {
-                    key: "cancelled",
-                    label: "Cancelled",
+                    key: "returned",
+                    label: "Return/Replace",
                     chipClass: "bg-slate-100 text-slate-600",
                   },
                 ].map(({ key, label, chipClass }) => (

@@ -71,8 +71,8 @@ const DealsSection = () => {
         <SectionHeader
           title={
             <>
-              MST Blockchain Official Polo{" "}
-              <span style={{ color: "#008ECC" }}>T-Shirt</span>
+              MST Blockchain Official{" "}
+              <span style={{ color: "#008ECC" }}>Products</span>
             </>
           }
           linkTo="/shop"

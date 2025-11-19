@@ -40,7 +40,7 @@ const initialState = {
     processing: 0,
     shipped: 0,
     delivered: 0,
-    cancelled: 0,
+    returned: 0,
   },
   lastUpdatedAt: null,
 };
@@ -74,16 +74,22 @@ const adminOrdersSlice = createSlice({
     toggleSelectAll(state, action) {
       const { selectAll } = action.payload;
       state.selection.allSelected = selectAll;
-      state.selection.selectedIds = selectAll ? state.items.map((order) => order._id) : [];
+      state.selection.selectedIds = selectAll
+        ? state.items.map((order) => order._id)
+        : [];
     },
     toggleSelectRow(state, action) {
       const { id } = action.payload;
       if (state.selection.selectedIds.includes(id)) {
-        state.selection.selectedIds = state.selection.selectedIds.filter((value) => value !== id);
+        state.selection.selectedIds = state.selection.selectedIds.filter(
+          (value) => value !== id
+        );
       } else {
         state.selection.selectedIds = [...state.selection.selectedIds, id];
       }
-      state.selection.allSelected = state.selection.selectedIds.length === state.items.length && state.items.length > 0;
+      state.selection.allSelected =
+        state.selection.selectedIds.length === state.items.length &&
+        state.items.length > 0;
     },
     clearSelection(state) {
       state.selection = { ...initialState.selection };
@@ -110,14 +116,15 @@ const adminOrdersSlice = createSlice({
           processing: summary.processing ?? 0,
           shipped: summary.shipped ?? 0,
           delivered: summary.delivered ?? 0,
-          cancelled: summary.cancelled ?? 0,
+          returned: summary.returned ?? 0,
         };
         state.selection = { ...initialState.selection };
         state.lastUpdatedAt = Date.now();
       })
       .addCase(fetchAdminOrdersThunk.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload || action.error?.message || "Failed to load orders";
+        state.error =
+          action.payload || action.error?.message || "Failed to load orders";
       });
   },
 });

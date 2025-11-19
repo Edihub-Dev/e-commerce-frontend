@@ -21,8 +21,12 @@ import {
   setAddresses,
   setAddressLoading,
   setAddressError,
+  resetAddressState,
 } from "../store/slices/addressSlice";
+import { resetCheckout } from "../store/slices/checkoutSlice";
 import { fetchAddresses, fetchProducts } from "../utils/api";
+
+const DEFAULT_LOCATION_LABEL = "Loading delivery address...";
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -32,7 +36,7 @@ const Header = () => {
   const [isProfilePinned, setIsProfilePinned] = useState(false);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [localSearchQuery, setLocalSearchQuery] = useState("");
-  const [locationLabel, setLocationLabel] = useState("Deliver to 423651");
+  const [locationLabel, setLocationLabel] = useState(DEFAULT_LOCATION_LABEL);
   const [navCategories, setNavCategories] = useState([]);
   const searchInputRef = useRef(null);
   const { isAuthenticated, user, logout, isAdmin } = useAuth();
@@ -207,7 +211,7 @@ const Header = () => {
     }
 
     if (!isAuthenticated) {
-      setLocationLabel("Deliver to 423651");
+      setLocationLabel(DEFAULT_LOCATION_LABEL);
       return;
     }
 
@@ -253,6 +257,15 @@ const Header = () => {
 
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isMenuOpen]);
+
+  const handleLogout = () => {
+    setIsProfileMenuOpen(false);
+    setIsProfilePinned(false);
+    dispatch(resetAddressState());
+    dispatch(resetCheckout());
+    logout();
+    setLocationLabel(DEFAULT_LOCATION_LABEL);
+  };
 
   const handleProfileButtonClick = () => {
     setIsProfilePinned((prevPinned) => {
@@ -455,11 +468,7 @@ const Header = () => {
                       My Orders
                     </Link>
                     <button
-                      onClick={() => {
-                        setIsProfileMenuOpen(false);
-                        setIsProfilePinned(false);
-                        logout();
-                      }}
+                      onClick={handleLogout}
                       className="w-full text-left block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                     >
                       Logout
@@ -588,7 +597,7 @@ const Header = () => {
                   </Link>
                   <button
                     onClick={() => {
-                      logout();
+                      handleLogout();
                       setIsMenuOpen(false);
                     }}
                     className="flex items-center"

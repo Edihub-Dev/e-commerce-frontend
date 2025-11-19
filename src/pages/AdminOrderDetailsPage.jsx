@@ -39,12 +39,8 @@ const STATUS_LABELS = {
     label: "Delivered",
     badge: "bg-emerald-100 text-emerald-700",
   },
-  cancelled: {
-    label: "Cancelled",
-    badge: "bg-rose-100 text-rose-700",
-  },
   returned: {
-    label: "Returned",
+    label: "Return/Replace",
     badge: "bg-rose-100 text-rose-700",
   },
 };

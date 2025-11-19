@@ -10,6 +10,7 @@ const addressSlice = createSlice({
   name: "address",
   initialState,
   reducers: {
+    resetAddressState: () => initialState,
     setAddresses: (state, action) => {
       state.addresses = action.payload;
     },
@@ -49,6 +50,7 @@ const addressSlice = createSlice({
 });
 
 export const {
+  resetAddressState,
   setAddresses,
   setAddressLoading,
   setAddressError,

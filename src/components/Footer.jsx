@@ -1,15 +1,10 @@
-import React from "react";
+import React, { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
+import { fetchProducts } from "../utils/api";
 
 const Footer = () => {
-  const popularCategories = [
-    "Staples",
-    "Beverages",
-    "Personal Care",
-    "Home Care",
-    "Baby Care",
-    "Vegetables & Fruits",
-    "Dairy & Bakery",
-  ];
+  const [categories, setCategories] = useState([]);
+  const [loadingCategories, setLoadingCategories] = useState(false);
 
   const customerServices = [
     "About Us",
@@ -19,6 +14,63 @@ const Footer = () => {
     "E-waste Policy",
     "Cancellation & Return Policy",
   ];
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadCategories = async () => {
+      setLoadingCategories(true);
+      try {
+        const { data } = await fetchProducts({ limit: 200 });
+        if (!isMounted) return;
+
+        const categoryMap = new Map();
+        data.forEach((product) => {
+          const rawCategory =
+            typeof product.category === "string" ? product.category : "";
+          const name = rawCategory.trim();
+          if (!name) return;
+
+          const slug = name
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, "-")
+            .replace(/^-+|-+$/g, "");
+
+          if (!categoryMap.has(name)) {
+            categoryMap.set(name, {
+              name,
+              slug: slug || "",
+            });
+          }
+        });
+
+        setCategories(Array.from(categoryMap.values()));
+      } catch (error) {
+        console.error("Failed to load footer categories", error);
+        if (isMounted) {
+          setCategories([]);
+        }
+      } finally {
+        if (isMounted) {
+          setLoadingCategories(false);
+        }
+      }
+    };
+
+    loadCategories();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const popularCategories = useMemo(() => {
+    if (categories.length) {
+      return categories;
+    }
+
+    return [];
+  }, [categories]);
 
   return (
     <footer
@@ -40,8 +92,8 @@ const Footer = () => {
               </h3>
               <ul className="space-y-2">
                 <li>
-                  <a 
-                    href="https://wa.me/12029182132" 
+                  <a
+                    href="https://wa.me/12029182132"
                     className="flex items-center space-x-2 text-sm hover:underline"
                   >
                     <svg
@@ -58,19 +110,19 @@ const Footer = () => {
                   </a>
                 </li>
                 <li>
-                  <a 
-                    href="tel:+12029182132" 
+                  <a
+                    href="tel:+12029182132"
                     className="flex items-center space-x-2 text-sm hover:underline"
                   >
-                    <svg 
-                      xmlns="http://www.w3.org/2000/svg" 
-                      width="16" 
-                      height="16" 
-                      viewBox="0 0 24 24" 
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
                       fill="#000000"
                       className="flex-shrink-0"
                     >
-                      <path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/>
+                      <path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z" />
                     </svg>
                     <span>Call Us: +1 202-918-2132</span>
                   </a>
@@ -104,11 +156,24 @@ const Footer = () => {
               Most Popular Categories
             </h3>
             <ul className="space-y-2 ">
-              {popularCategories.map((cat) => (
-                <li key={cat}>
-                  <a href="#" className="text-sm hover:underline">
-                    {cat}
-                  </a>
+              {loadingCategories && !popularCategories.length && (
+                <li className="text-sm opacity-80">Loading categories…</li>
+              )}
+              {!loadingCategories && !popularCategories.length && (
+                <li className="text-sm opacity-80">Categories unavailable</li>
+              )}
+              {popularCategories.map((category) => (
+                <li key={category.name}>
+                  <Link
+                    to={
+                      category.slug
+                        ? `/category/${encodeURIComponent(category.slug)}`
+                        : "/shop"
+                    }
+                    className="text-sm hover:underline"
+                  >
+                    {category.name}
+                  </Link>
                 </li>
               ))}
             </ul>

@@ -346,6 +346,8 @@ const ProductPage = () => {
       quantity,
       size: selectedSize || undefined,
       image: primaryImage,
+      hsnCode: product?.hsnCode,
+      gstRate: product?.gstRate,
     });
   };
 
@@ -364,6 +366,8 @@ const ProductPage = () => {
       price: product.price,
       quantity,
       size: selectedSize || undefined,
+      hsnCode: product?.hsnCode,
+      gstRate: product?.gstRate,
     };
 
     if (rawProductId && mongoIdRegex.test(rawProductId)) {

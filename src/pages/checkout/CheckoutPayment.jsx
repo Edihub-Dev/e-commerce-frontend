@@ -52,9 +52,12 @@ const formatCurrency = (value = 0, currency = "INR") =>
 const CheckoutPayment = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { items, shippingAddress, totals } = useSelector(
-    (state) => state.checkout
-  );
+  const {
+    items,
+    shippingAddress,
+    totals,
+    orderId: checkoutOrderId,
+  } = useSelector((state) => state.checkout);
   const [selectedMethod, setSelectedMethod] = useState("upi");
   const [isProcessing, setIsProcessing] = useState(false);
   const [isAwaitingConfirmation, setIsAwaitingConfirmation] = useState(false);
@@ -66,6 +69,9 @@ const CheckoutPayment = () => {
 
   useEffect(() => {
     if (!items.length) {
+      if (checkoutOrderId) {
+        return;
+      }
       navigate("/cart", { replace: true });
       return;
     }
@@ -74,18 +80,38 @@ const CheckoutPayment = () => {
       return;
     }
     dispatch(setCheckoutStep("payment"));
-  }, [dispatch, items.length, shippingAddress, navigate]);
+  }, [dispatch, items.length, shippingAddress, checkoutOrderId, navigate]);
 
   const orderItems = useMemo(
     () =>
-      items.map(({ product, name, image, price, quantity, size }) => ({
-        product,
-        name,
-        image,
-        price,
-        quantity,
-        size,
-      })),
+      items.map(
+        ({
+          product,
+          name,
+          image,
+          price,
+          quantity,
+          size,
+          hsnCode,
+          hsn,
+          gstRate,
+          taxRate,
+        }) => ({
+          product,
+          name,
+          image,
+          price,
+          quantity,
+          size,
+          hsnCode: hsnCode || hsn || undefined,
+          gstRate:
+            gstRate !== undefined && gstRate !== null
+              ? Number(gstRate)
+              : taxRate !== undefined && taxRate !== null
+              ? Number(taxRate)
+              : undefined,
+        })
+      ),
     [items]
   );
 
@@ -177,8 +203,6 @@ const CheckoutPayment = () => {
           : session
       );
 
-      dispatch(resetCheckout());
-
       navigate("/checkout/payment-success", {
         replace: true,
         state: {
@@ -188,6 +212,8 @@ const CheckoutPayment = () => {
           amountPaid: statusData?.amountInRupees,
         },
       });
+
+      dispatch(resetCheckout());
     },
     [dispatch, navigate, stopPolling]
   );
@@ -350,17 +376,14 @@ const CheckoutPayment = () => {
     dispatch(setPaymentStatus("pending"));
     dispatch(setOrderId(orderId));
 
-    if (orderId) {
-      navigate(`/checkout/confirmation/${orderId}`, {
-        state: { order: response.data },
-      });
-    } else {
-      navigate("/checkout/confirmation", {
-        state: { order: response?.data },
-      });
-    }
-
     toast.success("Order placed successfully");
+    navigate("/", {
+      replace: true,
+      state: {
+        recentOrderId: orderId,
+      },
+    });
+
     dispatch(resetCheckout());
   }, [
     dispatch,
@@ -834,6 +857,41 @@ const CheckoutPayment = () => {
                 Order Summary
               </h3>
               <div className="mt-4 space-y-3 text-sm text-medium-text">
+                {items.map((item) => (
+                  <div
+                    key={`${item.product || item.id}-${item.size || "default"}`}
+                    className="flex flex-col gap-1 rounded-xl border border-slate-100 bg-slate-50 px-3 py-2"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium text-secondary">
+                        {item.name}
+                      </span>
+                      <span className="text-xs text-slate-500">
+                        Qty: {item.quantity}
+                      </span>
+                    </div>
+                    {item.size && (
+                      <span className="text-xs text-slate-500">
+                        Size: {item.size}
+                      </span>
+                    )}
+                    <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
+                      <span>HSN: {item?.hsnCode ? item.hsnCode : "--"}</span>
+                      <span className="text-slate-300">|</span>
+                      <span>
+                        GST:{" "}
+                        {Number.isFinite(Number(item?.gstRate))
+                          ? `${Number(item.gstRate)
+                              .toFixed(2)
+                              .replace(/\.00$/, "")}%`
+                          : "--"}
+                      </span>
+                    </div>
+                    <span className="text-xs text-slate-500">
+                      Unit Price: ₹{item.price?.toLocaleString?.() || 0}
+                    </span>
+                  </div>
+                ))}
                 <div className="flex items-center justify-between">
                   <span>Subtotal</span>
                   <span>

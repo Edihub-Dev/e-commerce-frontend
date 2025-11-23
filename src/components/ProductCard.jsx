@@ -80,7 +80,13 @@ const ProductCard = ({ product }) => {
           )}
           <div className="flex flex-col xs:flex-row gap-2 w-full">
             <motion.button
-              onClick={() => addItem(product)}
+              onClick={() =>
+                addItem({
+                  ...product,
+                  hsnCode: product?.hsnCode,
+                  gstRate: product?.gstRate,
+                })
+              }
               className="w-full xs:flex-1 bg-primary/10 text-primary font-medium py-2 px-2 text-sm rounded-md hover:bg-primary hover:text-white transition-colors duration-200 whitespace-nowrap flex items-center justify-center min-h-[36px]"
               variants={buttonHover}
               whileHover="hover"

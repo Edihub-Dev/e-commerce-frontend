@@ -14,6 +14,8 @@ const steps = [
 ];
 
 const getStepFromPath = (pathname) => {
+  if (pathname.includes("/checkout/payment-success")) return "confirmation";
+  if (pathname.includes("/checkout/payment-failed")) return "confirmation";
   if (pathname.includes("/checkout/payment")) return "payment";
   if (pathname.includes("/checkout/address")) return "address";
   if (pathname.includes("/checkout/confirmation")) return "confirmation";
@@ -31,12 +33,14 @@ const CheckoutLayout = () => {
   );
 
   useEffect(() => {
-    const isConfirmationStep = getStepFromPath(location.pathname) === "confirmation";
+    const isConfirmationStep =
+      getStepFromPath(location.pathname) === "confirmation";
+    const hasActiveOrder = Boolean(checkout.orderId);
 
-    if (!checkout.items.length && !isConfirmationStep) {
+    if (!checkout.items.length && !isConfirmationStep && !hasActiveOrder) {
       navigate("/cart", { replace: true });
     }
-  }, [checkout.items.length, location.pathname, navigate]);
+  }, [checkout.items.length, checkout.orderId, location.pathname, navigate]);
 
   return (
     <div className="min-h-screen bg-light-bg">

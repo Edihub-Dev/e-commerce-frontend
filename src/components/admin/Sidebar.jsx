@@ -6,6 +6,7 @@ import {
   Layers,
   Users,
   Home,
+  MessageCircleQuestion,
 } from "lucide-react";
 import PropTypes from "prop-types";
 import { Link } from "react-router-dom";
@@ -17,6 +18,11 @@ const navItems = [
   { label: "Orders", icon: ShoppingBag, to: "/admin/orders" },
   { label: "Categories", icon: Layers, to: "/admin/categories" },
   { label: "Customers", icon: Users, to: "/admin/customers" },
+  {
+    label: "Help & Support",
+    icon: MessageCircleQuestion,
+    to: "/admin/help-support",
+  },
 ];
 
 const MotionLink = motion.create(Link);

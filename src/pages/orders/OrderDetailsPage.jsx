@@ -57,6 +57,7 @@ const TIMELINE_ALIAS_MAP = {
   processed: "processed",
   "seller processed": "processed",
   packed: "processed",
+  picked_up: "picked_up",
   "picked up": "picked_up",
   "item picked up": "picked_up",
   shipped: "shipped",
@@ -104,6 +105,7 @@ const buildTimeline = (order) => {
   const statusLookup = {
     processing: "order confirmed",
     confirmed: "order confirmed",
+    picked_up: "picked up",
     shipped: "shipped",
     out_for_delivery: "out for delivery",
     delivered: "delivered",
@@ -545,15 +547,33 @@ const OrderDetailsPage = () => {
           </p>
         </header>
         <div className="relative">
-          <div className="absolute left-[12px] top-0 bottom-0 w-[2px] bg-slate-200" />
-          <ul className="space-y-6">
+          <ul className="space-y-0">
             {timelineSteps.map((step, index) => {
               const Icon = step.isCompleted ? CheckCircle2 : Circle;
               const isLast = index === timelineSteps.length - 1;
               const showConnector = !isLast;
+              const previousStep = index > 0 ? timelineSteps[index - 1] : null;
+              const showTopConnector = index > 0;
+              const resolveConnectorClass = (timelineStep) =>
+                timelineStep?.isCompleted
+                  ? "bg-emerald-500"
+                  : timelineStep?.isCurrent
+                  ? "bg-primary/40"
+                  : "bg-slate-200";
               return (
-                <li key={step.key} className="relative flex gap-4">
-                  <div className="flex flex-col items-center">
+                <li
+                  key={step.key}
+                  className="relative flex gap-4 pb-6 last:pb-0"
+                >
+                  <div className="relative flex w-6 justify-center">
+                    {showTopConnector && (
+                      <span
+                        className={`absolute left-1/2 w-[2px] -translate-x-1/2 ${resolveConnectorClass(
+                          previousStep
+                        )}`}
+                        style={{ top: "-12px", height: "calc(50% + 12px)" }}
+                      />
+                    )}
                     <span
                       className={`relative z-10 inline-flex h-6 w-6 items-center justify-center rounded-full border-2 ${
                         step.isCompleted
@@ -567,13 +587,13 @@ const OrderDetailsPage = () => {
                     </span>
                     {showConnector && (
                       <span
-                        className={`flex-1 w-[2px] ${
-                          step.isCompleted
-                            ? "bg-emerald-200"
-                            : step.isCurrent
-                            ? "bg-primary/40"
-                            : "bg-slate-200"
-                        }`}
+                        className={`absolute left-1/2 w-[2px] -translate-x-1/2 ${resolveConnectorClass(
+                          step
+                        )}`}
+                        style={{
+                          top: "calc(50%)",
+                          height: "calc(50% + 12px)",
+                        }}
                       />
                     )}
                   </div>

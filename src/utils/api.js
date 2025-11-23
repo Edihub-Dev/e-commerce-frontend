@@ -348,6 +348,7 @@ export const resendVerificationOtp = async ({ email }) => {
 };
 
 export default api;
+export { withApiHandling };
 
 export const fetchAddresses = async () => {
   const response = await api.get("/user/address/get");

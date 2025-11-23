@@ -19,6 +19,7 @@ const CheckoutConfirmation = () => {
   );
   const [error, setError] = useState(null);
   const [downloadingInvoice, setDownloadingInvoice] = useState(false);
+  const [redirectCountdown, setRedirectCountdown] = useState(8);
 
   const apiBaseUrl = useMemo(() => {
     const configured = import.meta.env.VITE_API_URL;
@@ -64,6 +65,24 @@ const CheckoutConfirmation = () => {
     }
   }, [orderId, location.state?.order]);
 
+  useEffect(() => {
+    if (!order) {
+      return undefined;
+    }
+
+    const interval = window.setInterval(() => {
+      setRedirectCountdown((prev) => {
+        if (prev <= 1) {
+          navigate("/", { replace: true });
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => window.clearInterval(interval);
+  }, [order, navigate]);
+
   const handleGoToOrders = () => navigate("/orders");
   const handleContinueShopping = () => navigate("/shop");
 
@@ -77,13 +96,16 @@ const CheckoutConfirmation = () => {
 
     try {
       const token = localStorage.getItem("authToken");
-      const response = await fetch(`${apiBaseUrl}/orders/${order._id}/invoice`, {
-        method: "GET",
-        headers: {
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        credentials: "include",
-      });
+      const response = await fetch(
+        `${apiBaseUrl}/orders/${order._id}/invoice`,
+        {
+          method: "GET",
+          headers: {
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          credentials: "include",
+        }
+      );
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -168,6 +190,9 @@ const CheckoutConfirmation = () => {
               Your order ID is <span className="font-medium">#{order._id}</span>
               . A confirmation email has been sent to{" "}
               {order.shippingAddress?.email}.
+            </p>
+            <p className="text-xs text-emerald-600 mt-2">
+              Redirecting you to the home page in {redirectCountdown} seconds.
             </p>
           </div>
         </motion.div>

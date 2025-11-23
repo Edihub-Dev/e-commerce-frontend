@@ -31,6 +31,32 @@ const availabilityOptions = [
 
 const STANDARD_SIZE_LABELS = ["S", "M", "L", "XL", "XXL"];
 
+const PRODUCT_TAX_PRESETS = [
+  { matcher: /keychain/i, hsnCode: "8305", gstRate: 18 },
+  {
+    matcher: /ceramic\s+coffee\s+mug|coffee\s+mug|mug/i,
+    hsnCode: "6912",
+    gstRate: 12,
+  },
+  { matcher: /executive\s+diary|pen\s+set/i, hsnCode: "4820", gstRate: 18 },
+  { matcher: /white\s+logo\s+cap|cap/i, hsnCode: "6501", gstRate: 18 },
+  { matcher: /diary/i, hsnCode: "4820", gstRate: 18 },
+  { matcher: /\bpen\b/i, hsnCode: "9608", gstRate: 18 },
+  { matcher: /t\s*-?shirt|polo/i, hsnCode: "6109", gstRate: 5 },
+];
+
+const resolveTaxPreset = (name = "") => {
+  const normalized = name.toString().trim();
+  if (!normalized) {
+    return null;
+  }
+
+  return (
+    PRODUCT_TAX_PRESETS.find((preset) => preset.matcher.test(normalized)) ||
+    null
+  );
+};
+
 const normalizeCategoryPriority = (value) => {
   if (value === undefined || value === null) {
     return "P5";
@@ -129,6 +155,8 @@ const defaultFormState = {
   sizes: buildDefaultSizes(),
   showSizes: true,
   categoryPriority: "",
+  hsnCode: "",
+  gstRate: "",
 };
 
 const FORM_STORAGE_KEY = "adminAddProductFormState";
@@ -145,7 +173,7 @@ const loadPersistedFormState = () => {
     }
 
     const parsed = JSON.parse(raw);
-    const { rating, reviews, ...rest } = parsed || {};
+    const { rating, reviews, hsnCode, gstRate, ...rest } = parsed || {};
     const keyFeatures =
       Array.isArray(parsed.keyFeatures) && parsed.keyFeatures.length
         ? [...parsed.keyFeatures]
@@ -170,6 +198,16 @@ const loadPersistedFormState = () => {
         }
         return defaultFormState.categoryPriority;
       })(),
+      hsnCode:
+        typeof hsnCode === "string"
+          ? hsnCode
+          : hsnCode != null
+          ? String(hsnCode)
+          : defaultFormState.hsnCode,
+      gstRate:
+        gstRate != null && gstRate !== ""
+          ? String(gstRate)
+          : defaultFormState.gstRate,
     };
   } catch (error) {
     console.warn("Failed to restore saved admin add product form", error);
@@ -190,10 +228,14 @@ const AdminAddProductPage = () => {
   const [isGalleryUploading, setIsGalleryUploading] = useState(false);
   const { user, logout } = useAuth();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [hasManualHsn, setHasManualHsn] = useState(false);
+  const [hasManualGst, setHasManualGst] = useState(false);
 
   const handleCancel = () => {
     setFormState(defaultFormState);
     setHasManualCategoryPriority(false);
+    setHasManualHsn(false);
+    setHasManualGst(false);
     setFormErrors({});
     if (typeof window !== "undefined") {
       window.localStorage.removeItem(FORM_STORAGE_KEY);
@@ -326,8 +368,33 @@ const AdminAddProductPage = () => {
         }
       }
 
+      if (field === "name") {
+        const preset = resolveTaxPreset(value);
+        if (preset) {
+          if (!hasManualHsn || !prev.hsnCode) {
+            next.hsnCode = preset.hsnCode;
+            setHasManualHsn(false);
+          }
+          if (!hasManualGst || !prev.gstRate) {
+            next.gstRate = preset.gstRate.toString();
+            setHasManualGst(false);
+          }
+        }
+      }
+
       return next;
     });
+  };
+
+  const handleTaxFieldChange = (field) => (event) => {
+    const value = event.target.value;
+    if (field === "hsnCode") {
+      setHasManualHsn(true);
+    }
+    if (field === "gstRate") {
+      setHasManualGst(true);
+    }
+    setFormState((prev) => ({ ...prev, [field]: value }));
   };
 
   const handleToggleChange = (field) => (event) => {
@@ -629,6 +696,17 @@ const AdminAddProductPage = () => {
       errors.brand = "Brand is required";
     }
 
+    if (formState.hsnCode && !/^\d{2,}$/i.test(formState.hsnCode.trim())) {
+      errors.hsnCode = "HSN code should contain at least 2 digits";
+    }
+
+    if (formState.gstRate !== "") {
+      const gstNumeric = Number(formState.gstRate);
+      if (Number.isNaN(gstNumeric) || gstNumeric < 0 || gstNumeric > 100) {
+        errors.gstRate = "GST rate must be between 0 and 100";
+      }
+    }
+
     if (!formState.price || Number(formState.price) <= 0) {
       errors.price = "Enter a valid price";
     }
@@ -729,6 +807,18 @@ const AdminAddProductPage = () => {
       showSizes: Boolean(formState.showSizes),
       categoryPriority: normalizeCategoryPriority(formState.categoryPriority),
     };
+
+    const trimmedHsn = formState.hsnCode?.toString().trim();
+    if (trimmedHsn) {
+      payload.hsnCode = trimmedHsn;
+    }
+
+    if (formState.gstRate !== "") {
+      const gstNumeric = Number(formState.gstRate);
+      if (!Number.isNaN(gstNumeric)) {
+        payload.gstRate = gstNumeric;
+      }
+    }
 
     try {
       await dispatch(createAdminProductThunk(payload)).unwrap();
@@ -876,6 +966,61 @@ const AdminAddProductPage = () => {
                           {formErrors.name}
                         </p>
                       )}
+                    </div>
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div>
+                        <label className="text-xs font-medium text-slate-500">
+                          HSN Code
+                        </label>
+                        <input
+                          type="text"
+                          value={formState.hsnCode}
+                          onChange={handleTaxFieldChange("hsnCode")}
+                          className={`mt-1 w-full rounded-xl border px-3 py-2 text-sm focus:border-blue-400 focus:outline-none ${
+                            formErrors.hsnCode
+                              ? "border-rose-300"
+                              : "border-slate-200"
+                          }`}
+                          placeholder="e.g. 6109"
+                        />
+                        {formErrors.hsnCode ? (
+                          <p className="mt-1 text-xs text-rose-500">
+                            {formErrors.hsnCode}
+                          </p>
+                        ) : (
+                          <p className="mt-1 text-[11px] text-slate-500">
+                            Auto-fills from name when available; editable.
+                          </p>
+                        )}
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-slate-500">
+                          GST Rate (%)
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          max="100"
+                          step="0.01"
+                          value={formState.gstRate}
+                          onChange={handleTaxFieldChange("gstRate")}
+                          className={`mt-1 w-full rounded-xl border px-3 py-2 text-sm focus:border-blue-400 focus:outline-none ${
+                            formErrors.gstRate
+                              ? "border-rose-300"
+                              : "border-slate-200"
+                          }`}
+                          placeholder="e.g. 5"
+                        />
+                        {formErrors.gstRate ? (
+                          <p className="mt-1 text-xs text-rose-500">
+                            {formErrors.gstRate}
+                          </p>
+                        ) : (
+                          <p className="mt-1 text-[11px] text-slate-500">
+                            Enter 0-100. Suggested from product type.
+                          </p>
+                        )}
+                      </div>
                     </div>
                     <div>
                       <label className="text-xs font-medium text-slate-500">

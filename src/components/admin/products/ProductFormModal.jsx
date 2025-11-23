@@ -5,6 +5,32 @@ import { X, UploadCloud, Image as ImageIcon, Loader2 } from "lucide-react";
 
 const STANDARD_SIZE_LABELS = ["S", "M", "L", "XL", "XXL"];
 
+const PRODUCT_TAX_PRESETS = [
+  { matcher: /keychain/i, hsnCode: "8305", gstRate: 18 },
+  {
+    matcher: /ceramic\s+coffee\s+mug|coffee\s+mug|mug/i,
+    hsnCode: "6912",
+    gstRate: 12,
+  },
+  { matcher: /executive\s+diary|pen\s+set/i, hsnCode: "4820", gstRate: 18 },
+  { matcher: /white\s+logo\s+cap|cap/i, hsnCode: "6501", gstRate: 18 },
+  { matcher: /diary/i, hsnCode: "4820", gstRate: 18 },
+  { matcher: /\bpen\b/i, hsnCode: "9608", gstRate: 18 },
+  { matcher: /t\s*-?shirt|polo/i, hsnCode: "6109", gstRate: 5 },
+];
+
+const resolveTaxPreset = (name = "") => {
+  const normalized = name.toString().trim();
+  if (!normalized) {
+    return null;
+  }
+
+  return (
+    PRODUCT_TAX_PRESETS.find((preset) => preset.matcher.test(normalized)) ||
+    null
+  );
+};
+
 const buildDefaultSizes = () =>
   STANDARD_SIZE_LABELS.map((label) => ({
     label,
@@ -98,6 +124,8 @@ const DEFAULT_FORM = {
   keyFeatures: [""],
   sizes: buildDefaultSizes(),
   showSizes: false,
+  hsnCode: "",
+  gstRate: "",
 };
 
 const statusOptions = [
@@ -132,6 +160,8 @@ const ProductFormModal = ({
   const [localError, setLocalError] = useState("");
   const [isUploading, setIsUploading] = useState(false);
   const [isGalleryUploading, setIsGalleryUploading] = useState(false);
+  const [hasManualHsn, setHasManualHsn] = useState(false);
+  const [hasManualGst, setHasManualGst] = useState(false);
 
   const title = useMemo(
     () => (mode === "edit" ? "Edit Product" : "Add Product"),
@@ -162,8 +192,22 @@ const ProductFormModal = ({
         categoryPriority: normalizeCategoryPriority(
           normalizedInitial.categoryPriority
         ),
+        hsnCode:
+          normalizedInitial.hsnCode != null
+            ? String(normalizedInitial.hsnCode)
+            : DEFAULT_FORM.hsnCode,
+        gstRate:
+          normalizedInitial.gstRate != null && normalizedInitial.gstRate !== ""
+            ? String(normalizedInitial.gstRate)
+            : DEFAULT_FORM.gstRate,
       });
       setLocalError("");
+      setHasManualHsn(Boolean(normalizedInitial?.hsnCode));
+      setHasManualGst(
+        normalizedInitial?.gstRate !== undefined &&
+          normalizedInitial?.gstRate !== null &&
+          normalizedInitial?.gstRate !== ""
+      );
     }
   }, [isOpen, initialData]);
 
@@ -192,8 +236,33 @@ const ProductFormModal = ({
         }
       }
 
+      if (field === "name") {
+        const preset = resolveTaxPreset(value);
+        if (preset) {
+          if (!hasManualHsn || !prev.hsnCode) {
+            next.hsnCode = preset.hsnCode;
+            setHasManualHsn(false);
+          }
+          if (!hasManualGst || !prev.gstRate) {
+            next.gstRate = preset.gstRate.toString();
+            setHasManualGst(false);
+          }
+        }
+      }
+
       return next;
     });
+  };
+
+  const handleTaxFieldChange = (field) => (event) => {
+    const value = event.target.value;
+    if (field === "hsnCode") {
+      setHasManualHsn(true);
+    }
+    if (field === "gstRate") {
+      setHasManualGst(true);
+    }
+    setFormState((prev) => ({ ...prev, [field]: value }));
   };
 
   const handleToggleChange = (field) => (event) => {
@@ -409,6 +478,19 @@ const ProductFormModal = ({
       return;
     }
 
+    if (formState.hsnCode && !/^\d{2,}$/i.test(formState.hsnCode.trim())) {
+      setLocalError("HSN code should contain at least 2 digits");
+      return;
+    }
+
+    if (formState.gstRate !== "") {
+      const gstNumeric = Number(formState.gstRate);
+      if (Number.isNaN(gstNumeric) || gstNumeric < 0 || gstNumeric > 100) {
+        setLocalError("GST rate must be between 0 and 100");
+        return;
+      }
+    }
+
     if (!formState.thumbnail.trim()) {
       setLocalError("Thumbnail URL is required");
       return;
@@ -486,6 +568,11 @@ const ProductFormModal = ({
       category: formState.category,
       categoryPriority: normalizeCategoryPriority(formState.categoryPriority),
       brand: formState.brand,
+      hsnCode: formState.hsnCode?.toString().trim() || undefined,
+      gstRate:
+        formState.gstRate !== "" && !Number.isNaN(Number(formState.gstRate))
+          ? Number(formState.gstRate)
+          : undefined,
     });
   };
 
@@ -538,6 +625,35 @@ const ProductFormModal = ({
                     className="rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none"
                     placeholder="Smartwatch E2"
                   />
+                </label>
+                <label className="flex flex-col gap-1 text-xs font-medium text-slate-500">
+                  HSN Code
+                  <input
+                    type="text"
+                    value={formState.hsnCode}
+                    onChange={handleTaxFieldChange("hsnCode")}
+                    className="rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none"
+                    placeholder="6109"
+                  />
+                  <span className="text-[11px] text-slate-500">
+                    Auto-suggested from product name; edit if required.
+                  </span>
+                </label>
+                <label className="flex flex-col gap-1 text-xs font-medium text-slate-500">
+                  GST Rate (%)
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="0.01"
+                    value={formState.gstRate}
+                    onChange={handleTaxFieldChange("gstRate")}
+                    className="rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none"
+                    placeholder="e.g. 18"
+                  />
+                  <span className="text-[11px] text-slate-500">
+                    Leave blank to auto-fill from presets.
+                  </span>
                 </label>
                 <label className="flex flex-col gap-2 text-xs font-medium text-slate-500 md:col-span-2">
                   Key Features

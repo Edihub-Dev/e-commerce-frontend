@@ -1952,8 +1952,9 @@ const AdminOrdersPage = () => {
                     }
                     className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   >
+                    <option value="confirmed">Order Confirmed</option>
                     <option value="processing">Processing</option>
-                    <option value="confirmed">Confirmed</option>
+                    <option value="picked_up">Picked Up</option>
                     <option value="shipped">Shipped</option>
                     <option value="out_for_delivery">Out for Delivery</option>
                     <option value="delivered">Delivered</option>

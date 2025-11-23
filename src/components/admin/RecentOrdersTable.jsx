@@ -114,7 +114,8 @@ const RecentOrdersTable = ({
 
   const handleViewOrder = useCallback(
     (orderId) => {
-      navigate(`/orders/${orderId}`);
+      if (!orderId) return;
+      navigate(`/admin/orders/${orderId}`);
     },
     [navigate]
   );

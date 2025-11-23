@@ -13,16 +13,15 @@ const CheckoutOrder = () => {
   const dispatch = useDispatch();
   const { items, totals } = useSelector((state) => state.checkout);
   const [shippingFee] = useState(29);
-  const [taxRate] = useState(0.01);
-
-  const computedTotals = useMemo(() => {
-    const taxAmount = Number((totals.subtotal * taxRate).toFixed(2));
-    return calculateTotals(items, {
-      shippingFee,
-      taxAmount,
-      discount: totals.discount,
-    });
-  }, [items, shippingFee, taxRate, totals.subtotal, totals.discount]);
+  const computedTotals = useMemo(
+    () =>
+      calculateTotals(items, {
+        shippingFee,
+        discount: totals.discount,
+        currency: totals.currency,
+      }),
+    [items, shippingFee, totals.discount, totals.currency]
+  );
 
   const handleContinue = () => {
     dispatch(setCheckoutTotals(computedTotals));
@@ -129,7 +128,7 @@ const CheckoutOrder = () => {
             <span>₹{computedTotals.shippingFee.toLocaleString()}</span>
           </div>
           <div className="flex justify-between">
-            <span>Tax ({Math.round(taxRate * 100)}%)</span>
+            <span>Tax</span>
             <span>₹{computedTotals.taxAmount.toLocaleString()}</span>
           </div>
           <div className="flex justify-between text-success font-medium">

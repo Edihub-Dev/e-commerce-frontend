@@ -11,22 +11,15 @@ import {
 } from "../utils/animations";
 
 const Cart = () => {
-  const { cartItems, updateQuantity, removeItem, cartCount } =
-    useCart();
+  const { cartItems, updateQuantity, removeItem, cartCount } = useCart();
   const navigate = useNavigate();
 
-  const handleProceedToCheckout = () => {
-    if (!cartItems.length) {
-      return;
-    }
+  const handleCheckoutItem = (item) => {
+    if (!item?.id) return;
 
-    const [firstItem] = cartItems;
-
-    if (firstItem?.id) {
-      navigate(`/product/${firstItem.id}`, {
-        state: { source: "cart-checkout" },
-      });
-    }
+    navigate(`/product/${item.id}`, {
+      state: { source: "cart-item-checkout", fromCart: true },
+    });
   };
 
   if (cartCount === 0) {
@@ -104,73 +97,122 @@ const Cart = () => {
           {cartItems.map((item) => (
             <motion.div
               key={item.id}
-              className="flex flex-wrap items-center gap-4 p-4 border rounded-lg bg-white"
+              className="rounded-2xl border border-slate-200 bg-white/80 p-4 shadow-sm backdrop-blur-sm"
               variants={staggerItem}
               layout
               exit={{ opacity: 0, x: -100, transition: { duration: 0.3 } }}
             >
-              <img
-                src={item.image}
-                alt={item.name}
-                className="w-24 h-24 object-contain rounded-md flex-shrink-0"
-              />
-              <div className="flex-grow min-w-[180px]">
-                <Link
-                  to={`/product/${item.id}`}
-                  className="font-semibold hover:text-primary"
-                >
-                  {item.name}
-                </Link>
-                <p className="text-sm text-gray-500">
-                  ₹{item.price.toLocaleString()}
-                </p>
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+                <img
+                  src={item.image}
+                  alt={item.name}
+                  className="h-24 w-24 flex-shrink-0 rounded-lg object-contain bg-slate-50"
+                />
+
+                <div className="flex flex-1 flex-col gap-3">
+                  <div className="flex flex-col gap-1">
+                    <Link
+                      to={`/product/${item.id}`}
+                      className="text-base font-semibold text-slate-800 hover:text-primary"
+                    >
+                      {item.name}
+                    </Link>
+                    <p className="text-sm text-slate-500">
+                      Unit price: ₹{item.price.toLocaleString()}
+                    </p>
+                    {(() => {
+                      const metaSegments = [];
+                      if (item?.hsnCode) {
+                        metaSegments.push(`HSN: ${item.hsnCode}`);
+                      }
+                      if (Number.isFinite(Number(item?.gstRate))) {
+                        const displayGst = Number(item.gstRate)
+                          .toFixed(2)
+                          .replace(/\.00$/, "");
+                        metaSegments.push(`GST: ${displayGst}%`);
+                      }
+                      if (item?.size) {
+                        metaSegments.push(`Size: ${item.size}`);
+                      }
+
+                      if (!metaSegments.length) {
+                        return null;
+                      }
+
+                      return (
+                        <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                          {metaSegments.map((segment, index) => (
+                            <React.Fragment key={`${item.id}-meta-${segment}`}>
+                              {index > 0 ? (
+                                <span className="text-slate-300">|</span>
+                              ) : null}
+                              <span>{segment}</span>
+                            </React.Fragment>
+                          ))}
+                        </div>
+                      );
+                    })()}
+                  </div>
+
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-2 py-1 shadow-sm">
+                      <button
+                        onClick={() =>
+                          updateQuantity(item.id, item.quantity - 1)
+                        }
+                        className="rounded-full p-1.5 transition hover:bg-slate-100"
+                        aria-label="Decrease quantity"
+                      >
+                        <Minus size={16} />
+                      </button>
+                      <span className="w-8 text-center text-sm font-semibold text-slate-700">
+                        {item.quantity}
+                      </span>
+                      <button
+                        onClick={() =>
+                          updateQuantity(item.id, item.quantity + 1)
+                        }
+                        className="rounded-full p-1.5 transition hover:bg-slate-100"
+                        aria-label="Increase quantity"
+                      >
+                        <Plus size={16} />
+                      </button>
+                    </div>
+
+                    <p className="text-right text-base font-semibold text-slate-900 sm:text-lg">
+                      ₹{(item.price * item.quantity).toLocaleString()}
+                    </p>
+                  </div>
+
+                  <div className="flex flex-col gap-3 border-t border-slate-200 pt-3 sm:flex-row sm:items-center sm:justify-between">
+                    <motion.button
+                      onClick={() => removeItem(item.id)}
+                      className="inline-flex items-center gap-2 text-sm font-medium text-slate-500 transition hover:text-rose-500"
+                      whileHover={{ scale: 1.03 }}
+                      whileTap={{ scale: 0.97 }}
+                      type="button"
+                    >
+                      <Trash2 size={18} /> Remove
+                    </motion.button>
+
+                    <motion.button
+                      onClick={() => handleCheckoutItem(item)}
+                      className="inline-flex items-center justify-center rounded-full bg-primary px-5 py-2 text-sm font-semibold text-white shadow-md transition hover:bg-primary-dark"
+                      variants={buttonHover}
+                      whileHover="hover"
+                      whileTap="tap"
+                      type="button"
+                    >
+                      Proceed to Checkout
+                    </motion.button>
+                  </div>
+                </div>
               </div>
-              <div className="flex items-center gap-2 border rounded-md p-1">
-                <button
-                  onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                  className="p-1 hover:bg-gray-100 rounded-full"
-                >
-                  <Minus size={16} />
-                </button>
-                <span className="w-8 text-center">{item.quantity}</span>
-                <button
-                  onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                  className="p-1 hover:bg-gray-100 rounded-full"
-                >
-                  <Plus size={16} />
-                </button>
-              </div>
-              <p className="font-semibold w-24 text-right">
-                ₹{(item.price * item.quantity).toLocaleString()}
-              </p>
-              <motion.button
-                onClick={() => removeItem(item.id)}
-                className="text-gray-500 hover:text-red-500"
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
-              >
-                <Trash2 size={20} />
-              </motion.button>
             </motion.div>
           ))}
         </AnimatePresence>
       </motion.div>
-
-      <div className="mt-8 flex justify-center sm:justify-end">
-        <motion.button
-          className="w-full sm:w-auto bg-primary text-white font-bold py-3 px-6 rounded-md hover:bg-primary-dark transition-colors"
-          variants={buttonHover}
-          whileHover="hover"
-          whileTap="tap"
-          type="button"
-          onClick={handleProceedToCheckout}
-        >
-          Proceed to Checkout
-        </motion.button>
-      </div>
     </motion.div>
   );
-}
-;
-
+};
 export default Cart;

@@ -23,6 +23,10 @@ import VerifyEmail from "./pages/VerifyEmail";
 import Profile from "./pages/Profile";
 import About from "./pages/About";
 import Contact from "./pages/Contact";
+import HelpSupport from "./pages/HelpSupport";
+import PrivacyPolicy from "./pages/legal/PrivacyPolicy";
+import TermsAndConditions from "./pages/legal/TermsAndConditions";
+import ReturnPolicy from "./pages/legal/ReturnPolicy";
 import SearchResults from "./pages/SearchResults";
 import NotFound from "./pages/NotFound";
 import AdminDashboard from "./pages/AdminDashboard";
@@ -30,6 +34,7 @@ import AdminProductsPage from "./pages/AdminProductsPage";
 import AdminAddProductPage from "./pages/AdminAddProductPage";
 import AdminOrdersPage from "./pages/AdminOrdersPage";
 import AdminOrderDetailsPage from "./pages/AdminOrderDetailsPage";
+import AdminHelpSupportPage from "./pages/AdminHelpSupportPage";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 const ScrollToTop = () => {
@@ -62,6 +67,10 @@ function App() {
           <Route path="verify-email" element={<VerifyEmail />} />
           <Route path="about" element={<About />} />
           <Route path="contact" element={<Contact />} />
+          <Route path="help-support" element={<HelpSupport />} />
+          <Route path="legal/privacy" element={<PrivacyPolicy />} />
+          <Route path="legal/terms" element={<TermsAndConditions />} />
+          <Route path="legal/returns" element={<ReturnPolicy />} />
 
           <Route
             path="checkout"
@@ -129,6 +138,14 @@ function App() {
           element={
             <ProtectedRoute requireAdmin>
               <AdminOrdersPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/help-support"
+          element={
+            <ProtectedRoute requireAdmin>
+              <AdminHelpSupportPage />
             </ProtectedRoute>
           }
         />

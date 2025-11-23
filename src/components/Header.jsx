@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useDispatch, useSelector } from "react-redux";
@@ -27,6 +27,7 @@ import { resetCheckout } from "../store/slices/checkoutSlice";
 import { fetchAddresses, fetchProducts } from "../utils/api";
 
 const DEFAULT_LOCATION_LABEL = "Loading delivery address...";
+const LOCATION_STORAGE_KEY = "megamart:lastLocationLabel";
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -49,6 +50,47 @@ const Header = () => {
     (state) => state.address
   );
   const { shippingAddress } = useSelector((state) => state.checkout);
+
+  const persistLocationLabel = useCallback(
+    (nextLabel) => {
+      try {
+        if (!isAuthenticated) {
+          localStorage.removeItem(LOCATION_STORAGE_KEY);
+          return;
+        }
+
+        const trimmed = (nextLabel || "").trim();
+        if (
+          !trimmed ||
+          trimmed === DEFAULT_LOCATION_LABEL ||
+          trimmed === "Add delivery address"
+        ) {
+          localStorage.removeItem(LOCATION_STORAGE_KEY);
+          return;
+        }
+
+        localStorage.setItem(LOCATION_STORAGE_KEY, trimmed);
+      } catch (error) {
+        console.debug("Persist location label failed", error);
+      }
+    },
+    [isAuthenticated]
+  );
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      return;
+    }
+
+    try {
+      const storedLabel = localStorage.getItem(LOCATION_STORAGE_KEY);
+      if (storedLabel) {
+        setLocationLabel(storedLabel);
+      }
+    } catch (error) {
+      console.debug("Restore location label failed", error);
+    }
+  }, [isAuthenticated]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -207,11 +249,13 @@ const Header = () => {
     const shippingLabel = formatLocation(shippingAddress);
     if (shippingLabel) {
       setLocationLabel(shippingLabel);
+      persistLocationLabel(shippingLabel);
       return;
     }
 
     if (!isAuthenticated) {
       setLocationLabel(DEFAULT_LOCATION_LABEL);
+      persistLocationLabel(DEFAULT_LOCATION_LABEL);
       return;
     }
 
@@ -220,17 +264,28 @@ const Header = () => {
     const defaultLabel = formatLocation(defaultAddress);
     if (defaultLabel) {
       setLocationLabel(defaultLabel);
+      persistLocationLabel(defaultLabel);
       return;
     }
 
     if (addressesLoading) {
       setLocationLabel("Loading delivery address...");
+      persistLocationLabel("Loading delivery address...");
       return;
     }
 
     const fallbackLabel = formatLocation(user || {});
-    setLocationLabel(fallbackLabel || "Add delivery address");
-  }, [isAuthenticated, addresses, addressesLoading, shippingAddress, user]);
+    const resolvedLabel = fallbackLabel || "Add delivery address";
+    setLocationLabel(resolvedLabel);
+    persistLocationLabel(resolvedLabel);
+  }, [
+    isAuthenticated,
+    addresses,
+    addressesLoading,
+    shippingAddress,
+    user,
+    persistLocationLabel,
+  ]);
 
   useEffect(() => {
     if (isMenuOpen) {
@@ -265,6 +320,11 @@ const Header = () => {
     dispatch(resetCheckout());
     logout();
     setLocationLabel(DEFAULT_LOCATION_LABEL);
+    try {
+      localStorage.removeItem(LOCATION_STORAGE_KEY);
+    } catch (error) {
+      console.debug("Failed to clear stored location label", error);
+    }
   };
 
   const handleProfileButtonClick = () => {

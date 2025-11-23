@@ -317,6 +317,11 @@ const AdminProductsPage = () => {
       originalPrice: activeProduct.originalPrice ?? "",
       discountPercentage: activeProduct.discountPercentage ?? "",
       saveAmount: activeProduct.saveAmount ?? "",
+      hsnCode: activeProduct.hsnCode ?? "",
+      gstRate:
+        activeProduct.gstRate !== undefined && activeProduct.gstRate !== null
+          ? activeProduct.gstRate
+          : "",
       rating: activeProduct.rating ?? activeProduct.ratings?.average ?? "",
       reviews:
         activeProduct.reviews ?? activeProduct.ratings?.totalReviews ?? "",

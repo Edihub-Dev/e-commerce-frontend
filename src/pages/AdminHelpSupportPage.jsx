@@ -17,6 +17,7 @@ const emptyTopic = {
   slug: "",
   order: 0,
   isActive: true,
+  responseDelayMs: 2000,
   questions: [
     {
       question: "",
@@ -81,6 +82,7 @@ const AdminHelpSupportPage = () => {
         slug: topic.slug || "",
         order: topic.order ?? 0,
         isActive: topic.isActive !== false,
+        responseDelayMs: topic.responseDelayMs ?? 2000,
         questions: topic.questions?.length
           ? topic.questions.map((item, idx) => ({
               _id: item._id,
@@ -143,6 +145,7 @@ const AdminHelpSupportPage = () => {
     slug: payload.slug?.trim() || undefined,
     order: Number(payload.order) || 0,
     isActive: Boolean(payload.isActive),
+    responseDelayMs: Math.max(0, Number(payload.responseDelayMs) || 0),
     questions: payload.questions
       .map((item, idx) => ({
         _id: item._id,
@@ -480,6 +483,33 @@ const AdminHelpSupportPage = () => {
                   />
                   <span className="text-sm text-slate-600">
                     Visible to customers
+                  </span>
+                </label>
+                <label className="flex flex-col gap-2">
+                  <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Response Delay (seconds)
+                  </span>
+                  <input
+                    type="number"
+                    min={0}
+                    step={0.5}
+                    value={Number(
+                      (draft.responseDelayMs ?? 0) / 1000
+                    ).toString()}
+                    onChange={(event) =>
+                      handleDraftChange({
+                        responseDelayMs: Math.max(
+                          0,
+                          Number(event.target.value) * 1000
+                        ),
+                      })
+                    }
+                    className="px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-200"
+                    placeholder="e.g. 2"
+                  />
+                  <span className="text-[11px] text-slate-500">
+                    Time the assistant waits before replying. Defaults to 2
+                    seconds.
                   </span>
                 </label>
               </div>

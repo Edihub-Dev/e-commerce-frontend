@@ -1,7 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
-import api, { fetchOrderById, rateOrderItem } from "../../utils/api";
+import api, {
+  fetchOrderById,
+  rateOrderItem,
+  submitReplacementRequest,
+} from "../../utils/api";
 import { toast } from "react-hot-toast";
 import {
   ArrowLeft,
@@ -13,6 +17,9 @@ import {
   Send,
   Circle,
   CheckCircle2,
+  RotateCcw,
+  X,
+  AlertCircle,
 } from "lucide-react";
 
 const TIMELINE_SEQUENCE = [
@@ -46,6 +53,11 @@ const TIMELINE_SEQUENCE = [
     label: "Delivered",
     defaultDescription: "Your item has been delivered.",
   },
+  {
+    key: "returned",
+    label: "Return Initiated",
+    defaultDescription: "Return or replacement processing has begun.",
+  },
 ];
 
 const formatTimelineDate = (value) =>
@@ -64,6 +76,10 @@ const TIMELINE_ALIAS_MAP = {
   dispatched: "shipped",
   "out for delivery": "out_for_delivery",
   delivered: "delivered",
+  returned: "returned",
+  "return initiated": "returned",
+  "return approved": "returned",
+  "return request rejected": "returned",
 };
 
 const resolveStepKey = (label = "") => {
@@ -91,15 +107,21 @@ const buildTimeline = (order) => {
   const timelineMap = new Map();
   (order.statusTimeline || []).forEach((entry = {}) => {
     const stepKey = resolveStepKey(entry.label);
-    if (!stepKey || timelineMap.has(stepKey)) {
+    if (!stepKey) {
       return;
     }
 
-    timelineMap.set(stepKey, {
-      label: entry.label,
-      description: entry.description,
-      at: entry.at,
-    });
+    const existing = timelineMap.get(stepKey);
+    const currentAt = entry.at ? new Date(entry.at).getTime() : 0;
+    const existingAt = existing?.at ? new Date(existing.at).getTime() : 0;
+
+    if (!existing || currentAt >= existingAt) {
+      timelineMap.set(stepKey, {
+        label: entry.label,
+        description: entry.description,
+        at: entry.at,
+      });
+    }
   });
 
   const statusLookup = {
@@ -122,9 +144,21 @@ const buildTimeline = (order) => {
   const fallbackCurrentIndex = currentIndex === -1 ? 0 : currentIndex;
   const hasTimelineHistory = timelineMap.size > 0;
 
-  return TIMELINE_SEQUENCE.map((step) => {
+  const hasReturnFlow = Boolean(
+    order.replacementRequest && order.replacementRequest.status !== "none"
+  );
+  const includeReturnStep =
+    hasReturnFlow ||
+    timelineMap.has("returned") ||
+    resolvedCurrentKey === "returned";
+
+  const sequence = includeReturnStep
+    ? TIMELINE_SEQUENCE
+    : TIMELINE_SEQUENCE.filter((step) => step.key !== "returned");
+
+  return sequence.map((step) => {
     const timelineEntry = timelineMap.get(step.key) || null;
-    const stepIndex = TIMELINE_SEQUENCE.findIndex(
+    const stepIndex = sequence.findIndex(
       (sequenceStep) => sequenceStep.key === step.key
     );
     const effectiveCurrentIndex = hasTimelineHistory
@@ -154,6 +188,7 @@ const buildTimeline = (order) => {
 
     return {
       ...step,
+      label: timelineEntry?.label || step.label,
       isCompleted,
       isCurrent,
       description: timelineEntry?.description || step.defaultDescription,
@@ -174,6 +209,15 @@ const OrderDetailsPage = () => {
   const [activeItemIndex, setActiveItemIndex] = useState(null);
   const [ratingDrafts, setRatingDrafts] = useState({});
   const [submittingIndex, setSubmittingIndex] = useState(null);
+  const [isReplacementModalOpen, setReplacementModalOpen] = useState(false);
+  const [replacementSubmitting, setReplacementSubmitting] = useState(false);
+  const [replacementForm, setReplacementForm] = useState({
+    itemIndex: 0,
+    description: "",
+    size: "",
+    color: "",
+    remarks: "",
+  });
 
   const apiBaseUrl = useMemo(() => {
     const configured = import.meta.env.VITE_API_URL;
@@ -280,6 +324,65 @@ const OrderDetailsPage = () => {
 
   const timelineSteps = useMemo(() => buildTimeline(order), [order]);
 
+  useEffect(() => {
+    if (order?.items?.length) {
+      setReplacementForm((prev) => ({
+        ...prev,
+        itemIndex:
+          prev.itemIndex >= 0 && prev.itemIndex < order.items.length
+            ? prev.itemIndex
+            : 0,
+      }));
+    }
+  }, [order?.items?.length]);
+
+  const deliveredTimestamp = useMemo(() => {
+    if (!order?.statusTimeline?.length) {
+      return order?.status === "delivered" ? order.updatedAt : null;
+    }
+
+    for (let index = order.statusTimeline.length - 1; index >= 0; index -= 1) {
+      const entry = order.statusTimeline[index];
+      const label = String(entry?.label || "").toLowerCase();
+      if (label.includes("delivered")) {
+        return entry.at || entry.createdAt || entry.updatedAt || null;
+      }
+    }
+
+    return order?.status === "delivered" ? order.updatedAt : null;
+  }, [order?.statusTimeline, order?.status, order?.updatedAt]);
+
+  const replacementRequest = order?.replacementRequest || {};
+  const replacementStatusActive = Boolean(
+    replacementRequest?.status && replacementRequest.status !== "none"
+  );
+
+  const replacementWindowActive = useMemo(() => {
+    if (!deliveredTimestamp) return false;
+    const deliveredAt = new Date(deliveredTimestamp).getTime();
+    if (Number.isNaN(deliveredAt)) return false;
+    const diff = Date.now() - deliveredAt;
+    const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
+    return diff >= 0 && diff <= sevenDaysMs;
+  }, [deliveredTimestamp]);
+
+  const canRequestReplacement =
+    replacementWindowActive &&
+    !replacementStatusActive &&
+    !replacementRequest.used;
+
+  const replacementAvailabilityMessage = useMemo(() => {
+    if (replacementStatusActive) {
+      return null;
+    }
+
+    if (!replacementWindowActive) {
+      return "Return & replace is available within 7 days after delivery.";
+    }
+
+    return "Return & replace can be requested once per order while the request window is active.";
+  }, [replacementStatusActive, replacementWindowActive]);
+
   const handleSelectRating = (itemIndex, value) => {
     if (order?.items?.[itemIndex]?.ratedAt || submittingIndex !== null) {
       return;
@@ -302,6 +405,75 @@ const OrderDetailsPage = () => {
         review: value,
       },
     }));
+  };
+
+  const handleOpenReplacementModal = () => {
+    setReplacementForm((prev) => ({
+      ...prev,
+      itemIndex: prev.itemIndex ?? 0,
+      description: "",
+      size: "",
+      color: "",
+      remarks: "",
+    }));
+    setReplacementModalOpen(true);
+  };
+
+  const handleReplacementInputChange = (field, value) => {
+    setReplacementForm((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
+
+  const selectedReplacementItem = useMemo(() => {
+    if (!order?.items?.length) return null;
+    return order.items[replacementForm.itemIndex] || null;
+  }, [order?.items, replacementForm.itemIndex]);
+
+  const handleSubmitReplacement = async (event) => {
+    event.preventDefault();
+    if (!order?._id) return;
+    if (
+      !replacementForm.description ||
+      replacementForm.description.trim().length < 10
+    ) {
+      toast.error("Please describe the issue (minimum 10 characters).");
+      return;
+    }
+
+    try {
+      setReplacementSubmitting(true);
+      const payload = {
+        itemIndex: replacementForm.itemIndex,
+        description: replacementForm.description.trim(),
+        replacement: {
+          size: replacementForm.size.trim() || undefined,
+          color: replacementForm.color.trim() || undefined,
+          remarks: replacementForm.remarks.trim() || undefined,
+        },
+      };
+      const response = await submitReplacementRequest(order._id, payload);
+      if (!response?.success) {
+        throw new Error(response?.message || "Failed to submit request");
+      }
+
+      setOrder((prev) => ({
+        ...prev,
+        replacementRequest: response.data,
+      }));
+      setReplacementModalOpen(false);
+      toast.success("Replacement request sent to support.");
+    } catch (submitError) {
+      console.error("Replacement request failed", submitError);
+      const message =
+        submitError?.response?.data?.message ||
+        submitError?.message ||
+        "Failed to submit request";
+      toast.error(message);
+    } finally {
+      setReplacementSubmitting(false);
+    }
   };
 
   const handleSubmitRating = async (itemIndex) => {
@@ -631,10 +803,123 @@ const OrderDetailsPage = () => {
         </div>
       </section>
 
+      {replacementStatusActive ? (
+        <section className="rounded-3xl border border-slate-200 bg-white p-6 space-y-4">
+          <header className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-semibold text-secondary">
+                Return & Replace status
+              </h2>
+              <p className="text-xs text-medium-text">
+                Requested on{" "}
+                {replacementRequest.requestedAt
+                  ? new Date(replacementRequest.requestedAt).toLocaleString()
+                  : "--"}
+              </p>
+            </div>
+            <span className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
+              <span className="h-2 w-2 rounded-full bg-primary" />
+              {replacementRequest.status.replace(/_/g, " ")}
+            </span>
+          </header>
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-2 text-sm text-medium-text">
+              <h3 className="text-sm font-semibold text-secondary">
+                Item details
+              </h3>
+              <p className="font-medium text-secondary">
+                {replacementRequest.itemName}
+                {replacementRequest.itemSize &&
+                  ` • Size ${replacementRequest.itemSize}`}
+              </p>
+              <p>Quantity: {replacementRequest.quantity || 1}</p>
+              {replacementRequest.issueDescription && (
+                <p className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600">
+                  {replacementRequest.issueDescription}
+                </p>
+              )}
+            </div>
+            <div className="space-y-2 text-sm text-medium-text">
+              <h3 className="text-sm font-semibold text-secondary">
+                Replacement preference
+              </h3>
+              <p>
+                Size: {replacementRequest.replacementPreferences?.size || "--"}
+              </p>
+              <p>
+                Color:{" "}
+                {replacementRequest.replacementPreferences?.color || "--"}
+              </p>
+              <p>
+                Notes:{" "}
+                {replacementRequest.replacementPreferences?.remarks || "--"}
+              </p>
+              {replacementRequest.adminNotes && (
+                <p className="rounded-xl border border-primary/20 bg-primary/5 p-3 text-sm text-primary">
+                  Admin notes: {replacementRequest.adminNotes}
+                </p>
+              )}
+            </div>
+          </div>
+          {Array.isArray(replacementRequest.history) &&
+          replacementRequest.history.length ? (
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <h3 className="mb-3 text-sm font-semibold text-secondary">
+                Activity
+              </h3>
+              <ul className="space-y-2 text-xs text-medium-text">
+                {replacementRequest.history
+                  .slice()
+                  .reverse()
+                  .map((entry, index) => (
+                    <li
+                      key={`${entry.at || index}-${entry.status}`}
+                      className="flex items-start gap-2"
+                    >
+                      <span className="mt-0.5 inline-flex h-2 w-2 rounded-full bg-primary" />
+                      <div>
+                        <p className="font-medium text-secondary">
+                          {entry.status?.replace(/_/g, " ") || "Update"}
+                        </p>
+                        <p className="text-medium-text">
+                          {entry.note || "Status updated"}
+                        </p>
+                        <p className="text-[10px] text-slate-400">
+                          {entry.at
+                            ? new Date(entry.at).toLocaleString()
+                            : "--"}
+                          {entry.actor ? ` • by ${entry.actor}` : ""}
+                        </p>
+                      </div>
+                    </li>
+                  ))}
+              </ul>
+            </div>
+          ) : null}
+        </section>
+      ) : null}
+
       <section className="rounded-3xl border border-slate-200 bg-white p-6 space-y-4">
-        <h2 className="text-lg font-semibold text-secondary">
-          Items in your order
-        </h2>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-lg font-semibold text-secondary">
+            Items in your order
+          </h2>
+          {canRequestReplacement && (
+            <button
+              type="button"
+              onClick={handleOpenReplacementModal}
+              className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-primary-dark"
+            >
+              <RotateCcw className="h-4 w-4" /> Request return & replace
+            </button>
+          )}
+        </div>
+        {replacementAvailabilityMessage && (
+          <div className="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
+            <AlertCircle className="h-4 w-4" />
+            {replacementAvailabilityMessage}
+          </div>
+        )}
         <div className="space-y-4">
           {order.items?.map((item, index) => (
             <div
@@ -830,6 +1115,153 @@ const OrderDetailsPage = () => {
             : "Invoice available after payment"}
         </button>
       </div>
+
+      {isReplacementModalOpen && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/40 px-4">
+          <div className="w-full max-w-2xl rounded-3xl bg-white p-6 shadow-xl">
+            <div className="mb-4 flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-lg font-semibold text-secondary">
+                  Return & Replace request
+                </h2>
+                <p className="text-xs text-medium-text">
+                  Tell us what went wrong so we can arrange a replacement.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setReplacementModalOpen(false)}
+                className="rounded-full border border-slate-200 bg-white p-1 text-slate-500 hover:bg-slate-100"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <form className="space-y-4" onSubmit={handleSubmitReplacement}>
+              <div className="grid gap-4 md:grid-cols-[1.4fr_1fr]">
+                <label className="space-y-2 text-sm text-medium-text">
+                  <span className="font-medium text-secondary">
+                    Select product
+                  </span>
+                  <select
+                    value={replacementForm.itemIndex}
+                    onChange={(event) =>
+                      handleReplacementInputChange(
+                        "itemIndex",
+                        Number(event.target.value)
+                      )
+                    }
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none"
+                  >
+                    {order?.items?.map((item, index) => (
+                      <option key={`${item.name}-${index}`} value={index}>
+                        {item.name}
+                        {item.size ? ` • Size ${item.size}` : ""}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                {selectedReplacementItem ? (
+                  <div className="flex items-center justify-center rounded-xl border border-slate-100 bg-slate-50 p-3">
+                    <img
+                      src={selectedReplacementItem.image}
+                      alt={selectedReplacementItem.name}
+                      className="h-20 w-20 rounded-lg object-contain"
+                    />
+                  </div>
+                ) : null}
+              </div>
+
+              <label className="space-y-2 text-sm text-medium-text">
+                <span className="font-medium text-secondary">
+                  Describe the issue
+                </span>
+                <textarea
+                  value={replacementForm.description}
+                  onChange={(event) =>
+                    handleReplacementInputChange(
+                      "description",
+                      event.target.value
+                    )
+                  }
+                  required
+                  minLength={10}
+                  rows={4}
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none"
+                  placeholder="Share what went wrong with the product."
+                />
+              </label>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <label className="space-y-2 text-sm text-medium-text">
+                  <span className="font-medium text-secondary">
+                    Preferred size
+                  </span>
+                  <input
+                    value={replacementForm.size}
+                    onChange={(event) =>
+                      handleReplacementInputChange("size", event.target.value)
+                    }
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none"
+                    placeholder="e.g. L"
+                  />
+                </label>
+                <label className="space-y-2 text-sm text-medium-text">
+                  <span className="font-medium text-secondary">
+                    Preferred color
+                  </span>
+                  <input
+                    value={replacementForm.color}
+                    onChange={(event) =>
+                      handleReplacementInputChange("color", event.target.value)
+                    }
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none"
+                    placeholder="e.g. Blue"
+                  />
+                </label>
+              </div>
+
+              <label className="space-y-2 text-sm text-medium-text">
+                <span className="font-medium text-secondary">
+                  Additional notes (optional)
+                </span>
+                <input
+                  value={replacementForm.remarks}
+                  onChange={(event) =>
+                    handleReplacementInputChange("remarks", event.target.value)
+                  }
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none"
+                  placeholder="Share anything else the team should know."
+                />
+              </label>
+
+              <div className="flex flex-wrap justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setReplacementModalOpen(false)}
+                  className="rounded-xl border border-slate-200 px-4 py-2 text-sm text-secondary hover:bg-slate-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={replacementSubmitting}
+                  className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-primary-dark disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {replacementSubmitting ? (
+                    <>Submitting...</>
+                  ) : (
+                    <>
+                      <RotateCcw className="h-4 w-4" /> Send request
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

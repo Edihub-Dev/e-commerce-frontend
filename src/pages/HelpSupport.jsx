@@ -15,6 +15,7 @@ const HelpSupport = () => {
   const [loadingTopics, setLoadingTopics] = useState(false);
   const [topicsError, setTopicsError] = useState("");
   const chatRef = useRef(null);
+  const pendingTimersRef = useRef([]);
 
   const sectionsById = useMemo(() => {
     const map = new Map();
@@ -86,8 +87,17 @@ const HelpSupport = () => {
               : [],
             order: topic.order ?? 0,
             isActive: topic.isActive !== false,
+            responseDelayMs:
+              typeof topic.responseDelayMs === "number"
+                ? Math.max(0, topic.responseDelayMs)
+                : 2000,
           }))
-          .filter((topic) => topic.category?.trim() && topic.items.length);
+          .filter((topic) => topic.category?.trim() && topic.items.length)
+          .sort((a, b) => {
+            const orderA = a.order ?? 0;
+            const orderB = b.order ?? 0;
+            return orderA - orderB;
+          });
 
         setHelpTopics(normalized);
         setTopicsError("");
@@ -126,38 +136,72 @@ const HelpSupport = () => {
     setRepeatStreak(0);
   };
 
+  useEffect(() => {
+    return () => {
+      pendingTimersRef.current.forEach((timeoutId) => clearTimeout(timeoutId));
+      pendingTimersRef.current = [];
+    };
+  }, []);
+
   const handleQuestionSelect = (item) => {
     if (!activeSection) return;
 
     const isRepeat = lastQuestionId === item.id;
     const nextRepeat = isRepeat ? repeatStreak + 1 : 1;
+    const delayMs = Math.max(0, activeSection.responseDelayMs ?? 2000);
+    const typingToken = `typing-${Date.now()}-${Math.random()}`;
 
     setMessages((prev) => {
-      const updated = [
+      return [
         ...prev,
         { sender: "user", text: item.question },
-        { sender: "bot", text: item.answer },
+        { sender: "bot", text: "Thinking...", tempId: typingToken },
       ];
+    });
+    const timeoutId = setTimeout(() => {
+      setMessages((prev) => {
+        const placeholderIndex = prev.findIndex(
+          (message) => message.tempId === typingToken
+        );
+
+        const withoutPlaceholder =
+          placeholderIndex !== -1
+            ? [
+                ...prev.slice(0, placeholderIndex),
+                ...prev.slice(placeholderIndex + 1),
+              ]
+            : [...prev];
+
+        const updated = [
+          ...withoutPlaceholder,
+          { sender: "bot", text: item.answer },
+        ];
+
+        if (isRepeat && nextRepeat >= 2) {
+          updated.push({
+            sender: "bot",
+            text: "Let's revisit the main topics. Choose what you'd like help with.",
+          });
+        }
+
+        return updated;
+      });
 
       if (isRepeat && nextRepeat >= 2) {
-        updated.push({
-          sender: "bot",
-          text: "Let's revisit the main topics. Choose what you'd like help with.",
-        });
+        setCurrentSectionId(null);
+        setLastQuestionId(null);
+        setRepeatStreak(0);
+      } else {
+        setLastQuestionId(item.id);
+        setRepeatStreak(nextRepeat);
       }
 
-      return updated;
-    });
+      pendingTimersRef.current = pendingTimersRef.current.filter(
+        (id) => id !== timeoutId
+      );
+    }, delayMs);
 
-    if (isRepeat && nextRepeat >= 2) {
-      setCurrentSectionId(null);
-      setLastQuestionId(null);
-      setRepeatStreak(0);
-      return;
-    }
-
-    setLastQuestionId(item.id);
-    setRepeatStreak(nextRepeat);
+    pendingTimersRef.current.push(timeoutId);
   };
 
   const handleBackToTopics = () => {

@@ -82,10 +82,10 @@ const PrivacyPolicy = () => {
             the link in the email footer. For data access or deletion requests,
             please reach out to{" "}
             <a
-              href="mailto:support@megamart.com"
+              href="mailto:megamart@edihub.in"
               className="text-primary underline"
             >
-              support@megamart.com
+              megamart@edihub.in
             </a>
             .
           </p>
@@ -97,10 +97,10 @@ const PrivacyPolicy = () => {
             If you have any questions about this Privacy Policy or how MegaMart
             handles your data, write to us at{" "}
             <a
-              href="mailto:support@megamart.com"
+              href="mailto:megamart@edihub.in"
               className="text-primary underline"
             >
-              support@megamart.com
+              megamart@edihub.in
             </a>{" "}
             or call our helpline at +1 202-918-2132.
           </p>

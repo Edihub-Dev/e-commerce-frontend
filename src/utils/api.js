@@ -398,6 +398,16 @@ export const fetchOrderById = async (orderId) => {
   return response.data;
 };
 
+export const submitReplacementRequest = async (orderId, payload) => {
+  const response = await api.post(`/orders/${orderId}/replacement`, payload);
+  return response.data;
+};
+
+export const adminUpdateReplacementRequest = async (orderId, payload) => {
+  const response = await api.patch(`/orders/${orderId}/replacement`, payload);
+  return response.data;
+};
+
 export const updateOrder = async (orderId, payload) => {
   const response = await api.patch(`/orders/${orderId}`, payload);
   return response.data;

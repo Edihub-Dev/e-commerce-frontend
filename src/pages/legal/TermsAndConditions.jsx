@@ -98,10 +98,10 @@ const TermsAndConditions = () => {
           <p className="text-slate-600">
             For queries about these terms, write to
             <a
-              href="mailto:support@megamart.com"
+              href="mailto:megamart@edihub.in"
               className="text-primary underline ml-1"
             >
-              support@megamart.com
+              megamart@edihub.in
             </a>
             , or call our helpline at +1 202-918-2132.
           </p>

@@ -118,6 +118,15 @@ const formatDate = (date) => {
   return parsed.toLocaleString();
 };
 
+const toDateInputValue = (value) => {
+  if (!value) return "";
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return "";
+  const tzOffsetMs = parsed.getTimezoneOffset() * 60 * 1000;
+  const adjusted = new Date(parsed.getTime() - tzOffsetMs);
+  return adjusted.toISOString().slice(0, 10);
+};
+
 const transformOrdersForExport = (orders = []) =>
   orders.map((order) => {
     const firstItem = order.items?.[0];
@@ -493,6 +502,8 @@ const AdminOrdersPage = () => {
     paymentMethod: "",
     estimatedDeliveryDate: "",
   });
+
+  const todayInputValue = useMemo(() => toDateInputValue(new Date()), []);
   const [isSavingEdit, setIsSavingEdit] = useState(false);
   const [downloadingInvoiceId, setDownloadingInvoiceId] = useState(null);
   const latestParamsRef = useRef({});
@@ -991,9 +1002,8 @@ const AdminOrdersPage = () => {
       status: order.status || "processing",
       paymentStatus: order.payment?.status || "",
       paymentMethod: order.payment?.method || "",
-      estimatedDeliveryDate: order.estimatedDeliveryDate
-        ? new Date(order.estimatedDeliveryDate).toISOString().slice(0, 10)
-        : "",
+      estimatedDeliveryDate:
+        toDateInputValue(order.estimatedDeliveryDate) || "",
     };
     setEditingOrder(order);
     setEditForm(nextForm);
@@ -1006,6 +1016,23 @@ const AdminOrdersPage = () => {
 
   const handleEditFieldChange = (field, value) => {
     setEditForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const isDeliveryDateLocked = editingOrder
+    ? ["delivered", "returned"].includes(editingOrder.status)
+    : false;
+
+  const isPaymentStatusLocked =
+    editingOrder?.payment?.status === "paid" ||
+    editForm.paymentStatus === "paid";
+
+  const handleEstimatedDeliveryChange = (event) => {
+    const { value } = event.target;
+    if (isDeliveryDateLocked) {
+      toast.error("Estimated delivery date cannot be changed after delivery.");
+      return;
+    }
+    handleEditFieldChange("estimatedDeliveryDate", value);
   };
 
   const handleSaveEdit = async () => {
@@ -1967,6 +1994,7 @@ const AdminOrdersPage = () => {
                     Payment Status
                     <select
                       value={editForm.paymentStatus}
+                      disabled={isPaymentStatusLocked}
                       onChange={(event) =>
                         handleEditFieldChange(
                           "paymentStatus",
@@ -1980,6 +2008,12 @@ const AdminOrdersPage = () => {
                       <option value="paid">Successful</option>
                       <option value="failed">Failed</option>
                     </select>
+                    {isPaymentStatusLocked ? (
+                      <p className="mt-1 text-xs text-slate-500">
+                        Payment is already marked successful and cannot be
+                        changed.
+                      </p>
+                    ) : null}
                   </label>
                   <label className="block text-sm font-medium text-slate-700">
                     Payment Method
@@ -2008,14 +2042,19 @@ const AdminOrdersPage = () => {
                   <input
                     type="date"
                     value={editForm.estimatedDeliveryDate}
-                    onChange={(event) =>
-                      handleEditFieldChange(
-                        "estimatedDeliveryDate",
-                        event.target.value
-                      )
-                    }
+                    disabled={isDeliveryDateLocked}
+                    onChange={handleEstimatedDeliveryChange}
                     className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   />
+                  {isDeliveryDateLocked ? (
+                    <p className="mt-1 text-xs text-slate-500">
+                      Delivery date is locked because the order has already been{" "}
+                      {editingOrder?.status === "returned"
+                        ? "been resolved"
+                        : "been delivered"}
+                      .
+                    </p>
+                  ) : null}
                 </label>
               </div>
 

@@ -79,10 +79,10 @@ const ReturnPolicy = () => {
           <p className="text-slate-600">
             Need help? Email
             <a
-              href="mailto:support@megamart.com"
+              href="mailto:megamart@edihub.in"
               className="text-primary underline ml-1"
             >
-              support@megamart.com
+              megamart@edihub.in
             </a>{" "}
             or call our returns desk at +1 202-918-2132.
           </p>

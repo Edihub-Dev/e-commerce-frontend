@@ -1261,47 +1261,59 @@ const AdminOrdersPage = () => {
             </section>
 
             <section className="rounded-2xl border border-slate-200 bg-white shadow-sm">
-              <div className="flex flex-col gap-4 border-b border-slate-100 p-4 md:flex-row md:items-center md:justify-between">
-                <form
-                  onSubmit={handleSearch}
-                  className="flex w-full flex-col gap-2 sm:flex-row sm:items-center"
-                >
-                  <div className="relative w-full sm:flex-1">
-                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                    <input
-                      type="text"
-                      value={searchValue}
-                      onChange={(event) => setSearchValue(event.target.value)}
-                      placeholder="Search by order ID, product, or customer"
-                      className="w-full rounded-xl border border-slate-200 bg-white py-2 pl-10 pr-4 text-sm text-slate-700 transition focus:border-blue-400 focus:outline-none"
-                    />
+              <div className="space-y-4 border-b border-slate-100 p-4">
+                <form onSubmit={handleSearch} className="space-y-3">
+                  <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:gap-3">
+                    <div className="relative w-full flex-1">
+                      <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                      <input
+                        type="text"
+                        value={searchValue}
+                        onChange={(event) => setSearchValue(event.target.value)}
+                        placeholder="Search by order ID, product, or customer"
+                        className="w-full rounded-xl border border-slate-200 bg-white py-2 pl-10 pr-4 text-sm text-slate-700 transition focus:border-blue-400 focus:outline-none focus:ring-0"
+                      />
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        type="submit"
+                        className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700"
+                      >
+                        Search
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleReset}
+                        className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 transition hover:border-blue-200 hover:text-blue-600"
+                      >
+                        Reset
+                      </button>
+                    </div>
                   </div>
-                  <button
-                    type="submit"
-                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700"
-                  >
-                    Search
-                  </button>
-                </form>
 
-                <div className="flex flex-col gap-3 text-sm text-slate-500 sm:flex-row sm:flex-wrap sm:items-center">
-                  <label className="flex w-full items-center gap-2 text-sm text-slate-600 sm:w-auto">
-                    <Filter size={16} className="text-slate-400" />
-                    <select
-                      value={statusValue}
-                      onChange={handleStatusChange}
-                      className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none sm:w-auto"
-                    >
-                      {STATUS_OPTIONS.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
+                  <div className="flex flex-wrap items-center gap-3 text-sm text-slate-600">
+                    <span className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 font-medium text-slate-600">
+                      <Filter size={14} className="text-slate-400" /> Filters
+                    </span>
 
-                  <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2">
+                      <span className="text-xs font-medium uppercase tracking-wide text-slate-400">
+                        Status
+                      </span>
+                      <select
+                        value={statusValue}
+                        onChange={handleStatusChange}
+                        className="min-w-[140px] bg-transparent text-sm text-slate-700 focus:outline-none"
+                      >
+                        {STATUS_OPTIONS.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2">
                       <Calendar size={16} className="text-slate-400" />
                       <DatePicker
                         selected={startDateValue}
@@ -1312,57 +1324,52 @@ const AdminOrdersPage = () => {
                         maxDate={endDateValue || undefined}
                         placeholderText="Start date"
                         isClearable
-                        className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none sm:w-36"
+                        className="w-28 border-none bg-transparent px-0 py-1 text-sm text-slate-600 focus:outline-none focus:ring-0 placeholder:text-slate-400"
+                      />
+                      <span className="text-slate-300">—</span>
+                      <DatePicker
+                        selected={endDateValue}
+                        onChange={handleEndDateChange}
+                        selectsEnd
+                        startDate={startDateValue}
+                        endDate={endDateValue}
+                        minDate={startDateValue || undefined}
+                        placeholderText="End date"
+                        isClearable
+                        className="w-28 border-none bg-transparent px-0 py-1 text-sm text-slate-600 focus:outline-none focus:ring-0 placeholder:text-slate-400"
                       />
                     </div>
-                    <span className="hidden text-slate-400 sm:inline">-</span>
-                    <DatePicker
-                      selected={endDateValue}
-                      onChange={handleEndDateChange}
-                      selectsEnd
-                      startDate={startDateValue}
-                      endDate={endDateValue}
-                      minDate={startDateValue || undefined}
-                      placeholderText="End date"
-                      isClearable
-                      className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none sm:w-36"
-                    />
-                  </div>
 
-                  <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
-                    <input
-                      type="text"
-                      value={minAmountValue}
-                      onChange={(event) =>
-                        handleAmountChange("min", event.target.value)
-                      }
-                      inputMode="decimal"
-                      pattern="[0-9]*"
-                      placeholder="Min amount"
-                      className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none sm:w-28"
-                    />
-                    <span className="hidden text-slate-400 sm:inline">-</span>
-                    <input
-                      type="text"
-                      value={maxAmountValue}
-                      onChange={(event) =>
-                        handleAmountChange("max", event.target.value)
-                      }
-                      inputMode="decimal"
-                      pattern="[0-9]*"
-                      placeholder="Max amount"
-                      className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none sm:w-28"
-                    />
+                    <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2">
+                      <span className="text-xs font-medium uppercase tracking-wide text-slate-400">
+                        Amount
+                      </span>
+                      <input
+                        type="text"
+                        value={minAmountValue}
+                        onChange={(event) =>
+                          handleAmountChange("min", event.target.value)
+                        }
+                        inputMode="decimal"
+                        pattern="[0-9]*"
+                        placeholder="Min"
+                        className="w-24 border-none bg-transparent px-0 py-1 text-sm text-slate-600 focus:outline-none focus:ring-0 placeholder:text-slate-400"
+                      />
+                      <span className="text-slate-300">—</span>
+                      <input
+                        type="text"
+                        value={maxAmountValue}
+                        onChange={(event) =>
+                          handleAmountChange("max", event.target.value)
+                        }
+                        inputMode="decimal"
+                        pattern="[0-9]*"
+                        placeholder="Max"
+                        className="w-24 border-none bg-transparent px-0 py-1 text-sm text-slate-600 focus:outline-none focus:ring-0 placeholder:text-slate-400"
+                      />
+                    </div>
                   </div>
-
-                  <button
-                    type="button"
-                    onClick={handleReset}
-                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 hover:border-blue-200 hover:text-blue-600 sm:w-auto"
-                  >
-                    Reset
-                  </button>
-                </div>
+                </form>
               </div>
 
               <div className="flex flex-col gap-4 p-4">

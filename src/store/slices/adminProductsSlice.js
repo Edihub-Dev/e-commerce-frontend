@@ -8,9 +8,15 @@ import {
 
 const initialFilters = {
   search: "",
+  productId: "",
   category: "",
   status: "",
   stockStatus: "",
+  minPrice: "",
+  maxPrice: "",
+  minStock: "",
+  maxStock: "",
+  isFeatured: "",
   dateRange: {
     startDate: "",
     endDate: "",
@@ -68,16 +74,21 @@ const adminProductsSlice = createSlice({
     toggleSelectAll(state, action) {
       const { selectAll } = action.payload;
       state.selection.allSelected = selectAll;
-      state.selection.selectedIds = selectAll ? state.items.map((item) => item._id) : [];
+      state.selection.selectedIds = selectAll
+        ? state.items.map((item) => item._id)
+        : [];
     },
     toggleSelectRow(state, action) {
       const { id } = action.payload;
       if (state.selection.selectedIds.includes(id)) {
-        state.selection.selectedIds = state.selection.selectedIds.filter((value) => value !== id);
+        state.selection.selectedIds = state.selection.selectedIds.filter(
+          (value) => value !== id
+        );
       } else {
         state.selection.selectedIds.push(id);
       }
-      state.selection.allSelected = state.selection.selectedIds.length === state.items.length;
+      state.selection.allSelected =
+        state.selection.selectedIds.length === state.items.length;
     },
     resetSelection(state) {
       state.selection = { ...initialState.selection };
@@ -107,17 +118,25 @@ const adminProductsSlice = createSlice({
       .addCase(createAdminProductThunk.fulfilled, (state, action) => {
         state.items.unshift(action.payload.data);
         state.meta.total += 1;
-        state.meta.totalPages = Math.max(Math.ceil(state.meta.total / state.meta.limit), 1);
+        state.meta.totalPages = Math.max(
+          Math.ceil(state.meta.total / state.meta.limit),
+          1
+        );
       })
       .addCase(updateAdminProductThunk.fulfilled, (state, action) => {
         const updated = action.payload.data;
-        state.items = state.items.map((item) => (item._id === updated._id ? updated : item));
+        state.items = state.items.map((item) =>
+          item._id === updated._id ? updated : item
+        );
       })
       .addCase(deleteAdminProductThunk.fulfilled, (state, action) => {
         const { _id } = action.payload.data;
         state.items = state.items.filter((item) => item._id !== _id);
         state.meta.total = Math.max(state.meta.total - 1, 0);
-        state.meta.totalPages = Math.max(Math.ceil(state.meta.total / state.meta.limit), 1);
+        state.meta.totalPages = Math.max(
+          Math.ceil(state.meta.total / state.meta.limit),
+          1
+        );
       });
   },
 });

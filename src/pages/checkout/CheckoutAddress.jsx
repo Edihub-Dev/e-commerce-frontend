@@ -21,8 +21,8 @@ import {
 import { toast } from "react-hot-toast";
 import { useAuth } from "../../contexts/AuthContext";
 
-const createInitialFormState = (email = "") => ({
-  fullName: "",
+const createInitialFormState = (email = "", fullName = "") => ({
+  fullName: fullName || "",
   mobile: "",
   email,
   pincode: "",
@@ -41,13 +41,17 @@ const CheckoutAddress = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const customerName = useMemo(
+    () => user?.name || user?.username || user?.fullName || "",
+    [user?.name, user?.username, user?.fullName]
+  );
   const { items } = useSelector((state) => state.checkout);
   const { addresses, loading } = useSelector((state) => state.address);
   const [selectedId, setSelectedId] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [formState, setFormState] = useState(() =>
-    createInitialFormState(user?.email)
+    createInitialFormState(user?.email, customerName)
   );
   const [editingAddressId, setEditingAddressId] = useState(null);
 
@@ -67,6 +71,15 @@ const CheckoutAddress = () => {
       }));
     }
   }, [user?.email]);
+
+  useEffect(() => {
+    if (customerName) {
+      setFormState((prev) => ({
+        ...prev,
+        fullName: prev.fullName || customerName,
+      }));
+    }
+  }, [customerName]);
 
   useEffect(() => {
     const loadAddresses = async () => {
@@ -94,7 +107,7 @@ const CheckoutAddress = () => {
       setShowForm(true);
       setSelectedId(null);
       setEditingAddressId(null);
-      setFormState(createInitialFormState(user?.email));
+      setFormState(createInitialFormState(user?.email, customerName));
     } else if (!selectedId) {
       const defaultAddress = addresses.find((address) => address.isDefault);
       setSelectedId(defaultAddress?._id || addresses[0]._id);
@@ -388,7 +401,7 @@ const CheckoutAddress = () => {
               onClick={() => {
                 setShowForm((prev) => !prev);
                 setEditingAddressId(null);
-                setFormState(createInitialFormState(user?.email));
+                setFormState(createInitialFormState(user?.email, customerName));
               }}
               className="text-sm font-medium text-primary hover:text-primary-dark"
             >
@@ -524,7 +537,9 @@ const CheckoutAddress = () => {
                 type="button"
                 onClick={() => {
                   setShowForm(false);
-                  setFormState(createInitialFormState(user?.email));
+                  setFormState(
+                    createInitialFormState(user?.email, customerName)
+                  );
                 }}
                 className="px-4 py-2 rounded-lg border border-slate-200 text-secondary hover:bg-slate-50"
               >

@@ -341,14 +341,23 @@ const ProductPage = () => {
 
     setSizeError("");
 
-    addItem({
+    const cartProductId =
+      product.id ||
+      product._id ||
+      product.productId ||
+      product.sku ||
+      product.slug;
+
+    const cartItemPayload = {
       ...product,
-      quantity,
+      id: cartProductId || product.id,
       size: selectedSize || undefined,
       image: primaryImage,
       hsnCode: product?.hsnCode,
       gstRate: product?.gstRate,
-    });
+    };
+
+    addItem(cartItemPayload, quantity);
   };
 
   const goToCheckout = () => {

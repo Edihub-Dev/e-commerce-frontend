@@ -12,6 +12,7 @@ const initialFilters = {
     min: "",
     max: "",
   },
+  paymentStatus: "",
 };
 
 const initialSort = {

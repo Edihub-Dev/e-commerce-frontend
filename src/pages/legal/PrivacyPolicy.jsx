@@ -20,89 +20,110 @@ const PrivacyPolicy = () => {
           <h1 className="text-3xl font-semibold text-secondary">
             Privacy Policy
           </h1>
-          <p className="text-sm text-slate-500">
-            Last updated on {new Date().toLocaleDateString("en-IN")}
-          </p>
           <p className="text-base text-slate-600">
-            At MegaMart, we are committed to protecting your personal
-            information. This policy explains how we collect, use, and secure
-            your data when you browse our catalogue, create an account, or place
-            an order.
+            Your trust matters. This notice describes how MegaMart collects,
+            uses, and protects information when you browse products, create an
+            account, place an order, or request a return/replacement.
           </p>
         </header>
 
         <section className="space-y-3">
           <h2 className="text-xl font-semibold text-secondary">
-            Information We Collect
+            Information we collect
           </h2>
-          <p className="text-slate-600">
-            We collect personal details that you provide directly, such as your
-            name, email, phone number, shipping address, GST details (for
-            business customers), and payment preferences. We also collect
-            limited device and usage data to improve performance and diagnose
-            issues.
-          </p>
-        </section>
-
-        <section className="space-y-3">
-          <h2 className="text-xl font-semibold text-secondary">
-            How We Use Your Information
-          </h2>
-          <ul className="list-disc space-y-2 pl-6 text-slate-600">
-            <li>Process and fulfil your orders, returns, and refunds.</li>
+          <ul className="list-disc pl-6 space-y-2 text-slate-600">
             <li>
-              Provide tailored product recommendations and personalised offers.
+              Profile details you provide—name, email, phone number, shipping
+              addresses, and GST information for business buyers.
             </li>
             <li>
-              Communicate important updates regarding your shipments and support
-              requests.
+              Order and support history, including return and replacement
+              interactions, so we can resolve issues faster the next time.
             </li>
-            <li>Comply with taxation, accounting, and legal obligations.</li>
+            <li>
+              Payment method references (tokenised by our gateway) to process
+              transactions. We never store full card numbers.
+            </li>
+            <li>
+              Device, app, and usage data (such as browser type, pages visited,
+              on-site searches) gathered via cookies to improve performance and
+              detect fraud.
+            </li>
           </ul>
         </section>
 
         <section className="space-y-3">
           <h2 className="text-xl font-semibold text-secondary">
-            Data Protection & Sharing
+            How we use your data
+          </h2>
+          <ul className="list-disc pl-6 space-y-2 text-slate-600">
+            <li>
+              Fulfil orders, schedule deliveries, and manage returns or
+              replacements in line with our Return & Replacement Policy.
+            </li>
+            <li>
+              Personalise product recommendations, price alerts, and marketing
+              messages (only when you opt in).
+            </li>
+            <li>
+              Send transactional notifications about order status, pick-up
+              schedules, and support resolutions.
+            </li>
+            <li>
+              Secure the platform, prevent misuse, and comply with
+              record-keeping, taxation, and other legal requirements.
+            </li>
+          </ul>
+        </section>
+
+        <section className="space-y-3">
+          <h2 className="text-xl font-semibold text-secondary">
+            How we protect & share data
           </h2>
           <p className="text-slate-600">
-            We secure your information using industry-standard encryption and
-            access controls. We only share data with trusted logistics partners,
-            payment gateways, and service providers who help us deliver your
-            orders. They are bound by confidentiality and data-processing
-            agreements.
+            We apply encryption, network monitoring, and role-based access to
+            keep your data safe. Information is shared only with verified
+            partners who enable payments, logistics, analytics, or customer
+            support. Each partner is bound by confidentiality agreements and is
+            permitted to use the data solely to serve MegaMart customers.
           </p>
         </section>
 
         <section className="space-y-3">
-          <h2 className="text-xl font-semibold text-secondary">Your Choices</h2>
+          <h2 className="text-xl font-semibold text-secondary">
+            Your controls & choices
+          </h2>
+          <ul className="list-disc pl-6 space-y-2 text-slate-600">
+            <li>
+              Visit <strong>My Profile</strong> to update contact details,
+              addresses, or delete saved payment references.
+            </li>
+            <li>
+              Manage email preferences using the unsubscribe link or the
+              notifications settings in your account.
+            </li>
+            <li>
+              If you need a copy of your data or want us to delete your account,
+              contact us from your registered email for verification.
+            </li>
+            <li>
+              Most browsers allow you to control cookies. Disabling them may
+              impact features like saved carts or personalised suggestions.
+            </li>
+          </ul>
+        </section>
+
+        <section className="space-y-3">
+          <h2 className="text-xl font-semibold text-secondary">Contact us</h2>
           <p className="text-slate-600">
-            You can update or delete your MegaMart account details any time from
-            the My Profile section. To unsubscribe from marketing emails, use
-            the link in the email footer. For data access or deletion requests,
-            please reach out to{" "}
+            Questions about this policy or your information? Email
             <a
               href="mailto:megamart@edihub.in"
-              className="text-primary underline"
+              className="text-primary underline ml-1"
             >
               megamart@edihub.in
             </a>
-            .
-          </p>
-        </section>
-
-        <section className="space-y-3">
-          <h2 className="text-xl font-semibold text-secondary">Contact Us</h2>
-          <p className="text-slate-600">
-            If you have any questions about this Privacy Policy or how MegaMart
-            handles your data, write to us at{" "}
-            <a
-              href="mailto:megamart@edihub.in"
-              className="text-primary underline"
-            >
-              megamart@edihub.in
-            </a>{" "}
-            or call our helpline at +1 202-918-2132.
+            . We respond to privacy requests within 3 business days.
           </p>
         </section>
       </div>

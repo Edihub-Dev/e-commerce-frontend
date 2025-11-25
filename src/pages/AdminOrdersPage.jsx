@@ -478,6 +478,9 @@ const AdminOrdersPage = () => {
 
   const [searchValue, setSearchValue] = useState(filters.search);
   const [statusValue, setStatusValue] = useState(filters.status || "");
+  const [paymentStatusValue, setPaymentStatusValue] = useState(
+    filters.paymentStatus || ""
+  );
   const [startDateValue, setStartDateValue] = useState(() =>
     filters.dateRange?.startDate ? new Date(filters.dateRange.startDate) : null
   );
@@ -533,6 +536,10 @@ const AdminOrdersPage = () => {
   }, [filters.status]);
 
   useEffect(() => {
+    setPaymentStatusValue(filters.paymentStatus || "");
+  }, [filters.paymentStatus]);
+
+  useEffect(() => {
     const normalizedSearch = searchValue.trim();
     const currentFilterValue = (filters.search || "").trim();
     if (normalizedSearch === currentFilterValue) {
@@ -567,6 +574,7 @@ const AdminOrdersPage = () => {
     const params = {
       search: filters.search || undefined,
       status: filters.status || undefined,
+      paymentStatus: filters.paymentStatus || undefined,
       startDate: filters.dateRange?.startDate || undefined,
       endDate: filters.dateRange?.endDate || undefined,
       minAmount: filters.amountRange?.min || undefined,
@@ -582,6 +590,7 @@ const AdminOrdersPage = () => {
     dispatch,
     filters.search,
     filters.status,
+    filters.paymentStatus,
     filters.dateRange?.startDate,
     filters.dateRange?.endDate,
     filters.amountRange?.min,
@@ -674,6 +683,7 @@ const AdminOrdersPage = () => {
     setEndDateValue(null);
     setMinAmountValue("");
     setMaxAmountValue("");
+    setPaymentStatusValue("");
     dispatch(resetFilters());
   };
 
@@ -754,6 +764,12 @@ const AdminOrdersPage = () => {
     const value = event.target.value;
     setStatusValue(value);
     dispatch(setFilters({ status: value }));
+  };
+
+  const handlePaymentStatusChange = (event) => {
+    const value = event.target.value;
+    setPaymentStatusValue(value);
+    dispatch(setFilters({ paymentStatus: value }));
   };
 
   const handleStartDateChange = (date) => {
@@ -1303,13 +1319,29 @@ const AdminOrdersPage = () => {
                       <select
                         value={statusValue}
                         onChange={handleStatusChange}
-                        className="min-w-[140px] bg-transparent text-sm text-slate-700 focus:outline-none"
+                        className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-600 focus:border-blue-400 focus:outline-none"
                       >
                         {STATUS_OPTIONS.map((option) => (
                           <option key={option.value} value={option.value}>
                             {option.label}
                           </option>
                         ))}
+                      </select>
+                    </div>
+
+                    <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2">
+                      <span className="text-xs font-medium uppercase tracking-wide text-slate-400">
+                        Payment
+                      </span>
+                      <select
+                        value={paymentStatusValue}
+                        onChange={handlePaymentStatusChange}
+                        className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-600 focus:border-blue-400 focus:outline-none"
+                      >
+                        <option value="">All payments</option>
+                        <option value="paid">Paid</option>
+                        <option value="pending">Pending</option>
+                        <option value="failed">Failed</option>
                       </select>
                     </div>
 

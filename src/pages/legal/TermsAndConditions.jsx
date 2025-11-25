@@ -20,90 +20,121 @@ const TermsAndConditions = () => {
           <h1 className="text-3xl font-semibold text-secondary">
             Terms & Conditions
           </h1>
-          <p className="text-sm text-slate-500">
-            Last updated on {new Date().toLocaleDateString("en-IN")}
-          </p>
           <p className="text-base text-slate-600">
-            Welcome to MegaMart. By accessing or purchasing through our
-            platform, you agree to the terms outlined below. Please read them
-            carefully to understand your rights and responsibilities as a
-            MegaMart customer.
+            Thanks for shopping with MegaMart. By accessing our website,
+            creating an account, or placing an order, you agree to the following
+            terms that keep the experience safe and transparent for everyone.
           </p>
         </header>
 
         <section className="space-y-3">
           <h2 className="text-xl font-semibold text-secondary">
-            Account & Eligibility
+            Accounts & eligibility
           </h2>
           <p className="text-slate-600">
-            You must be at least 18 years old (or the age of majority in your
-            jurisdiction) to create a MegaMart account. You are responsible for
-            maintaining the confidentiality of your login credentials and for
-            all activities that occur under your account.
+            You must be at least 18 years of age (or the legal age of majority
+            in your region) to register. Keep your login credentials
+            confidential, as you are responsible for all actions that happen
+            through your account. Please notify us immediately if you suspect
+            unauthorised access.
           </p>
         </section>
 
         <section className="space-y-3">
           <h2 className="text-xl font-semibold text-secondary">
-            Pricing & Payment
+            Pricing & payment
           </h2>
           <p className="text-slate-600">
-            Product prices are displayed in Indian Rupees (INR) and are
-            inclusive of applicable taxes unless otherwise stated. We reserve
-            the right to modify prices, promotions, or product availability
-            without advance notice. Payments are processed securely through
-            accredited providers such as Razorpay or PhonePe.
+            Prices shown on MegaMart are in INR and include applicable taxes
+            unless noted otherwise. We may update pricing, promotions, or
+            product availability without prior notice. Payments are processed
+            securely via trusted gateways; we do not store complete card
+            information.
           </p>
         </section>
 
         <section className="space-y-3">
-          <h2 className="text-xl font-semibold text-secondary">Order Policy</h2>
+          <h2 className="text-xl font-semibold text-secondary">
+            Orders & fulfilment
+          </h2>
           <ul className="list-disc pl-6 space-y-2 text-slate-600">
-            <li>Orders are confirmed only after successful payment capture.</li>
             <li>
-              MegaMart may cancel orders that cannot be fulfilled due to stock
-              or quality issues; you will receive a full refund in such cases.
+              Orders are confirmed once payment is captured or COD verification
+              succeeds.
             </li>
             <li>
-              Cash-on-delivery orders are subject to verification and
-              serviceable pin codes.
+              In rare cases where stock or quality checks fail, we will cancel
+              the order and issue store credit or a replacement as per
+              availability.
+            </li>
+            <li>
+              Delivery timelines depend on serviceable pin codes and logistics
+              partner performance; delays will be communicated via email or SMS.
             </li>
           </ul>
         </section>
 
         <section className="space-y-3">
           <h2 className="text-xl font-semibold text-secondary">
-            Intellectual Property
+            Return & replacement policy
           </h2>
           <p className="text-slate-600">
-            All product images, descriptions, brand assets, and trademarks on
-            MegaMart remain the property of their respective owners. You may not
-            copy, reproduce, or distribute any content without written consent.
+            We follow a replacement-first approach. Eligible products can be
+            returned within 7 days of delivery for a like-for-like replacement
+            or MegaMart store credit. Cash refunds to the original payment
+            method are not available. Detailed steps are listed in our Return &
+            Replacement Policy.
           </p>
         </section>
 
         <section className="space-y-3">
           <h2 className="text-xl font-semibold text-secondary">
-            Limitation of Liability
+            Usage guidelines
           </h2>
           <p className="text-slate-600">
-            MegaMart is not liable for indirect or consequential damages arising
-            from the use of our services. Our liability is limited to the amount
-            you paid for the product in dispute.
+            Do not misuse the site by attempting unauthorised access, scraping,
+            or uploading harmful code. Product reviews or questions you post
+            must be respectful, accurate, and free of infringing material. We
+            reserve the right to remove content or suspend accounts that violate
+            these expectations.
           </p>
         </section>
 
         <section className="space-y-3">
-          <h2 className="text-xl font-semibold text-secondary">Contact Us</h2>
+          <h2 className="text-xl font-semibold text-secondary">
+            Intellectual property
+          </h2>
           <p className="text-slate-600">
-            For queries about these terms, write to
+            All text, graphics, logos, and product imagery available on MegaMart
+            are owned by MegaMart or our brand partners. You may not reproduce
+            or reuse any portion without prior written consent from the
+            respective owner.
+          </p>
+        </section>
+
+        <section className="space-y-3">
+          <h2 className="text-xl font-semibold text-secondary">
+            Limitation of liability
+          </h2>
+          <p className="text-slate-600">
+            MegaMart’s total liability for any claim relating to an order is
+            limited to the amount you paid for that order. We are not
+            responsible for indirect, incidental, or consequential damages
+            arising from use of the platform.
+          </p>
+        </section>
+
+        <section className="space-y-3">
+          <h2 className="text-xl font-semibold text-secondary">Contact us</h2>
+          <p className="text-slate-600">
+            Questions about these terms? Email
             <a
               href="mailto:megamart@edihub.in"
               className="text-primary underline ml-1"
             >
               megamart@edihub.in
             </a>
-            , or call our helpline at +1 202-918-2132.
+            .
           </p>
         </section>
       </div>

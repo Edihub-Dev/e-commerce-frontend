@@ -18,59 +18,66 @@ const ReturnPolicy = () => {
         </button>
         <header className="space-y-3">
           <h1 className="text-3xl font-semibold text-secondary">
-            Return Policy
+            Return & Replacement Policy
           </h1>
-          <p className="text-sm text-slate-500">
-            Last updated on {new Date().toLocaleDateString("en-IN")}
-          </p>
           <p className="text-base text-slate-600">
-            We want you to love every product you purchase from MegaMart. If you
-            are not satisfied, review the guidelines below to understand how
-            returns, replacements, and refunds work on our store.
+            We stand behind every order that ships from MegaMart. If something
+            isn’t quite right, we’ll help you send the item back and arrange a
+            replacement or issue store credit so you can try again—no cash
+            refunds or reversals to original payment methods are provided.
           </p>
         </header>
 
         <section className="space-y-3">
-          <h2 className="text-xl font-semibold text-secondary">Eligibility</h2>
+          <h2 className="text-xl font-semibold text-secondary">
+            What qualifies for a return?
+          </h2>
           <ul className="list-disc pl-6 space-y-2 text-slate-600">
-            <li>Return requests must be raised within 7 days of delivery.</li>
             <li>
-              Items must be unused, in their original packaging, and include all
-              accessories or freebies.
+              Submit the return request within 7 days of the delivery date shown
+              in your MegaMart account.
             </li>
             <li>
-              Customized, perishable, or clearance products are non-returnable
-              unless they arrive damaged.
+              The product must be unused, in resalable condition, and include
+              all tags, accessories, manuals, and any bundled freebies.
+            </li>
+            <li>
+              Items marked as final sale, custom-built, or perishable can only
+              be returned if they arrive damaged or incorrect.
             </li>
           </ul>
         </section>
 
         <section className="space-y-3">
           <h2 className="text-xl font-semibold text-secondary">
-            How to Initiate a Return
+            How returns work
           </h2>
           <ol className="list-decimal pl-6 space-y-2 text-slate-600">
-            <li>Go to My Orders and select the item you wish to return.</li>
             <li>
-              Choose the reason for return and upload supporting photos if the
-              product was damaged or defective.
+              Open <strong>My Orders</strong>, choose the product, and tap
+              <em>Request Return</em> with a short note on what went wrong.
             </li>
             <li>
-              Our support team will confirm pick-up details or provide a
-              self-ship address within 24 hours.
+              If the issue is physical damage or a defect, attach 1–2 clear
+              photos so our team can fast-track the review.
+            </li>
+            <li>
+              We’ll share pick-up or self-ship instructions within 24 hours.
+              Self-ship charges are reimbursed as store credit once verified.
             </li>
           </ol>
         </section>
 
         <section className="space-y-3">
           <h2 className="text-xl font-semibold text-secondary">
-            Refunds & Replacements
+            Replacements & Store Credits
           </h2>
           <p className="text-slate-600">
-            Refunds are processed within 5-7 business days after the returned
-            product clears quality checks. The amount is credited to your
-            original payment method or to MegaMart credits based on your
-            preference. Replacements are shipped once availability is confirmed.
+            Once the returned product clears quality checks, we’ll dispatch a
+            like-for-like replacement (subject to availability) or issue
+            MegaMart store credit you can use on future purchases. Store credit
+            is posted within 3 business days of approval. Cash refunds or
+            reversal to the original payment method are not offered.
           </p>
         </section>
 
@@ -83,8 +90,7 @@ const ReturnPolicy = () => {
               className="text-primary underline ml-1"
             >
               megamart@edihub.in
-            </a>{" "}
-            or call our returns desk at +1 202-918-2132.
+            </a>
           </p>
         </section>
       </div>

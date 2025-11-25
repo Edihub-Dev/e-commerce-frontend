@@ -3,7 +3,6 @@ import {
   LayoutDashboard,
   Package,
   ShoppingBag,
-  Layers,
   Users,
   Home,
   MessageCircleQuestion,
@@ -16,7 +15,6 @@ const navItems = [
   { label: "Dashboard", icon: LayoutDashboard, to: "/admin" },
   { label: "Products", icon: Package, to: "/admin/products" },
   { label: "Orders", icon: ShoppingBag, to: "/admin/orders" },
-  { label: "Categories", icon: Layers, to: "/admin/categories" },
   { label: "Customers", icon: Users, to: "/admin/customers" },
   {
     label: "Help & Support",

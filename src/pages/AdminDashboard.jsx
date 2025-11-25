@@ -96,6 +96,13 @@ const AdminDashboard = () => {
       return;
     }
 
+    if (updatedUser.__bulkDelete && Array.isArray(updatedUser.deletedIds)) {
+      setUsers((prev) =>
+        prev.filter((usr) => !updatedUser.deletedIds.includes(usr._id))
+      );
+      return;
+    }
+
     setUsers((prev) =>
       prev.map((usr) =>
         usr._id === updatedUser._id ? { ...usr, ...updatedUser } : usr

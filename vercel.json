@@ -1,17 +1,16 @@
 {
   "functions": {
     "api/**": {
-      "runtime": "nodejs18.x"
+      "runtime": "nodejs20.x"
     }
   },
+  "framework": "vite",
   "installCommand": "npm install --legacy-peer-deps",
   "buildCommand": "npm run build",
   "devCommand": "npm run dev",
-  "framework": "vite",
-  "nodeVersion": "18.x",
   "build": {
     "env": {
-      "NODE_VERSION": "18"
+      "NODE_VERSION": "20"
     }
   }
 }

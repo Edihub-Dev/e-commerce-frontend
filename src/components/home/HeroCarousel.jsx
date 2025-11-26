@@ -145,8 +145,7 @@ const normalizeHeroSlide = (slide, index) => {
 
   const imageUrl = sanitize(slide.imageUrl || slide.spotlightImage || "");
   const backgroundUrl = sanitize(slide.backgroundUrl || slide.background || "");
-  const primaryLabel =
-    sanitize(slide.primaryCta?.label, "Shop Now") || "Shop Now";
+  const primaryLabel = sanitize(slide.primaryCta?.label);
   const primaryHrefRaw = sanitize(slide.primaryCta?.href || "");
   const productUrlFromMetadata = sanitize(
     getMetadataValue(metadata, "productUrl")
@@ -159,17 +158,16 @@ const normalizeHeroSlide = (slide, index) => {
   );
   const overlineSlug = createSlug(slide.overline);
   const titleSlug = createSlug(slide.title);
-  const primaryHref =
-    preferUrl(
-      primaryHrefRaw,
-      productUrlFromMetadata,
-      productSlugFromMetadata &&
-        `/product/${encodeURIComponent(productSlugFromMetadata)}`,
-      productIdFromMetadata &&
-        `/product/${encodeURIComponent(productIdFromMetadata)}`,
-      overlineSlug && `/product/${encodeURIComponent(overlineSlug)}`,
-      titleSlug && `/product/${encodeURIComponent(titleSlug)}`
-    ) || "/shop";
+  const primaryHref = preferUrl(
+    primaryHrefRaw,
+    productUrlFromMetadata,
+    productSlugFromMetadata &&
+      `/product/${encodeURIComponent(productSlugFromMetadata)}`,
+    productIdFromMetadata &&
+      `/product/${encodeURIComponent(productIdFromMetadata)}`,
+    overlineSlug && `/product/${encodeURIComponent(overlineSlug)}`,
+    titleSlug && `/product/${encodeURIComponent(titleSlug)}`
+  );
   const secondaryLabel = sanitize(slide.secondaryCta?.label || "");
   const secondaryHrefRaw = sanitize(slide.secondaryCta?.href || "");
   const categoryUrlFromMetadata = sanitize(
@@ -199,7 +197,7 @@ const normalizeHeroSlide = (slide, index) => {
   return {
     id: slide._id || slide.id || `hero-${index}`,
     overline: sanitize(slide.overline),
-    title: sanitize(slide.title, "Discover More"),
+    title: sanitize(slide.title),
     description: sanitize(slide.description),
     titleColor: sanitizeColor(slide.titleColor),
     overlineColor: sanitizeColor(slide.overlineColor),
@@ -209,10 +207,13 @@ const normalizeHeroSlide = (slide, index) => {
     showTitle: slide.showTitle !== false,
     showOverline: slide.showOverline !== false,
     showDescription: slide.showDescription !== false,
-    primaryCta: {
-      label: primaryLabel,
-      href: primaryHref,
-    },
+    primaryCta:
+      primaryLabel && primaryHref
+        ? {
+            label: primaryLabel,
+            href: primaryHref,
+          }
+        : null,
     secondaryCta: secondaryHref
       ? {
           label: resolvedSecondaryLabel,
@@ -370,10 +371,7 @@ const HeroCarousel = () => {
         >
           {slidesToRender.map((slide) => {
             const backgroundImage = slide.background || slide.spotlightImage;
-            const primaryCta = slide.primaryCta || {
-              label: "Shop Now",
-              href: "/shop",
-            };
+            const primaryCta = slide.primaryCta;
             const secondaryCta = slide.secondaryCta;
             const hasSecondaryCta = Boolean(
               secondaryCta?.label && secondaryCta?.href

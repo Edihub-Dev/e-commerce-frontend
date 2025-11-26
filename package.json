@@ -9,9 +9,7 @@
     "lint": "eslint .",
     "preview": "vite preview"
   },
-  "engines": {
-  "node": "20.x"
-},
+ 
   "dependencies": {
     "@emotion/is-prop-valid": "^1.4.0",
     "@faker-js/faker": "^10.0.0",

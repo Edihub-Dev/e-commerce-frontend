@@ -1,22 +1,9 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Swiper, SwiperSlide } from "swiper/react";
-import { Navigation, Pagination, Autoplay } from "swiper/modules";
+import { Pagination, Autoplay } from "swiper/modules";
 import { ChevronRight } from "lucide-react";
-
-const slides = [
-  {
-    superTitle: "Best Deal Online MST Blockchain Official Polo T-Shirt",
-    title: "T-SHIRT",
-    subTitle: "UP to 80% OFF",
-    image: "/assets/products/WHITE_FRONT.png",
-  },
-  {
-    superTitle: "Latest Collection of MST Blockchain Official Polo T-Shirt",
-    title: "NEW ARRIVALS",
-    subTitle: "Starting from ₹799",
-    image: "/assets/products/WHITE_BACK.png",
-  },
-];
+import { Link } from "react-router-dom";
+import api, { fetchProducts } from "../../utils/api";
 
 const BackgroundRemovedImage = ({ src, threshold = 240, ...props }) => {
   const [processedSrc, setProcessedSrc] = useState(null);
@@ -70,52 +57,408 @@ const BackgroundRemovedImage = ({ src, threshold = 240, ...props }) => {
   return <img src={processedSrc || src} alt="" {...props} />;
 };
 
+const createSlug = (value) => {
+  if (!value) {
+    return "";
+  }
+
+  return value
+    .toString()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/&/g, " and ")
+    .replace(/[^a-zA-Z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .toLowerCase();
+};
+
+const preferUrl = (...values) =>
+  values.reduce((picked, value) => (!picked && value ? value : picked), "");
+
+const productLookupCache = new Map();
+
+const getMetadataValue = (metadata, key) => {
+  if (!metadata) {
+    return "";
+  }
+
+  if (typeof metadata.get === "function") {
+    const value = metadata.get(key);
+    return typeof value === "string"
+      ? value
+      : value != null
+      ? String(value)
+      : "";
+  }
+
+  const raw = metadata[key];
+  if (raw == null) {
+    return "";
+  }
+
+  return typeof raw === "string" ? raw : String(raw);
+};
+
+const fetchProductMatchByName = async (name) => {
+  const key = (name || "").toLowerCase();
+  if (!key) {
+    return null;
+  }
+
+  if (productLookupCache.has(key)) {
+    return productLookupCache.get(key);
+  }
+
+  try {
+    const { data } = await fetchProducts({ search: name, limit: 5 });
+    const exactMatch = data.find(
+      (product) => product?.name?.toLowerCase() === key
+    );
+    const fallback = exactMatch || data[0] || null;
+    productLookupCache.set(key, fallback);
+    return fallback;
+  } catch (error) {
+    console.error("Failed to resolve hero slide product", name, error);
+    productLookupCache.set(key, null);
+    return null;
+  }
+};
+
+const normalizeHeroSlide = (slide, index) => {
+  if (!slide || typeof slide !== "object") {
+    return null;
+  }
+
+  const sanitize = (value, defaultValue = "") =>
+    typeof value === "string" ? value.trim() : defaultValue;
+  const sanitizeColor = (value) => {
+    const trimmed = sanitize(value);
+    return trimmed ? trimmed : undefined;
+  };
+
+  const metadata =
+    slide &&
+    typeof slide.metadata === "object" &&
+    !Array.isArray(slide.metadata)
+      ? slide.metadata
+      : {};
+
+  const imageUrl = sanitize(slide.imageUrl || slide.spotlightImage || "");
+  const backgroundUrl = sanitize(slide.backgroundUrl || slide.background || "");
+  const primaryLabel =
+    sanitize(slide.primaryCta?.label, "Shop Now") || "Shop Now";
+  const primaryHrefRaw = sanitize(slide.primaryCta?.href || "");
+  const productUrlFromMetadata = sanitize(
+    getMetadataValue(metadata, "productUrl")
+  );
+  const productSlugFromMetadata = createSlug(
+    getMetadataValue(metadata, "productSlug")
+  );
+  const productIdFromMetadata = sanitize(
+    getMetadataValue(metadata, "productId")
+  );
+  const overlineSlug = createSlug(slide.overline);
+  const titleSlug = createSlug(slide.title);
+  const primaryHref =
+    preferUrl(
+      primaryHrefRaw,
+      productUrlFromMetadata,
+      productSlugFromMetadata &&
+        `/product/${encodeURIComponent(productSlugFromMetadata)}`,
+      productIdFromMetadata &&
+        `/product/${encodeURIComponent(productIdFromMetadata)}`,
+      overlineSlug && `/product/${encodeURIComponent(overlineSlug)}`,
+      titleSlug && `/product/${encodeURIComponent(titleSlug)}`
+    ) || "/shop";
+  const secondaryLabel = sanitize(slide.secondaryCta?.label || "");
+  const secondaryHrefRaw = sanitize(slide.secondaryCta?.href || "");
+  const categoryUrlFromMetadata = sanitize(
+    getMetadataValue(metadata, "categoryUrl")
+  );
+  const categorySlugFromMetadata = createSlug(
+    getMetadataValue(metadata, "categorySlug") ||
+      getMetadataValue(metadata, "category") ||
+      getMetadataValue(metadata, "categoryName") ||
+      ""
+  );
+  const productCategoryFromMetadata = createSlug(
+    getMetadataValue(metadata, "productCategory") || ""
+  );
+  const secondaryHref = preferUrl(
+    secondaryHrefRaw,
+    categoryUrlFromMetadata,
+    categorySlugFromMetadata &&
+      `/category/${encodeURIComponent(categorySlugFromMetadata)}`,
+    productCategoryFromMetadata &&
+      `/category/${encodeURIComponent(productCategoryFromMetadata)}`,
+    titleSlug && `/category/${encodeURIComponent(titleSlug)}`
+  );
+  const resolvedSecondaryLabel =
+    secondaryLabel || (secondaryHref ? "View All" : "");
+
+  return {
+    id: slide._id || slide.id || `hero-${index}`,
+    overline: sanitize(slide.overline),
+    title: sanitize(slide.title, "Discover More"),
+    description: sanitize(slide.description),
+    titleColor: sanitizeColor(slide.titleColor),
+    overlineColor: sanitizeColor(slide.overlineColor),
+    descriptionColor: sanitizeColor(slide.descriptionColor),
+    background: backgroundUrl || imageUrl,
+    spotlightImage: imageUrl,
+    showTitle: slide.showTitle !== false,
+    showOverline: slide.showOverline !== false,
+    showDescription: slide.showDescription !== false,
+    primaryCta: {
+      label: primaryLabel,
+      href: primaryHref,
+    },
+    secondaryCta: secondaryHref
+      ? {
+          label: resolvedSecondaryLabel,
+          href: secondaryHref,
+        }
+      : null,
+    showPrimaryCta: slide.showPrimaryCta !== false,
+    showSecondaryCta: slide.showSecondaryCta !== false,
+    order: Number.isFinite(Number(slide.order)) ? Number(slide.order) : index,
+    isActive: slide.isActive !== false,
+  };
+};
+
 const HeroCarousel = () => {
+  const [remoteSlides, setRemoteSlides] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchSlides = async () => {
+      try {
+        setIsLoading(true);
+        const response = await api.get("/hero-carousel");
+        const records = Array.isArray(response?.data?.data)
+          ? response.data.data
+          : [];
+
+        const resolvedSlides = await Promise.all(
+          records.map(async (slide, index) => {
+            if (!slide || typeof slide !== "object") {
+              return null;
+            }
+
+            const normalized = normalizeHeroSlide(slide, index);
+            if (!normalized || !normalized.isActive || !normalized.background) {
+              return null;
+            }
+
+            const referenceName =
+              normalized.overline?.trim() || normalized.title?.trim();
+
+            if (!referenceName || normalized.primaryCta?.href !== "/shop") {
+              return normalized;
+            }
+
+            const matchedProduct = await fetchProductMatchByName(referenceName);
+            const resolvedProductIdRaw =
+              matchedProduct?.slug ||
+              matchedProduct?.id ||
+              matchedProduct?.mongoId ||
+              matchedProduct?._id;
+            const resolvedProductId = resolvedProductIdRaw
+              ? resolvedProductIdRaw.toString()
+              : "";
+
+            if (!matchedProduct || !resolvedProductId) {
+              return normalized;
+            }
+
+            const next = { ...normalized };
+            next.primaryCta = {
+              label: normalized.primaryCta?.label || "Shop Now",
+              href: `/product/${encodeURIComponent(resolvedProductId)}`,
+            };
+
+            if (!normalized.secondaryCta?.href) {
+              const categorySource =
+                matchedProduct.category ||
+                matchedProduct.brand ||
+                normalized.title;
+              const categorySlug = createSlug(categorySource);
+              if (categorySlug) {
+                next.secondaryCta = {
+                  label: normalized.secondaryCta?.label || "View All",
+                  href: `/category/${encodeURIComponent(categorySlug)}`,
+                };
+              }
+            }
+
+            return next;
+          })
+        );
+
+        if (isMounted) {
+          const filteredSlides = resolvedSlides
+            .filter(Boolean)
+            .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+          setRemoteSlides(filteredSlides);
+        }
+      } catch (error) {
+        if (isMounted) {
+          setRemoteSlides([]);
+        }
+        console.error("Failed to load hero carousel slides", error);
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    fetchSlides();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const slidesToRender = useMemo(() => remoteSlides, [remoteSlides]);
+
+  if (!slidesToRender.length) {
+    return null;
+  }
+
   return (
-    <div className="container mx-auto px-4 mt-3 md:mt-5">
-      <Swiper
-        modules={[Navigation, Pagination, Autoplay]}
-        spaceBetween={30}
-        slidesPerView={1}
-        navigation
-        pagination={{ clickable: true }}
-        loop={true}
-        autoplay={{
-          delay: 5000,
-          disableOnInteraction: false,
-          reverseDirection: false,
-        }}
-        className="rounded-lg hero-slider"
-      >
-        {slides.map((slide, index) => (
-          <SwiperSlide key={index} className="bg-secondary rounded-lg">
-            <div className="flex flex-col md:flex-row items-center justify-between p-5 md:p-8 h-[320px] md:h-[240px]">
-              <div className="text-white text-center md:text-left z-10 mb-6 md:mb-0">
-                <p className="text-sm md:text-lg font-semibold">
-                  {slide.superTitle}
-                </p>
-                <h1 className="text-3xl md:text-5xl font-bold my-2">
-                  {slide.title}
-                </h1>
-                <p className="text-sm md:text-lg font-semibold">
-                  {slide.subTitle}
-                </p>
-                <button className="mt-4 bg-primary text-white font-bold py-3 px-5 rounded-md hover:bg-primary-dark transition-colors flex items-center mx-auto md:mx-0">
-                  Shop Now <ChevronRight size={20} className="ml-2" />
-                </button>
-              </div>
-              <div className="relative w-full md:w-1/2 h-full flex items-center justify-center">
-                <BackgroundRemovedImage
-                  src={slide.image}
-                  alt={slide.title}
-                  className="max-h-full max-w-full object-contain z-10"
-                />
-              </div>
-            </div>
-          </SwiperSlide>
-        ))}
-      </Swiper>
-    </div>
+    <section
+      className="relative overflow-hidden bg-slate-950  w-screen"
+      style={{ left: "50%", transform: "translateX(-50%)" }}
+    >
+      <div className="w-full">
+        <Swiper
+          modules={[Pagination, Autoplay]}
+          spaceBetween={0}
+          slidesPerView={1}
+          pagination={{ clickable: true }}
+          loop={true}
+          autoplay={{
+            delay: 5000,
+            disableOnInteraction: false,
+            reverseDirection: false,
+          }}
+          onSwiper={(instance) => {
+            if (!instance?.autoplay?.start) {
+              return;
+            }
+            try {
+              const maybePromise = instance.autoplay.start();
+              if (maybePromise && typeof maybePromise.catch === "function") {
+                maybePromise.catch(() => {
+                  /* Ignore autoplay promise rejection (common on mobile) */
+                });
+              }
+            } catch (_error) {
+              /* Ignore autoplay bootstrap errors */
+            }
+          }}
+          onAutoplay={(_, event) => {
+            if (event && typeof event.preventDefault === "function") {
+              event.preventDefault();
+            }
+          }}
+          className="hero-slider h-full"
+          style={{ minHeight: "82vh", width: "100%" }}
+        >
+          {slidesToRender.map((slide) => {
+            const backgroundImage = slide.background || slide.spotlightImage;
+            const primaryCta = slide.primaryCta || {
+              label: "Shop Now",
+              href: "/shop",
+            };
+            const secondaryCta = slide.secondaryCta;
+            const hasSecondaryCta = Boolean(
+              secondaryCta?.label && secondaryCta?.href
+            );
+            const showPrimary = slide.showPrimaryCta !== false;
+            const showSecondary =
+              slide.showSecondaryCta !== false && hasSecondaryCta;
+
+            return (
+              <SwiperSlide
+                key={slide.id}
+                className="relative flex w-full"
+                style={{ minHeight: "82vh", width: "100%" }}
+              >
+                <div
+                  className="relative flex h-full w-full items-center justify-center overflow-hidden"
+                  style={{ minHeight: "82vh" }}
+                >
+                  <div
+                    className="absolute inset-0 bg-cover"
+                    style={{
+                      backgroundImage: backgroundImage
+                        ? `url(${backgroundImage})`
+                        : undefined,
+                      backgroundPosition: "center 20%",
+                    }}
+                  />
+                  <div className="absolute inset-0 bg-slate-950/55" />
+                  <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(148,163,184,0.18),transparent_70%)]" />
+
+                  <div className="relative z-10 mx-auto flex max-w-3xl flex-col items-center gap-6 px-4 pt-10 text-center text-white sm:px-6 md:pt-14">
+                    {slide.showOverline !== false && slide.overline && (
+                      <p
+                        className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-200/80"
+                        style={{ color: slide.overlineColor || undefined }}
+                      >
+                        {slide.overline}
+                      </p>
+                    )}
+                    {slide.showTitle !== false && (
+                      <h1
+                        className="text-4xl font-semibold leading-tight tracking-tight text-white sm:text-5xl md:text-6xl"
+                        style={{ color: slide.titleColor || undefined }}
+                      >
+                        {slide.title}
+                      </h1>
+                    )}
+                    {slide.showDescription !== false && slide.description && (
+                      <p
+                        className="max-w-2xl text-base text-slate-200 sm:text-lg"
+                        style={{ color: slide.descriptionColor || undefined }}
+                      >
+                        {slide.description}
+                      </p>
+                    )}
+
+                    {(showPrimary || showSecondary) && (
+                      <div className="flex flex-col gap-4 sm:flex-row">
+                        {showPrimary && (
+                          <Link
+                            to={primaryCta.href}
+                            className="inline-flex items-center justify-center gap-2 rounded-full bg-[#008ECC] px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-[#008ECC]/30 transition hover:bg-[#009ee3]"
+                          >
+                            {primaryCta.label}
+                            <ChevronRight size={18} />
+                          </Link>
+                        )}
+                        {showSecondary && (
+                          <Link
+                            to={secondaryCta.href}
+                            className="inline-flex items-center justify-center gap-2 rounded-full bg-[#008ECC] px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-[#008ECC]/20 transition hover:bg-[#009ee3]"
+                          >
+                            {secondaryCta.label}
+                          </Link>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </SwiperSlide>
+            );
+          })}
+        </Swiper>
+      </div>
+    </section>
   );
 };
 

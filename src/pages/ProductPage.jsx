@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useMemo } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import React, { useState, useEffect, useMemo, useRef } from "react";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import { getProductById } from "../utils/api";
 import { useCart } from "../contexts/CartContext";
@@ -33,12 +33,15 @@ import {
 const ProductPage = () => {
   const { id } = useParams();
   const [product, setProduct] = useState(null);
+  const [errorMessage, setErrorMessage] = useState("");
   const [showAllReviews, setShowAllReviews] = useState(false);
   const [quantity, setQuantity] = useState(1);
   const [selectedSize, setSelectedSize] = useState("");
   const [sizeError, setSizeError] = useState("");
   const { addItem } = useCart();
   const navigate = useNavigate();
+  const location = useLocation();
+  const fromCartSeedRef = useRef(false);
   const dispatch = useAppDispatch();
 
   const LOCKED_AVAILABILITY_STATUSES = ["out_of_stock", "preorder"];
@@ -60,6 +63,90 @@ const ProductPage = () => {
       (Number(product?.reviews ?? reviewsList.length ?? 0) || 0) *
       (Number(product?.rating ?? 0) || 0),
   };
+
+  const normalizedSizes = useMemo(() => {
+    if (!product?.showSizes) {
+      return [];
+    }
+
+    const STANDARD_SIZE_ORDER = ["XS", "S", "M", "L", "XL", "XXL", "3XL"];
+    const orderMap = STANDARD_SIZE_ORDER.reduce((acc, label, index) => {
+      acc[label] = index;
+      return acc;
+    }, {});
+
+    const entries = Array.isArray(product?.sizes) ? product.sizes : [];
+    const seen = new Set();
+    const normalized = entries
+      .map((entry) => {
+        const label = entry?.label?.toString().trim().toUpperCase();
+        if (!label || seen.has(label)) {
+          return null;
+        }
+        seen.add(label);
+        const stock = Math.max(Number(entry?.stock ?? 0), 0);
+        const isAvailable = Boolean(entry?.isAvailable ?? true) && stock > 0;
+        return {
+          label,
+          isAvailable,
+          stock,
+        };
+      })
+      .filter(Boolean);
+
+    return normalized.sort((a, b) => {
+      const aOrder = orderMap[a.label] ?? STANDARD_SIZE_ORDER.length;
+      const bOrder = orderMap[b.label] ?? STANDARD_SIZE_ORDER.length;
+      if (aOrder === bOrder) {
+        return a.label.localeCompare(b.label);
+      }
+      return aOrder - bOrder;
+    });
+  }, [product]);
+
+  const productStock = useMemo(() => {
+    const rawStock = Number(product?.stock ?? 0);
+    return Number.isFinite(rawStock) ? Math.max(rawStock, 0) : 0;
+  }, [product]);
+
+  useEffect(() => {
+    if (fromCartSeedRef.current) {
+      return;
+    }
+
+    if (!product) {
+      return;
+    }
+
+    const navState = location.state;
+    if (!navState?.fromCart) {
+      return;
+    }
+
+    const requestedQuantity = Number(navState.quantity);
+    const sanitizedQuantity = Number.isFinite(requestedQuantity)
+      ? Math.max(1, Math.floor(requestedQuantity))
+      : 1;
+
+    if (product?.showSizes && navState.size) {
+      const requestedSize = navState.size.toString().trim().toUpperCase();
+      const sizeMatch = normalizedSizes.find(
+        (size) => size.label === requestedSize
+      );
+
+      if (sizeMatch) {
+        setSelectedSize(sizeMatch.label);
+        const cappedQuantity = sizeMatch.stock > 0 ? sizeMatch.stock : 1;
+        setQuantity(Math.max(1, Math.min(cappedQuantity, sanitizedQuantity)));
+        fromCartSeedRef.current = true;
+        return;
+      }
+    }
+
+    const cappedQuantity = productStock > 0 ? productStock : sanitizedQuantity;
+    setQuantity(Math.max(1, Math.min(cappedQuantity, sanitizedQuantity)));
+    fromCartSeedRef.current = true;
+  }, [location.state, normalizedSizes, product, productStock]);
 
   const averageRating = Number(reviewsSummary.average ?? 0);
   const totalReviews = Number(
@@ -152,51 +239,6 @@ const ProductPage = () => {
     if (availabilityStatus === "low_stock") return "text-amber-500";
     return "text-green-500";
   })();
-
-  const normalizedSizes = useMemo(() => {
-    if (!product?.showSizes) {
-      return [];
-    }
-
-    const STANDARD_SIZE_ORDER = ["XS", "S", "M", "L", "XL", "XXL", "3XL"];
-    const orderMap = STANDARD_SIZE_ORDER.reduce((acc, label, index) => {
-      acc[label] = index;
-      return acc;
-    }, {});
-
-    const entries = Array.isArray(product?.sizes) ? product.sizes : [];
-    const seen = new Set();
-    const normalized = entries
-      .map((entry) => {
-        const label = entry?.label?.toString().trim().toUpperCase();
-        if (!label || seen.has(label)) {
-          return null;
-        }
-        seen.add(label);
-        const stock = Math.max(Number(entry?.stock ?? 0), 0);
-        const isAvailable = Boolean(entry?.isAvailable ?? true) && stock > 0;
-        return {
-          label,
-          isAvailable,
-          stock,
-        };
-      })
-      .filter(Boolean);
-
-    return normalized.sort((a, b) => {
-      const aOrder = orderMap[a.label] ?? STANDARD_SIZE_ORDER.length;
-      const bOrder = orderMap[b.label] ?? STANDARD_SIZE_ORDER.length;
-      if (aOrder === bOrder) {
-        return a.label.localeCompare(b.label);
-      }
-      return aOrder - bOrder;
-    });
-  }, [product]);
-
-  const productStock = useMemo(() => {
-    const rawStock = Number(product?.stock ?? 0);
-    return Number.isFinite(rawStock) ? Math.max(rawStock, 0) : 0;
-  }, [product]);
 
   const selectedSizeInfo = useMemo(() => {
     if (!selectedSize) {
@@ -407,26 +449,29 @@ const ProductPage = () => {
         const fetched = response?.data;
 
         if (!isCancelled && fetched) {
+          const normalizedFeatures = Array.isArray(fetched.features)
+            ? fetched.features.filter(Boolean)
+            : [];
+          const normalizedReviewsList = Array.isArray(fetched.reviewsList)
+            ? fetched.reviewsList
+            : [];
+          const normalizedReviewsSummary = fetched.reviewsSummary || {
+            totalReviews:
+              Number(fetched.reviews ?? fetched.ratings?.totalReviews ?? 0) ||
+              0,
+            average:
+              Number(fetched.rating ?? fetched.ratings?.average ?? 0) || 0,
+            totalScore: Number(fetched.ratings?.totalScore ?? 0) || 0,
+          };
+
           setProduct({
             ...fetched,
-            features: fetched.features || [
-              "Material: 100% Polyester",
-              "Color: White with Red Printed MST Logo",
-              "Fit Type: Regular / Athletic",
-            ],
-            reviewsList: Array.isArray(fetched.reviewsList)
-              ? fetched.reviewsList
-              : [],
-            reviewsSummary: fetched.reviewsSummary || {
-              totalReviews:
-                Number(fetched.reviews ?? fetched.ratings?.totalReviews ?? 0) ||
-                0,
-              average:
-                Number(fetched.rating ?? fetched.ratings?.average ?? 0) || 0,
-              totalScore: Number(fetched.ratings?.totalScore ?? 0) || 0,
-            },
+            features: normalizedFeatures,
+            reviewsList: normalizedReviewsList,
+            reviewsSummary: normalizedReviewsSummary,
           });
           setShowAllReviews(false);
+          setErrorMessage("");
           return;
         }
       } catch (error) {
@@ -434,48 +479,9 @@ const ProductPage = () => {
       }
 
       if (!isCancelled) {
-        setProduct({
-          id,
-          name: "MST Blockchain Official Polo T-Shirt (White Edition)",
-          image: "/assets/products/WHITE_FRONT.png",
-          description:
-            "Show your pride in the MST Blockchain community with this premium white polo t-shirt — crafted for comfort, style, and durability. Designed with a sleek printed MST logo, this shirt blends casual elegance with professional appeal. Whether you’re attending a blockchain event, trading from your desk, or relaxing on the weekend, this polo is your go-to merch.",
-          price: 90199,
-          originalPrice: 109999,
-          discount: 18,
-          saveAmount: 19800,
-          rating: 4.5,
-          reviews: 24,
-          availabilityStatus: "in_stock",
-          stock: 120,
-          showSizes: true,
-          sizes: [
-            { label: "S", isAvailable: true },
-            { label: "M", isAvailable: true },
-            { label: "L", isAvailable: true },
-            { label: "XL", isAvailable: true },
-            { label: "XXL", isAvailable: false },
-          ],
-          reviewsList: [
-            {
-              reviewerName: "John D.",
-              rating: 5,
-              review: "Excellent quality and very comfortable to wear!",
-              ratedAt: new Date().toISOString(),
-            },
-          ],
-          reviewsSummary: {
-            totalReviews: 24,
-            average: 4.5,
-            totalScore: 108,
-          },
-          features: [
-            "Material: 100% Polyester",
-            "Color: White with Red Printed MST Logo",
-            "Fit Type: Regular / Athletic",
-          ],
-        });
+        setProduct(null);
         setShowAllReviews(false);
+        setErrorMessage("Product not found or currently unavailable.");
       }
     };
 
@@ -495,7 +501,11 @@ const ProductPage = () => {
   if (!product) {
     return (
       <div className="container mx-auto px-4 py-16 text-center">
-        <div className="animate-pulse">Loading product details...</div>
+        {errorMessage ? (
+          <p className="text-sm font-medium text-red-500">{errorMessage}</p>
+        ) : (
+          <div className="animate-pulse">Loading product details...</div>
+        )}
       </div>
     );
   }

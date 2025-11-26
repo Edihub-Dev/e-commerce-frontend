@@ -15,7 +15,7 @@ const SectionHeader = ({ title, linkTo, linkText = "View All" }) => {
       {linkTo && (
         <Link
           to={linkTo}
-          className="flex items-center font-semibold hover:underline"
+          className="hidden items-center font-semibold hover:underline sm:flex"
         >
           <span style={{ color: "#000000" }}>{linkText}</span>
           <ChevronRight size={20} className="ml-1 text-primary" />

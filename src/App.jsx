@@ -35,6 +35,7 @@ import AdminAddProductPage from "./pages/AdminAddProductPage";
 import AdminOrdersPage from "./pages/AdminOrdersPage";
 import AdminOrderDetailsPage from "./pages/AdminOrderDetailsPage";
 import AdminHelpSupportPage from "./pages/AdminHelpSupportPage";
+import AdminHeroCarouselPage from "./pages/AdminHeroCarouselPage";
 import AdminCustomersPage from "./pages/AdminCustomersPage";
 import ProtectedRoute from "./components/ProtectedRoute";
 
@@ -155,6 +156,14 @@ function App() {
           element={
             <ProtectedRoute requireAdmin>
               <AdminHelpSupportPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/hero-carousel"
+          element={
+            <ProtectedRoute requireAdmin>
+              <AdminHeroCarouselPage />
             </ProtectedRoute>
           }
         />

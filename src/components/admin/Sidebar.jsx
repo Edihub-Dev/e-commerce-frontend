@@ -15,6 +15,7 @@ const navItems = [
   { label: "Dashboard", icon: LayoutDashboard, to: "/admin" },
   { label: "Products", icon: Package, to: "/admin/products" },
   { label: "Orders", icon: ShoppingBag, to: "/admin/orders" },
+  { label: "Hero Carousel", icon: Home, to: "/admin/hero-carousel" },
   { label: "Customers", icon: Users, to: "/admin/customers" },
   {
     label: "Help & Support",

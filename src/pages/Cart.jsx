@@ -18,7 +18,13 @@ const Cart = () => {
     if (!item?.id) return;
 
     navigate(`/product/${item.id}`, {
-      state: { source: "cart-item-checkout", fromCart: true },
+      state: {
+        source: "cart",
+        fromCart: true,
+        quantity: item.quantity,
+        size: item.size,
+        productId: item.product || item.id,
+      },
     });
   };
 

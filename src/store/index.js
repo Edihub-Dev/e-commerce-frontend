@@ -4,6 +4,7 @@ import addressReducer from "../store/slices/addressSlice";
 import ordersReducer from "../store/slices/ordersSlice";
 import adminProductsReducer from "../store/slices/adminProductsSlice";
 import adminOrdersReducer from "../store/slices/adminOrdersSlice";
+import adminHeroCarouselReducer from "../store/slices/adminHeroCarouselSlice";
 
 const loadCheckoutState = () => {
   if (typeof window === "undefined") {
@@ -63,6 +64,7 @@ const store = configureStore({
     orders: ordersReducer,
     adminProducts: adminProductsReducer,
     adminOrders: adminOrdersReducer,
+    adminHeroCarousel: adminHeroCarouselReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

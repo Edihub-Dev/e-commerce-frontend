@@ -18,36 +18,20 @@ export default defineConfig({
   root: "./",
   build: {
     outDir: "dist",
-    chunkSizeWarningLimit: 2000, // Allow up to 2MB chunks before warning
+    chunkSizeWarningLimit: 1500, // Increase limit to 1.5MB
     rollupOptions: {
       output: {
-        manualChunks(id) {
-          if (!id.includes("node_modules")) {
-            return;
-          }
-
-          const chunkMatchMap = [
-            { match: "node_modules/react-dom", name: "react" },
-            { match: "node_modules/react", name: "react" },
-            {
-              match: "node_modules/@tanstack/react-query",
-              name: "react-query",
-            },
-            { match: "node_modules/framer-motion", name: "framer-motion" },
-            { match: "node_modules/swiper", name: "swiper" },
-            { match: "node_modules/xlsx", name: "xlsx" },
-            { match: "node_modules/date-fns", name: "date-fns" },
-            { match: "node_modules/lucide-react", name: "lucide-react" },
-            { match: "node_modules/axios", name: "axios" },
-            { match: "node_modules/lodash", name: "lodash" },
-          ];
-
-          const found = chunkMatchMap.find(({ match }) => id.includes(match));
-          if (found) {
-            return found.name;
-          }
-
-          return "vendor";
+        manualChunks: {
+          react: ["react", "react-dom"],
+          vendor: [
+            "axios",
+            "lodash.debounce",
+            "date-fns",
+            "swiper",
+            "xlsx",
+            "@tanstack/react-query",
+            "framer-motion",
+          ],
         },
       },
     },

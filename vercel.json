@@ -4,10 +4,6 @@
       "runtime": "nodejs20"
     }
   },
-  "framework": "vite",
-  "installCommand": "npm install --legacy-peer-deps",
-  "buildCommand": "npm run build",
-  "devCommand": "npm run dev",
   "build": {
     "env": {
       "NODE_VERSION": "20"

@@ -1,12 +1,4 @@
-/* -------------------------------------------------------------
-   ECOMMERCE FRONTEND API SERVICE (FULLY FIXED)
-   All backend routes now correctly use /api prefix
-------------------------------------------------------------- */
-
 import axios from "axios";
-
-/* ---------------------- S3 URL Helpers ---------------------- */
-
 const S3_BUCKET = import.meta.env.VITE_S3_BUCKET || "ecom-mega-mart";
 const S3_REGION = import.meta.env.VITE_S3_REGION || "ap-south-1";
 const DEFAULT_S3_BASE = `https://${S3_BUCKET}.s3.${S3_REGION}.amazonaws.com`;
@@ -53,7 +45,7 @@ const ensureS3Url = (value) => {
 /* ---------------------- Axios Instance ---------------------- */
 
 const api = axios.create({
-  baseURL: (import.meta.env.VITE_API_URL || "http://localhost:3001") + "/api",
+  baseURL: (import.meta.env.VITE_API_URL || "http://localhost:5173") + "/api",
 });
 
 api.interceptors.request.use((config) => {

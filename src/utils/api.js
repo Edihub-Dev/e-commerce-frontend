@@ -1,37 +1,11 @@
-// import axios from 'axios';
-
-// const api = axios.create({
-//   baseURL: import.meta.env.VITE_API_URL,
-// });
-
-// // On a real app, you would use an interceptor to add the auth token
-// /*
-// api.interceptors.request.use((config) => {
-//   const token = localStorage.getItem('authToken');
-//   if (token) {
-//     config.headers.Authorization = `Bearer ${token}`;
-//   }
-//   return config;
-// });
-// */
-
-// // --- MOCKED API CALLS ---
-// // Replace these with actual API calls to your backend
-
-// import { allProducts, smartphoneDeals, topCategories, topBrands, dailyEssentials } from '../data/mock';
-
-// const mockRequest = (data, delay = 500) =>
-//   new Promise(resolve => setTimeout(() => resolve({ data }), delay));
-
-// export const getSmartphoneDeals = () => mockRequest(smartphoneDeals);
-// export const getTopCategories = () => mockRequest(topCategories);
-// export const getTopBrands = ().model-output {
-//   padding: 1rem;
-//   border-radius: 0.5rem;
-//   background-color: #f0f0f0;
-// }
+/* -------------------------------------------------------------
+   ECOMMERCE FRONTEND API SERVICE (FULLY FIXED)
+   All backend routes now correctly use /api prefix
+------------------------------------------------------------- */
 
 import axios from "axios";
+
+/* ---------------------- S3 URL Helpers ---------------------- */
 
 const S3_BUCKET = import.meta.env.VITE_S3_BUCKET || "ecom-mega-mart";
 const S3_REGION = import.meta.env.VITE_S3_REGION || "ap-south-1";
@@ -41,63 +15,45 @@ const S3_PUBLIC_URL = (
   import.meta.env.VITE_S3_PUBLIC_ENDPOINT ||
   DEFAULT_S3_BASE
 ).replace(/\/$/, "");
+
 const LEGACY_HOST = `${S3_BUCKET}.s3.amazonaws.com`;
 const LEGACY_PATH_HOST = `s3.${S3_REGION}.amazonaws.com`;
 const GLOBAL_PATH_HOST = "s3.amazonaws.com";
 
 const ensureS3Url = (value) => {
-  if (!value || typeof value !== "string") {
-    return value;
-  }
+  if (!value || typeof value !== "string") return value;
 
   if (value.startsWith("http")) {
     try {
       const url = new URL(value);
       const pathname = url.pathname?.replace(/^\/+/, "");
 
-      if (!pathname) {
-        return `${S3_PUBLIC_URL}/`;
-      }
+      if (!pathname) return `${S3_PUBLIC_URL}/`;
 
-      if (url.hostname === LEGACY_HOST) {
+      if (url.hostname === LEGACY_HOST)
         return `${S3_PUBLIC_URL}/${pathname}`;
-      }
 
-      if (
-        url.hostname === LEGACY_PATH_HOST &&
-        pathname.startsWith(`${S3_BUCKET}/`)
-      ) {
+      if (url.hostname === LEGACY_PATH_HOST && pathname.startsWith(`${S3_BUCKET}/`))
         return `${S3_PUBLIC_URL}/${pathname.slice(S3_BUCKET.length + 1)}`;
-      }
 
-      if (
-        url.hostname === GLOBAL_PATH_HOST &&
-        pathname.startsWith(`${S3_BUCKET}/`)
-      ) {
+      if (url.hostname === GLOBAL_PATH_HOST && pathname.startsWith(`${S3_BUCKET}/`))
         return `${S3_PUBLIC_URL}/${pathname.slice(S3_BUCKET.length + 1)}`;
-      }
 
       return value;
-    } catch (_error) {
+    } catch {
       return value;
     }
   }
 
-  if (value.startsWith("data:")) {
-    return value;
-  }
+  if (value.startsWith("data:") || value.startsWith("blob:")) return value;
 
-  if (value.startsWith("blob:")) {
-    return value;
-  }
-
-  const sanitized = value.replace(/^\/+/, "");
-  return `${S3_PUBLIC_URL}/${sanitized}`;
+  return `${S3_PUBLIC_URL}/${value.replace(/^\/+/, "")}`;
 };
 
-// Create Axios instance with base URL from environment
+/* ---------------------- Axios Instance ---------------------- */
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || "http://localhost:3001/api",
+  baseURL: (import.meta.env.VITE_API_URL || "http://localhost:3001") + "/api",
 });
 
 api.interceptors.request.use((config) => {
@@ -110,44 +66,20 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-const extractPayload = (response, fallbackMessage) => {
-  const payload = response?.data;
-  if (!payload) {
-    throw new Error(fallbackMessage);
-  }
-  if (payload.success === false) {
-    throw new Error(payload.message || fallbackMessage);
-  }
-  return payload;
+/* ---------------------- Helper Functions ---------------------- */
+
+const extractPayload = (res, msg) => {
+  if (!res?.data) throw new Error(msg);
+  if (res.data.success === false) throw new Error(res.data.message || msg);
+  return res.data;
 };
 
-const withApiHandling = async (requestFn, fallbackMessage) => {
+const withApi = async (fn, msg) => {
   try {
-    const response = await requestFn();
-    return extractPayload(response, fallbackMessage);
+    return extractPayload(await fn(), msg);
   } catch (error) {
-    const message =
-      error?.response?.data?.message || error?.message || fallbackMessage;
-    throw new Error(message);
+    throw new Error(error?.response?.data?.message || error.message || msg);
   }
-};
-
-const ensurePriceFields = (product = {}) => {
-  const resolvedPrice = Number(product.price ?? 0);
-  const resolvedOriginal = Number(
-    product.originalPrice ?? product.price ?? product.costPrice ?? resolvedPrice
-  );
-  const price = resolvedPrice || resolvedOriginal;
-  const originalPrice = resolvedOriginal || price;
-  const discountPercentage =
-    product.discountPercentage ??
-    (originalPrice > price
-      ? Math.round(((originalPrice - price) / originalPrice) * 100)
-      : 0);
-  const saveAmount =
-    product.saveAmount ?? (discountPercentage > 0 ? originalPrice - price : 0);
-
-  return { price, originalPrice, discountPercentage, saveAmount };
 };
 
 const normalizeSizes = (value) =>
@@ -155,265 +87,158 @@ const normalizeSizes = (value) =>
     ? value
         .map((entry) => {
           const label = entry?.label?.toString().trim();
-          if (!label) {
-            return null;
-          }
-          const stock = Math.max(Number(entry?.stock ?? 0), 0);
+          if (!label) return null;
           return {
             label,
             isAvailable: Boolean(entry?.isAvailable ?? true),
-            stock,
+            stock: Math.max(Number(entry?.stock ?? 0), 0),
           };
         })
         .filter(Boolean)
     : [];
 
-const mapProductCard = (product = {}) => {
-  const { price, originalPrice, discountPercentage, saveAmount } =
-    ensurePriceFields(product);
+/* ---------------------- Product Mappers ---------------------- */
 
-  const gallery = Array.isArray(product.gallery)
-    ? product.gallery.map((entry) => ensureS3Url(entry))
-    : [];
-  const primaryImage = ensureS3Url(
-    product.thumbnail || product.image || gallery[0] || ""
+const ensurePriceFields = (product = {}) => {
+  const price = Number(product.price ?? 0);
+  const original = Number(
+    product.originalPrice ??
+      product.price ??
+      product.costPrice ??
+      price
   );
 
-  const keyFeatures = Array.isArray(product.keyFeatures)
-    ? product.keyFeatures
-        .map((feature) => feature?.toString().trim())
-        .filter(Boolean)
-    : [];
+  return {
+    price: price || original,
+    originalPrice: original || price,
+    discountPercentage:
+      product.discountPercentage ??
+      (original > price
+        ? Math.round(((original - price) / original) * 100)
+        : 0),
+    saveAmount:
+      product.saveAmount ??
+      (original > price ? original - price : 0),
+  };
+};
 
-  const rawReviews = product.reviews ?? product.ratings?.totalReviews ?? 0;
-  const rawRating = product.rating ?? product.ratings?.average ?? 0;
-  const normalizedReviews = Number.isFinite(Number(rawReviews))
-    ? Number(rawReviews)
-    : 0;
-  const normalizedRating = normalizedReviews > 0 ? Number(rawRating) || 0 : 0;
+const mapProductCard = (product = {}) => {
+  const prices = ensurePriceFields(product);
 
   return {
     id: product.slug || product._id,
     slug: product.slug || "",
-    mongoId: product._id,
-    name: product.name || "Unnamed Product",
+    name: product.name || "Untitled Product",
     description: product.shortDescription || "",
-    image: primaryImage,
-    gallery,
-    price,
-    originalPrice,
-    discount: discountPercentage,
-    saveAmount,
-    rating: normalizedRating,
-    reviews: normalizedReviews,
-    availabilityStatus: product.availabilityStatus,
+    price: prices.price,
+    originalPrice: prices.originalPrice,
+    discount: prices.discountPercentage,
+    saveAmount: prices.saveAmount,
+    image: ensureS3Url(product.thumbnail || product.image),
+    gallery: (product.gallery || []).map((g) => ensureS3Url(g)),
+    rating: Number(product.rating || 0),
+    reviews: Number(product.reviews || 0),
     brand: product.brand || "",
     category: product.category || "",
-    categoryPriority: product.categoryPriority || "P5",
-    currency: product.currency || "INR",
-    keyFeatures,
     sizes: normalizeSizes(product.sizes),
     showSizes: Boolean(product.showSizes),
   };
 };
 
-const mapProductDetail = (product = {}) => {
-  const card = mapProductCard(product);
-  const keyFeatures = Array.isArray(product.keyFeatures)
-    ? product.keyFeatures
-        .map((feature) => feature?.toString().trim())
-        .filter(Boolean)
-    : card.keyFeatures || [];
-  const gallery = Array.isArray(product.gallery)
-    ? product.gallery.map((entry) => ensureS3Url(entry))
-    : card.gallery || [];
-  const images = Array.isArray(product.images)
-    ? product.images.map((entry) => ensureS3Url(entry))
-    : [];
-  const variants = Array.isArray(product.variants)
-    ? product.variants.map((variant) => ({
-        ...variant,
-        imageUrl: ensureS3Url(variant?.imageUrl),
-      }))
-    : [];
-  return {
-    ...card,
-    description: product.description || card.description,
-    shortDescription: product.shortDescription || card.description,
-    gallery,
-    images,
-    thumbnail: ensureS3Url(product.thumbnail) || card.image,
-    metadata: product.metadata || {},
-    attributes: product.attributes || {},
-    variants,
-    stock: product.stock ?? 0,
-    keyFeatures,
-    features: keyFeatures,
-    sizes: card.sizes,
-    showSizes: card.showSizes,
-    categoryPriority: card.categoryPriority,
-    reviewsList: Array.isArray(product.reviewsList) ? product.reviewsList : [],
-    reviewsSummary: product.reviewsSummary || {
-      totalReviews: card.reviews ?? 0,
-      average: card.rating ?? 0,
-      totalScore: (card.reviews ?? 0) * ((card.rating ?? 0) || 0),
-    },
-  };
-};
+const mapProductDetail = (product = {}) => ({
+  ...mapProductCard(product),
+  description: product.description,
+  longDescription: product.description,
+  metadata: product.metadata || {},
+  images: (product.images || []).map((i) => ensureS3Url(i)),
+  variants: (product.variants || []).map((v) => ({
+    ...v,
+    imageUrl: ensureS3Url(v.imageUrl),
+  })),
+});
 
-const decodeSlug = (value = "") =>
-  String(value).replace(/-/g, " ").replace(/_/g, " ").trim();
+/* ---------------------- Product API ---------------------- */
 
-export const fetchProducts = async (params = {}) => {
-  const payload = await withApiHandling(
+export const fetchProducts = (params = {}) =>
+  withApi(
     () => api.get("/products", { params }),
-    "Failed to fetch products"
+    "Failed to load products"
   );
 
-  return {
-    data: Array.isArray(payload.data) ? payload.data.map(mapProductCard) : [],
-    meta: payload.meta || {},
-  };
-};
-
-export const getAllProducts = (params = {}) => fetchProducts(params);
-
-export const getSmartphoneDeals = (params = {}) =>
-  fetchProducts({ isFeatured: true, ...params });
-
-export const getProductsByBrand = (slug, params = {}) =>
-  fetchProducts({ brand: decodeSlug(slug), ...params });
-
-export const getProductsByCategory = (slug, params = {}) =>
-  fetchProducts({ category: decodeSlug(slug), ...params });
-
-export const getProductById = async (idOrSlug) => {
-  const payload = await withApiHandling(
-    () => api.get(`/products/${idOrSlug}`),
-    "Failed to fetch product"
+export const getProductById = (id) =>
+  withApi(
+    () => api.get(`/products/${id}`),
+    "Failed to load product details"
   );
 
-  return {
-    data: mapProductDetail(payload.data || {}),
-  };
-};
+export const getProductsByCategory = (slug) =>
+  fetchProducts({ category: slug });
 
-export const requestPasswordReset = async ({ email, newPassword }) => {
-  try {
-    const response = await api.post("/auth/password-reset/request", {
-      email,
-      newPassword,
-    });
-    return response.data;
-  } catch (error) {
-    const message =
-      error.response?.data?.message || "Failed to request password reset";
-    throw new Error(message);
-  }
-};
+export const getProductsByBrand = (slug) =>
+  fetchProducts({ brand: slug });
 
-export const verifyPasswordResetOtp = async ({ email, otp }) => {
-  try {
-    const response = await api.post("/auth/password-reset/verify", {
-      email,
-      otp,
-    });
-    return response.data;
-  } catch (error) {
-    const message =
-      error.response?.data?.message || "Failed to verify reset code";
-    throw new Error(message);
-  }
-};
+export const getSmartphoneDeals = () =>
+  fetchProducts({ isFeatured: true });
 
-export const verifyEmailOtp = async ({ email, otp }) => {
-  try {
-    const response = await api.post("/auth/verify-email", { email, otp });
-    return response.data;
-  } catch (error) {
-    const message = error.response?.data?.message || "Failed to verify email";
-    throw new Error(message);
-  }
-};
+/* ---------------------- Hero Carousel & Categories ---------------------- */
 
-export const resendVerificationOtp = async ({ email }) => {
-  try {
-    const response = await api.post("/auth/verify-email/resend", { email });
-    return response.data;
-  } catch (error) {
-    const message =
-      error.response?.data?.message || "Failed to resend verification code";
-    throw new Error(message);
-  }
-};
+export const getHeroCarousel = () =>
+  withApi(
+    () => api.get("/hero-carousel"),
+    "Failed to load hero slides"
+  );
+
+export const getCategories = () =>
+  withApi(
+    () => api.get("/categories"),
+    "Failed to load categories"
+  );
+
+/* ---------------------- Orders ---------------------- */
+
+export const createOrder = (payload) =>
+  api.post("/orders/create", payload).then((res) => res.data);
+
+export const fetchMyOrders = () =>
+  api.get("/orders/my").then((res) => res.data);
+
+export const fetchOrderById = (id) =>
+  api.get(`/orders/${id}`).then((res) => res.data);
+
+/* ---------------------- Payments ---------------------- */
+
+export const createPhonePePayment = (payload) =>
+  api.post("/payments/create", payload).then((res) => res.data);
+
+export const fetchPaymentStatus = (id) =>
+  api.get(`/payments/status/${id}`).then((res) => res.data);
+
+/* ---------------------- User Address ---------------------- */
+
+export const fetchAddresses = () =>
+  api.get("/user/address/get").then((res) => res.data);
+
+export const addAddress = (payload) =>
+  api.post("/user/address/add", payload).then((res) => res.data);
+
+export const updateAddress = (id, payload) =>
+  api.patch(`/user/address/update/${id}`, payload).then((res) => res.data);
+
+export const deleteAddress = (id) =>
+  api.delete(`/user/address/remove/${id}`).then((res) => res.data);
+
+/* ---------------------- Auth ---------------------- */
+
+export const verifyEmailOtp = (data) =>
+  api.post("/auth/verify-email", data).then((res) => res.data);
+
+export const resendVerificationOtp = (data) =>
+  api.post("/auth/verify-email/resend", data).then((res) => res.data);
+
+export const requestPasswordReset = (data) =>
+  api.post("/auth/password-reset/request", data).then((res) => res.data);
+
+export const verifyPasswordResetOtp = (data) =>
+  api.post("/auth/password-reset/verify", data).then((res) => res.data);
 
 export default api;
-export { withApiHandling };
-
-export const fetchAddresses = async () => {
-  const response = await api.get("/user/address/get");
-  return response.data;
-};
-
-export const addAddress = async (payload) => {
-  const response = await api.post("/user/address/add", payload);
-  return response.data;
-};
-
-export const updateAddress = async (addressId, payload) => {
-  const response = await api.patch(
-    `/user/address/update/${addressId}`,
-    payload
-  );
-  return response.data;
-};
-
-export const deleteAddress = async (addressId) => {
-  const response = await api.delete(`/user/address/remove/${addressId}`);
-  return response.data;
-};
-
-export const createOrder = async (payload) => {
-  const response = await api.post("/orders/create", payload);
-  return response.data;
-};
-
-export const createPhonePePayment = async (payload) => {
-  const response = await api.post("/payments/create", payload);
-  return response.data;
-};
-
-export const fetchPaymentStatus = async (transactionId) => {
-  const response = await api.get(`/payments/status/${transactionId}`);
-  return response.data;
-};
-
-export const fetchMyOrders = async () => {
-  const response = await api.get("/orders/my");
-  return response.data;
-};
-
-export const fetchOrderById = async (orderId) => {
-  const response = await api.get(`/orders/${orderId}`);
-  return response.data;
-};
-
-export const submitReplacementRequest = async (orderId, payload) => {
-  const response = await api.post(`/orders/${orderId}/replacement`, payload);
-  return response.data;
-};
-
-export const adminUpdateReplacementRequest = async (orderId, payload) => {
-  const response = await api.patch(`/orders/${orderId}/replacement`, payload);
-  return response.data;
-};
-
-export const updateOrder = async (orderId, payload) => {
-  const response = await api.patch(`/orders/${orderId}`, payload);
-  return response.data;
-};
-
-export const rateOrderItem = async (orderId, payload) => {
-  const response = await api.post(`/orders/${orderId}/rate`, payload);
-  return response.data;
-};

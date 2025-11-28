@@ -941,41 +941,6 @@ const CheckoutPayment = () => {
               </div>
             </div>
 
-            <div>
-              <h4 className="text-sm font-semibold text-secondary">
-                Items ({orderItems.length})
-              </h4>
-              <div className="mt-3 space-y-3">
-                {orderItems.slice(0, 4).map((item, index) => (
-                  <div
-                    key={`${item.name}-${index}`}
-                    className="flex items-start justify-between gap-3 rounded-xl border border-slate-100 bg-slate-50/60 p-3"
-                  >
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-secondary">
-                        {item.name}
-                      </p>
-                      <p className="text-xs text-medium-text">
-                        Qty {item.quantity}
-                        {item.size ? ` · Size ${item.size}` : ""}
-                      </p>
-                    </div>
-                    <span className="text-sm font-semibold text-secondary">
-                      {formatCurrency(
-                        (item.price || 0) * item.quantity,
-                        resolvedTotals.currency
-                      )}
-                    </span>
-                  </div>
-                ))}
-              </div>
-              {orderItems.length > 4 && (
-                <p className="mt-2 text-xs text-medium-text">
-                  + {orderItems.length - 4} more item(s)
-                </p>
-              )}
-            </div>
-
             <div className="rounded-2xl bg-primary/5 p-4 text-sm text-medium-text">
               All card and UPI transactions on MegaMart are 100% secure and
               encrypted.

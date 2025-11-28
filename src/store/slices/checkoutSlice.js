@@ -14,6 +14,8 @@ const initialState = {
     discount: 0,
     total: 0,
     currency: "INR",
+    baseSubtotal: 0,
+    baseTotal: 0,
   },
 };
 

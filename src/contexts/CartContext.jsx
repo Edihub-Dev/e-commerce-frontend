@@ -80,6 +80,14 @@ export const CartProvider = ({ children }) => {
         ? product.size.trim()
         : product?.size ?? undefined;
 
+    const mongoIdRegex = /^[a-f\d]{24}$/i;
+    const rawProductId =
+      product?.mongoId || product?._id || product?.product || product?.id;
+    const normalizedProductId =
+      typeof rawProductId === "string" && mongoIdRegex.test(rawProductId)
+        ? rawProductId
+        : undefined;
+
     setCartItems((prevItems) => {
       const existingItem = prevItems.find((item) => {
         const sameId = item.id === product.id;
@@ -105,6 +113,10 @@ export const CartProvider = ({ children }) => {
         quantity,
         size: variantSize,
       };
+
+      if (normalizedProductId) {
+        nextItem.product = normalizedProductId;
+      }
 
       if (hsnCode) {
         nextItem.hsnCode = hsnCode;

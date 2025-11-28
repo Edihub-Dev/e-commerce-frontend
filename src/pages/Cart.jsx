@@ -23,15 +23,25 @@ const Cart = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
-  const normalizedCartItems = React.useMemo(
-    () =>
-      cartItems.map((item) => ({
+  const normalizedCartItems = React.useMemo(() => {
+    const mongoIdRegex = /^[a-f\d]{24}$/i;
+
+    return cartItems.map((item) => {
+      const candidateId =
+        item.product || item.mongoId || item._id || item.id || item.slug;
+      const normalizedProductId =
+        typeof candidateId === "string" && mongoIdRegex.test(candidateId)
+          ? candidateId
+          : undefined;
+
+      return {
         ...item,
+        product: normalizedProductId || item.product,
         quantity: Number(item.quantity) || 1,
         price: Number(item.price) || 0,
-      })),
-    [cartItems]
-  );
+      };
+    });
+  }, [cartItems]);
 
   const handleProceedToCheckout = () => {
     if (!normalizedCartItems.length) {

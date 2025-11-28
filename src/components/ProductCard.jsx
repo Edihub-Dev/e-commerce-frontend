@@ -29,6 +29,9 @@ const ProductCard = ({ product }) => {
     });
   };
 
+  const displayImage =
+    product?.thumbnail || product?.image || product?.gallery?.[0];
+
   return (
     <motion.div
       className="bg-white border border-gray-200 rounded-lg overflow-hidden group flex flex-col h-full hover:shadow-xl transition-all duration-300 hover:border-primary/20 w-full"
@@ -50,8 +53,7 @@ const ProductCard = ({ product }) => {
         <div className="relative w-full pt-[100%] overflow-hidden">
           <div className="absolute inset-0 flex items-center justify-center p-2 sm:p-3 md:p-4">
             <img
-              src={product.image}
-              crossOrigin="anonymous"
+              src={displayImage}
               alt={product.name}
               className="w-full h-full object-contain transition-transform duration-500 group-hover:scale-110"
               loading="lazy"

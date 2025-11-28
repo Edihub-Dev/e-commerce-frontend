@@ -477,20 +477,9 @@ const CheckoutPayment = () => {
       setIsProcessing(true);
       setPollingError(null);
 
-      const paymentItems = orderItems.map(
-        ({ product, name, image, price, quantity, size }) => ({
-          product,
-          name,
-          image,
-          price,
-          quantity,
-          size,
-        })
-      );
-
       const paymentPayload = {
         paymentMethod: selectedMethod,
-        items: paymentItems,
+        items: orderItems,
         pricing: {
           ...pricingPayload,
           subtotal: resolvedTotals.subtotal,

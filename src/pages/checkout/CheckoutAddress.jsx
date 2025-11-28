@@ -37,6 +37,146 @@ const createInitialFormState = (email = "", fullName = "") => ({
   isGeoVerified: false,
 });
 
+const MOBILE_REGEX = /^[6-9]\d{9}$/;
+const PINCODE_REGEX = /^[1-9]\d{5}$/;
+const LOCATION_REGEX = /^[A-Za-z\s.'-]{2,}$/;
+
+const normalizeLocation = (value = "") =>
+  value.toString().trim().toLowerCase().replace(/\s+/g, " ");
+
+const verifyAddressWithPostalApi = async ({ pincode, state, city }) => {
+  try {
+    const trimmedPincode = String(pincode || "").trim();
+    const response = await fetch(
+      `https://api.postalpincode.in/pincode/${encodeURIComponent(
+        trimmedPincode
+      )}`
+    );
+
+    if (!response.ok) {
+      throw new Error("Unable to reach postal validation service.");
+    }
+
+    const data = await response.json();
+    const result = Array.isArray(data) ? data[0] : null;
+
+    if (!result || result.Status !== "Success" || !result.PostOffice?.length) {
+      return {
+        success: false,
+        message: "Pincode is invalid or currently not serviceable.",
+      };
+    }
+
+    const normalizedState = normalizeLocation(state);
+    const normalizedCity = normalizeLocation(city);
+
+    const matchedOffice = result.PostOffice.find((office) => {
+      const officeState = normalizeLocation(office.State);
+      const officeDistrict = normalizeLocation(office.District);
+      const officeName = normalizeLocation(office.Name);
+
+      return (
+        officeState === normalizedState &&
+        (officeDistrict === normalizedCity || officeName === normalizedCity)
+      );
+    });
+
+    if (!matchedOffice) {
+      const suggestion = result.PostOffice[0];
+      return {
+        success: false,
+        message: `City/State do not match this PIN code. Try "${
+          suggestion?.District || suggestion?.Name || ""
+        }, ${suggestion?.State || ""}" for PIN ${trimmedPincode}.`,
+      };
+    }
+
+    return {
+      success: true,
+      data: {
+        state: matchedOffice.State,
+        city: matchedOffice.District || matchedOffice.Name,
+        postOffice: matchedOffice.Name,
+      },
+    };
+  } catch (error) {
+    return {
+      success: false,
+      message: error.message || "Failed to validate address with map service.",
+    };
+  }
+};
+
+const fetchGeoCoordinates = async ({ city, state, pincode }) => {
+  try {
+    const query = encodeURIComponent(
+      `${pincode || ""} ${city || ""} ${state || ""} India`
+    );
+    const response = await fetch(
+      `https://nominatim.openstreetmap.org/search?format=json&limit=1&addressdetails=1&countrycodes=in&q=${query}`,
+      {
+        headers: {
+          Accept: "application/json",
+        },
+      }
+    );
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const results = await response.json();
+    if (!Array.isArray(results) || !results.length) {
+      return null;
+    }
+
+    const bestMatch = results[0];
+    const latitude = Number(bestMatch.lat);
+    const longitude = Number(bestMatch.lon);
+
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+      return null;
+    }
+
+    return {
+      latitude,
+      longitude,
+      formattedAddress: bestMatch.display_name,
+    };
+  } catch (_error) {
+    return null;
+  }
+};
+
+const validateAddressForm = (formState) => {
+  const errors = [];
+
+  const mobile = String(formState.mobile || "").trim();
+  if (!MOBILE_REGEX.test(mobile)) {
+    errors.push("Enter a valid 10-digit mobile number starting with 6-9.");
+  }
+
+  const pincode = String(formState.pincode || "").trim();
+  if (!PINCODE_REGEX.test(pincode)) {
+    errors.push("Enter a valid 6-digit pincode.");
+  }
+
+  const state = String(formState.state || "").trim();
+  if (!LOCATION_REGEX.test(state)) {
+    errors.push("Enter a valid state name using only letters.");
+  }
+
+  const city = String(formState.city || "").trim();
+  if (!LOCATION_REGEX.test(city)) {
+    errors.push("Enter a valid city name using only letters.");
+  }
+
+  return {
+    isValid: errors.length === 0,
+    errors,
+  };
+};
+
 const CheckoutAddress = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -151,6 +291,36 @@ const CheckoutAddress = () => {
     };
 
     try {
+      const validation = validateAddressForm(formState);
+      if (!validation.isValid) {
+        validation.errors.forEach((message) => toast.error(message));
+        setSubmitting(false);
+        return;
+      }
+
+      const mapValidation = await verifyAddressWithPostalApi(formState);
+      if (!mapValidation.success) {
+        toast.error(mapValidation.message);
+        setSubmitting(false);
+        return;
+      }
+
+      payload.state = mapValidation.data.state;
+      payload.city = mapValidation.data.city;
+
+      const geoCoordinates = await fetchGeoCoordinates({
+        city: payload.city,
+        state: payload.state,
+        pincode: payload.pincode,
+      });
+
+      if (geoCoordinates) {
+        payload.latitude = geoCoordinates.latitude;
+        payload.longitude = geoCoordinates.longitude;
+        payload.formattedAddress = geoCoordinates.formattedAddress;
+        payload.isGeoVerified = true;
+      }
+
       let response;
       const sanitizedPayload = { ...payload };
       sanitizedPayload.email =

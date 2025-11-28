@@ -273,20 +273,8 @@ const ProductPage = () => {
     );
 
     if (!isCurrentValid) {
-      const fallback =
-        normalizedSizes.find((size) => size.isAvailable) || normalizedSizes[0];
-      setSelectedSize(fallback?.label || "");
-      if (fallback) {
-        setQuantity((prevQuantity) => {
-          const fallbackStock = Math.max(Number(fallback.stock ?? 0), 0);
-          if (fallbackStock > 0) {
-            return Math.max(1, Math.min(prevQuantity, fallbackStock));
-          }
-          return 1;
-        });
-      } else {
-        setQuantity(1);
-      }
+      setSelectedSize("");
+      setQuantity(1);
       setSizeError("");
       return;
     }
@@ -350,6 +338,11 @@ const ProductPage = () => {
 
   const handleAddToCart = () => {
     if (isPurchaseDisabled) {
+      return;
+    }
+
+    if (product?.showSizes && !selectedSize) {
+      setSizeError("Please select a size before adding to cart.");
       return;
     }
 

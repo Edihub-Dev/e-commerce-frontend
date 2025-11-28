@@ -3,29 +3,60 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useCart } from "../contexts/CartContext";
 import { Link, useNavigate } from "react-router-dom";
 import { Plus, Minus, Trash2, ShoppingCart as CartIcon } from "lucide-react";
+import { useDispatch } from "react-redux";
 import {
   pageVariants,
   staggerContainer,
   staggerItem,
   buttonHover,
 } from "../utils/animations";
+import {
+  resetCheckout,
+  setCheckoutItems,
+  setCheckoutTotals,
+  setCheckoutStep,
+} from "../store/slices/checkoutSlice";
 
 const Cart = () => {
-  const { cartItems, updateQuantity, removeItem, cartCount } = useCart();
+  const { cartItems, updateQuantity, removeItem, cartCount, cartTotal } =
+    useCart();
   const navigate = useNavigate();
+  const dispatch = useDispatch();
 
-  const handleCheckoutItem = (item) => {
-    if (!item?.id) return;
+  const normalizedCartItems = React.useMemo(
+    () =>
+      cartItems.map((item) => ({
+        ...item,
+        quantity: Number(item.quantity) || 1,
+        price: Number(item.price) || 0,
+      })),
+    [cartItems]
+  );
 
-    navigate(`/product/${item.id}`, {
-      state: {
-        source: "cart",
-        fromCart: true,
-        quantity: item.quantity,
-        size: item.size,
-        productId: item.product || item.id,
-      },
-    });
+  const handleProceedToCheckout = () => {
+    if (!normalizedCartItems.length) {
+      return;
+    }
+
+    dispatch(resetCheckout());
+    dispatch(setCheckoutItems(normalizedCartItems));
+    dispatch(
+      setCheckoutTotals({
+        subtotal: normalizedCartItems.reduce(
+          (sum, item) => sum + item.price * item.quantity,
+          0
+        ),
+        shippingFee: 0,
+        taxAmount: 0,
+        discount: 0,
+        total: normalizedCartItems.reduce(
+          (sum, item) => sum + item.price * item.quantity,
+          0
+        ),
+      })
+    );
+    dispatch(setCheckoutStep("order"));
+    navigate("/checkout/order");
   };
 
   if (cartCount === 0) {
@@ -160,23 +191,23 @@ const Cart = () => {
                     })()}
                   </div>
 
-                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-2 py-1 shadow-sm">
+                  <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="inline-flex items-center gap-3 rounded-full border border-slate-200 bg-white px-3 py-1.5 shadow-sm">
                       <button
                         onClick={() =>
-                          updateQuantity(item.id, item.quantity - 1)
+                          updateQuantity(item.id, item.quantity - 1, item.size)
                         }
                         className="rounded-full p-1.5 transition hover:bg-slate-100"
                         aria-label="Decrease quantity"
                       >
                         <Minus size={16} />
                       </button>
-                      <span className="w-8 text-center text-sm font-semibold text-slate-700">
+                      <span className="min-w-[2rem] text-center text-sm font-semibold text-slate-700">
                         {item.quantity}
                       </span>
                       <button
                         onClick={() =>
-                          updateQuantity(item.id, item.quantity + 1)
+                          updateQuantity(item.id, item.quantity + 1, item.size)
                         }
                         className="rounded-full p-1.5 transition hover:bg-slate-100"
                         aria-label="Increase quantity"
@@ -185,14 +216,14 @@ const Cart = () => {
                       </button>
                     </div>
 
-                    <p className="text-right text-base font-semibold text-slate-900 sm:text-lg">
+                    <p className="text-base font-semibold text-slate-900 sm:text-right sm:text-lg">
                       ₹{(item.price * item.quantity).toLocaleString()}
                     </p>
                   </div>
 
                   <div className="flex flex-col gap-3 border-t border-slate-200 pt-3 sm:flex-row sm:items-center sm:justify-between">
                     <motion.button
-                      onClick={() => removeItem(item.id)}
+                      onClick={() => removeItem(item.id, item.size)}
                       className="inline-flex items-center gap-2 text-sm font-medium text-slate-500 transition hover:text-rose-500"
                       whileHover={{ scale: 1.03 }}
                       whileTap={{ scale: 0.97 }}
@@ -200,23 +231,47 @@ const Cart = () => {
                     >
                       <Trash2 size={18} /> Remove
                     </motion.button>
-
-                    <motion.button
-                      onClick={() => handleCheckoutItem(item)}
-                      className="inline-flex items-center justify-center rounded-full bg-primary px-5 py-2 text-sm font-semibold text-white shadow-md transition hover:bg-primary-dark"
-                      variants={buttonHover}
-                      whileHover="hover"
-                      whileTap="tap"
-                      type="button"
-                    >
-                      Proceed to Checkout
-                    </motion.button>
                   </div>
                 </div>
               </div>
             </motion.div>
           ))}
         </AnimatePresence>
+      </motion.div>
+
+      <motion.div
+        className="mt-8 rounded-3xl border border-slate-200 bg-white/95 p-6 shadow-sm backdrop-blur-sm"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.3, type: "spring", stiffness: 140 }}
+      >
+        <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="text-center sm:text-left">
+            <p className="text-xs font-semibold tracking-[0.2em] text-slate-500">
+              ORDER SUMMARY
+            </p>
+            <p className="mt-1 text-3xl font-semibold text-secondary">
+              ₹{cartTotal.toLocaleString()}
+            </p>
+            <p className="mt-1 text-xs text-slate-400 sm:hidden">
+              Taxes and shipping calculated at checkout.
+            </p>
+          </div>
+
+          <motion.button
+            onClick={handleProceedToCheckout}
+            className="inline-flex w-full items-center justify-center rounded-2xl bg-primary px-6 py-4 text-sm font-semibold text-white shadow-md transition hover:bg-primary-dark sm:w-auto sm:rounded-full"
+            variants={buttonHover}
+            whileHover="hover"
+            whileTap="tap"
+            type="button"
+          >
+            Proceed to Checkout
+          </motion.button>
+        </div>
+        <p className="mt-3 hidden text-xs text-slate-400 sm:block">
+          Taxes and shipping will be calculated at checkout.
+        </p>
       </motion.div>
     </motion.div>
   );

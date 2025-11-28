@@ -14,6 +14,21 @@ const ProductCard = ({ product }) => {
     navigate(`/product/${product.id}`);
   };
 
+  const handleAddToCart = () => {
+    if (!product?.id) return;
+
+    if (product?.showSizes) {
+      navigate(`/product/${product.id}`);
+      return;
+    }
+
+    addItem({
+      ...product,
+      hsnCode: product?.hsnCode,
+      gstRate: product?.gstRate,
+    });
+  };
+
   return (
     <motion.div
       className="bg-white border border-gray-200 rounded-lg overflow-hidden group flex flex-col h-full hover:shadow-xl transition-all duration-300 hover:border-primary/20 w-full"
@@ -80,13 +95,7 @@ const ProductCard = ({ product }) => {
           )}
           <div className="flex flex-col xs:flex-row gap-2 w-full">
             <motion.button
-              onClick={() =>
-                addItem({
-                  ...product,
-                  hsnCode: product?.hsnCode,
-                  gstRate: product?.gstRate,
-                })
-              }
+              onClick={handleAddToCart}
               className="w-full xs:flex-1 bg-primary/10 text-primary font-medium py-2 px-2 text-sm rounded-md hover:bg-primary hover:text-white transition-colors duration-200 whitespace-nowrap flex items-center justify-center min-h-[36px]"
               variants={buttonHover}
               whileHover="hover"

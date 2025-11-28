@@ -75,12 +75,21 @@ export const CartProvider = ({ children }) => {
       product?.gstRate !== undefined && product?.gstRate !== null
         ? Number(product.gstRate)
         : undefined;
+    const variantSize =
+      typeof product?.size === "string" && product.size.trim().length
+        ? product.size.trim()
+        : product?.size ?? undefined;
 
     setCartItems((prevItems) => {
-      const existingItem = prevItems.find((item) => item.id === product.id);
+      const existingItem = prevItems.find((item) => {
+        const sameId = item.id === product.id;
+        const sameSize = (item.size ?? null) === (variantSize ?? null);
+        return sameId && sameSize;
+      });
       if (existingItem) {
         return prevItems.map((item) =>
-          item.id === product.id
+          item.id === product.id &&
+          (item.size ?? null) === (variantSize ?? null)
             ? {
                 ...item,
                 quantity: item.quantity + quantity,
@@ -94,6 +103,7 @@ export const CartProvider = ({ children }) => {
       const nextItem = {
         ...product,
         quantity,
+        size: variantSize,
       };
 
       if (hsnCode) {
@@ -108,20 +118,26 @@ export const CartProvider = ({ children }) => {
     toast.success(`${product.name} added to cart!`, { autoClose: 1000 });
   };
 
-  const removeItem = (productId) => {
+  const removeItem = (productId, size) => {
     setCartItems((prevItems) =>
-      prevItems.filter((item) => item.id !== productId)
+      prevItems.filter((item) => {
+        const sameId = item.id === productId;
+        const sameSize = (item.size ?? null) === (size ?? null);
+        return !(sameId && sameSize);
+      })
     );
     toast.info(`Item removed from cart.`, { autoClose: 1000 });
   };
 
-  const updateQuantity = (productId, quantity) => {
+  const updateQuantity = (productId, quantity, size) => {
     if (quantity <= 0) {
-      removeItem(productId);
+      removeItem(productId, size);
     } else {
       setCartItems((prevItems) =>
         prevItems.map((item) =>
-          item.id === productId ? { ...item, quantity } : item
+          item.id === productId && (item.size ?? null) === (size ?? null)
+            ? { ...item, quantity }
+            : item
         )
       );
     }

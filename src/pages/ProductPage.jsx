@@ -400,6 +400,43 @@ const ProductPage = () => {
       return;
     }
 
+    if (product?.showSizes) {
+      if (!selectedSize) {
+        setSizeError("Please select a size before continuing to checkout.");
+        return;
+      }
+
+      if (
+        selectedSizeInfo &&
+        (selectedSizeInfo.stock <= 0 || !selectedSizeInfo.isAvailable)
+      ) {
+        setSizeError(
+          `Size ${selectedSizeInfo.label} is currently unavailable.`
+        );
+        return;
+      }
+
+      if (
+        selectedSizeInfo &&
+        selectedSizeInfo.stock > 0 &&
+        quantity > selectedSizeInfo.stock
+      ) {
+        setSizeError(
+          `Quantity unavailable. Max ${selectedSizeInfo.stock} for size ${selectedSizeInfo.label}.`
+        );
+        return;
+      }
+    } else if (productStock > 0 && quantity > productStock) {
+      setSizeError(
+        `Quantity unavailable. Max ${productStock} unit${
+          productStock === 1 ? "" : "s"
+        } available.`
+      );
+      return;
+    }
+
+    setSizeError("");
+
     const rawProductId = product._id || product.productId || product.id;
     const mongoIdRegex = /^[a-f\d]{24}$/i;
 

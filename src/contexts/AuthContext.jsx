@@ -52,7 +52,9 @@ export const AuthProvider = ({ children }) => {
         localStorage.removeItem("authToken");
         localStorage.removeItem("user");
         setLoading(false);
-        toast.info("Session expired. Please log in again.", { autoClose: 1500 });
+        toast.info("Session expired. Please log in again.", {
+          autoClose: 1500,
+        });
         return;
       }
 
@@ -136,6 +138,34 @@ export const AuthProvider = ({ children }) => {
     toast.info("Logged out.", { autoClose: 1000 });
   };
 
+  const updateProfile = async (payload) => {
+    try {
+      const response = await api.put("/user/profile", payload);
+      const refreshed = normalizeUser(response?.data?.data || {});
+
+      if (refreshed?.name) {
+        setUser((prev) => ({ ...prev, ...refreshed }));
+        const stored = localStorage.getItem("user");
+        const parsed = stored ? JSON.parse(stored) : null;
+        const merged = { ...(parsed || {}), ...refreshed };
+        localStorage.setItem("user", JSON.stringify(merged));
+      }
+
+      toast.success(response?.data?.message || "Profile updated", {
+        autoClose: 1200,
+      });
+
+      return refreshed;
+    } catch (error) {
+      const message =
+        error.response?.data?.message ||
+        error.message ||
+        "Failed to update profile";
+      toast.error(message);
+      throw new Error(message);
+    }
+  };
+
   const isAdmin = Boolean(user?.role === "admin");
 
   const value = {
@@ -147,6 +177,7 @@ export const AuthProvider = ({ children }) => {
     signup,
     verifyEmail,
     logout,
+    updateProfile,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

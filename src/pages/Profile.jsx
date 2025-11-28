@@ -319,9 +319,9 @@ const Profile = () => {
         My Profile
       </motion.h1>
 
-      <div className="grid gap-6 lg:grid-cols-[1fr,2fr] lg:gap-8">
+      <div className="grid gap-6 lg:grid-cols-[1fr,2fr] lg:gap-8 lg:items-start">
         <motion.div
-          className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
+          className="self-start rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
           variants={scaleIn}
           initial="initial"
           animate="animate"
@@ -387,15 +387,15 @@ const Profile = () => {
                 </div>
               </form>
             ) : (
-              <dl className="space-y-3 text-sm text-medium-text">
-                <div>
-                  <dt className="font-medium text-secondary/80">Name</dt>
+              <dl className="grid gap-3 text-sm text-medium-text">
+                <div className="flex flex-wrap items-center gap-2">
+                  <dt className="font-medium text-secondary/80">Name:</dt>
                   <dd className="text-secondary text-base">
                     {user?.name || "-"}
                   </dd>
                 </div>
-                <div>
-                  <dt className="font-medium text-secondary/80">Email</dt>
+                <div className="flex flex-wrap items-center gap-2">
+                  <dt className="font-medium text-secondary/80">Email:</dt>
                   <dd className="select-text text-secondary">
                     {user?.email || "-"}
                   </dd>

@@ -315,10 +315,10 @@ const OrderDetailsPage = () => {
     }
 
     return new Date(order.estimatedDeliveryDate).toLocaleDateString("en-IN", {
-      weekday: "long",
-      year: "numeric",
-      month: "long",
+      weekday: "short",
       day: "numeric",
+      month: "short",
+      year: "numeric",
     });
   }, [order?.estimatedDeliveryDate]);
 
@@ -371,6 +371,11 @@ const OrderDetailsPage = () => {
     !replacementStatusActive &&
     !replacementRequest.used;
 
+  const canReviewItems = useMemo(
+    () => Boolean(deliveredTimestamp && order?.status === "delivered"),
+    [deliveredTimestamp, order?.status]
+  );
+
   const replacementAvailabilityMessage = useMemo(() => {
     if (replacementStatusActive) {
       return null;
@@ -385,6 +390,10 @@ const OrderDetailsPage = () => {
 
   const handleSelectRating = (itemIndex, value) => {
     if (order?.items?.[itemIndex]?.ratedAt || submittingIndex !== null) {
+      return;
+    }
+    if (!canReviewItems) {
+      toast.error("You can rate items after the order is delivered.");
       return;
     }
     setActiveItemIndex(itemIndex);
@@ -675,33 +684,32 @@ const OrderDetailsPage = () => {
         className="rounded-3xl border border-slate-200 bg-white p-6 space-y-4"
       >
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h1 className="text-2xl font-semibold text-secondary break-all">
-              Order #{order._id}
-            </h1>
-            <p className="text-sm text-medium-text break-words">
-              Placed on {new Date(order.createdAt).toLocaleString()}
-            </p>
-          </div>
-          <span className="text-xs font-medium px-3 py-1 rounded-full bg-primary/10 text-primary uppercase">
-            {order.status?.replace(/_/g, " ")}
-          </span>
+          <h1 className="text-2xl font-semibold text-secondary break-all">
+            Order #{order._id}
+          </h1>
+          <p className="text-sm text-medium-text break-words">
+            Placed on {new Date(order.createdAt).toLocaleDateString()}
+          </p>
         </div>
 
-        <div className="grid md:grid-cols-2 gap-4 text-sm text-medium-text">
-          <div className="flex items-center gap-3">
+        <div className="grid gap-4 text-sm text-medium-text md:grid-cols-2 md:items-end">
+          <div className="flex items-center gap-2">
             <PackageCheck className="h-4 w-4 text-secondary" />
-            <div className="min-w-0">
-              <p className="font-medium text-secondary">Items</p>
-              <p className="break-words">{order.items?.length || 0}</p>
-            </div>
+            <span className="whitespace-nowrap text-secondary">
+              <span className="font-medium">Items:</span>{" "}
+              <span className="text-medium-text">
+                {order.items?.length || 0}
+              </span>
+            </span>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 md:justify-end md:text-right">
             <MapPin className="h-4 w-4 text-secondary" />
-            <div className="min-w-0">
-              <p className="font-medium text-secondary">Estimated Delivery</p>
-              <p className="break-words">{deliveryDate}</p>
-            </div>
+            <span className="text-secondary md:text-right">
+              <span className="font-medium">Estimated delivery:</span>{" "}
+              <span className="text-medium-text whitespace-nowrap">
+                {deliveryDate}
+              </span>
+            </span>
           </div>
         </div>
       </motion.div>
@@ -921,126 +929,137 @@ const OrderDetailsPage = () => {
           </div>
         )}
         <div className="space-y-4">
-          {order.items?.map((item, index) => (
-            <div
-              key={`${item.name}-${index}`}
-              className="flex flex-col gap-4 rounded-2xl border border-slate-200 p-4"
-            >
-              <div className="flex gap-4">
-                <div className="h-20 w-20 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center overflow-hidden">
-                  <img
-                    src={item.image}
-                    alt={item.name}
-                    className="max-w-full max-h-full object-contain"
-                  />
-                </div>
-                <div className="flex-1">
-                  <p className="font-semibold text-secondary">{item.name}</p>
-                  <p className="text-sm text-medium-text mt-1">
-                    Qty: {item.quantity}
-                    {item.size && ` • Size: ${item.size}`}
-                  </p>
-                  <p className="text-sm text-medium-text mt-1">
-                    Price: ₹{item.price.toLocaleString()} • Line Total: ₹
-                    {(item.price * item.quantity).toLocaleString()}
-                  </p>
-                </div>
-              </div>
+          {order.items?.map((item, index) => {
+            const formattedPrice = item.price.toLocaleString();
+            const formattedLineTotal = (
+              item.price * item.quantity
+            ).toLocaleString();
 
-              <div className="border-t border-slate-100 pt-3">
-                {item.ratedAt ? (
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2 text-sm text-secondary">
-                      {[...Array(5)].map((_, starIndex) => (
-                        <Star
-                          key={starIndex}
-                          size={18}
-                          className={
-                            starIndex < Math.round(item.rating || 0)
-                              ? "fill-yellow-400 text-yellow-400"
-                              : "text-slate-300"
-                          }
-                        />
-                      ))}
-                      <span className="text-xs text-medium-text">
-                        Rated on {new Date(item.ratedAt).toLocaleDateString()}
-                      </span>
-                    </div>
-                    {item.review && (
-                      <div className="flex items-start gap-2 rounded-xl bg-slate-50 p-3 text-sm text-medium-text">
-                        <MessageCircle className="h-4 w-4 text-secondary mt-0.5" />
-                        <p className="whitespace-pre-line break-words">
-                          {item.review}
-                        </p>
-                      </div>
-                    )}
+            return (
+              <div
+                key={`${item.name}-${index}`}
+                className="flex flex-col gap-4 rounded-2xl border border-slate-200 p-4"
+              >
+                <div className="flex gap-4">
+                  <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-white">
+                    <img
+                      src={item.image}
+                      alt={item.name}
+                      className="max-h-full max-w-full object-contain"
+                    />
                   </div>
-                ) : (
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-2">
-                      {[...Array(5)].map((_, starIndex) => {
-                        const ratingValue = starIndex + 1;
-                        const currentDraft = ratingDrafts[index]?.rating || 0;
-                        const isActive = currentDraft >= ratingValue;
-                        return (
-                          <button
-                            key={ratingValue}
-                            type="button"
-                            onClick={() =>
-                              handleSelectRating(index, ratingValue)
+                  <div className="flex-1 space-y-1">
+                    <p className="font-semibold text-secondary">{item.name}</p>
+                    <p className="text-sm text-medium-text">
+                      Qty: {item.quantity}
+                      {item.size && (
+                        <span className="ml-2">• Size: {item.size}</span>
+                      )}
+                    </p>
+                    <p className="text-sm text-medium-text">
+                      Price: ₹{formattedPrice}
+                    </p>
+                    <p className="text-sm text-medium-text">
+                      Line Total: ₹{formattedLineTotal}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="border-t border-slate-100 pt-3">
+                  {item.ratedAt ? (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 text-sm text-secondary">
+                        {[...Array(5)].map((_, starIndex) => (
+                          <Star
+                            key={starIndex}
+                            size={18}
+                            className={
+                              starIndex < Math.round(item.rating || 0)
+                                ? "fill-yellow-400 text-yellow-400"
+                                : "text-slate-300"
                             }
-                            className="focus:outline-none"
-                            disabled={submittingIndex !== null}
-                            aria-label={`Rate ${ratingValue} star${
-                              ratingValue > 1 ? "s" : ""
-                            }`}
-                          >
-                            <Star
-                              size={24}
-                              className={
-                                isActive
-                                  ? "fill-yellow-400 text-yellow-400"
-                                  : "text-slate-300"
-                              }
-                            />
-                          </button>
-                        );
-                      })}
-                    </div>
-                    {activeItemIndex === index &&
-                      ratingDrafts[index]?.rating > 0 && (
-                        <div className="space-y-3">
-                          <textarea
-                            value={ratingDrafts[index]?.review || ""}
-                            onChange={(event) =>
-                              handleReviewChange(index, event.target.value)
-                            }
-                            placeholder="Share your experience with this product (optional)"
-                            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-medium-text focus:border-primary focus:outline-none"
-                            rows={3}
-                            maxLength={2000}
-                            disabled={submittingIndex !== null}
                           />
-                          <div className="flex justify-end">
-                            <button
-                              type="button"
-                              onClick={() => handleSubmitRating(index)}
-                              disabled={submittingIndex !== null}
-                              className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
-                            >
-                              <Send className="h-4 w-4" />
-                              {submittingIndex === index
-                                ? "Submitting..."
-                                : "Submit review"}
-                            </button>
-                          </div>
+                        ))}
+                        <span className="text-xs text-medium-text">
+                          Rated on {new Date(item.ratedAt).toLocaleDateString()}
+                        </span>
+                      </div>
+                      {item.review && (
+                        <div className="flex items-start gap-2 rounded-xl bg-slate-50 p-3 text-sm text-medium-text">
+                          <MessageCircle className="h-4 w-4 text-secondary mt-0.5" />
+                          <p className="whitespace-pre-line break-words">
+                            {item.review}
+                          </p>
                         </div>
                       )}
-                  </div>
-                )}
+                    </div>
+                  ) : canReviewItems ? (
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        {[...Array(5)].map((_, starIndex) => {
+                          const ratingValue = starIndex + 1;
+                          const currentDraft = ratingDrafts[index]?.rating || 0;
+                          const isActive = currentDraft >= ratingValue;
+                          return (
+                            <button
+                              key={ratingValue}
+                              type="button"
+                              onClick={() =>
+                                handleSelectRating(index, ratingValue)
+                              }
+                              className="focus:outline-none"
+                              disabled={submittingIndex !== null}
+                              aria-label={`Rate ${ratingValue} star${
+                                ratingValue > 1 ? "s" : ""
+                              }`}
+                            >
+                              <Star
+                                size={24}
+                                className={
+                                  isActive
+                                    ? "fill-yellow-400 text-yellow-400"
+                                    : "text-slate-300"
+                                }
+                              />
+                            </button>
+                          );
+                        })}
+                      </div>
+                      {activeItemIndex === index &&
+                        ratingDrafts[index]?.rating > 0 && (
+                          <div className="space-y-3">
+                            <textarea
+                              value={ratingDrafts[index]?.review || ""}
+                              onChange={(event) =>
+                                handleReviewChange(index, event.target.value)
+                              }
+                              placeholder="Share your experience with this product (optional)"
+                              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-medium-text focus:border-primary focus:outline-none"
+                              rows={3}
+                              maxLength={2000}
+                              disabled={submittingIndex !== null}
+                            />
+                            <div className="flex justify-end">
+                              <button
+                                type="button"
+                                onClick={() => handleSubmitRating(index)}
+                                disabled={submittingIndex !== null}
+                                className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
+                              >
+                                <Send className="h-4 w-4" />
+                                {submittingIndex === index
+                                  ? "Submitting..."
+                                  : "Submit review"}
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                    </div>
+                  ) : null}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </section>
 

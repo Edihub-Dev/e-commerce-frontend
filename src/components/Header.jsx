@@ -537,15 +537,24 @@ const Header = () => {
                 )}
               </div>
             ) : (
-              <Link
-                to="/signup"
-                className="hidden md:flex items-center hover:opacity-80"
-              >
+              <div className="hidden md:flex items-center text-sm">
                 <User size={20} style={{ color: "#008ECC" }} />
-                <span className="ml-2 text-sm" style={{ color: "#000000" }}>
-                  Sign Up/Sign In
-                </span>
-              </Link>
+                <div className="ml-2 flex items-center gap-2">
+                  <Link
+                    to="/signup"
+                    className="hover:text-[#008ECC] transition-colors"
+                  >
+                    Sign Up
+                  </Link>
+                  <span className="text-gray-300">/</span>
+                  <Link
+                    to="/login"
+                    className="hover:text-[#008ECC] transition-colors"
+                  >
+                    Sign In
+                  </Link>
+                </div>
+              </div>
             )}
 
             {/* Cart */}
@@ -666,13 +675,22 @@ const Header = () => {
                   </button>
                 </>
               ) : (
-                <Link
-                  to="/signup"
-                  onClick={() => setIsMenuOpen(false)}
-                  className="flex items-center"
-                >
-                  <User className="mr-2" /> Sign Up/Sign In
-                </Link>
+                <div className="flex flex-col gap-3 text-sm">
+                  <Link
+                    to="/signup"
+                    onClick={() => setIsMenuOpen(false)}
+                    className="flex items-center"
+                  >
+                    <User className="mr-2" /> Sign Up
+                  </Link>
+                  <Link
+                    to="/login"
+                    onClick={() => setIsMenuOpen(false)}
+                    className="flex items-center"
+                  >
+                    <User className="mr-2" /> Sign In
+                  </Link>
+                </div>
               )}
               <Link
                 to="/cart"

@@ -862,7 +862,7 @@ const CheckoutPayment = () => {
                     key={`${item.product || item.id}-${item.size || "default"}`}
                     className="flex flex-col gap-1 rounded-xl border border-slate-100 bg-slate-50 px-3 py-2"
                   >
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col gap-1">
                       <span className="font-medium text-secondary">
                         {item.name}
                       </span>

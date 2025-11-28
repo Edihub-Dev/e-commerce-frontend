@@ -96,8 +96,7 @@ const CheckoutOrder = () => {
                   </span>
                 </div>
                 <p className="text-sm text-slate-500">
-                  Free returns within 7 days of delivery • Warranty applicable
-                  as per manufacturer policy.
+                  returns within 7 days of delivery
                 </p>
               </div>
             </motion.div>

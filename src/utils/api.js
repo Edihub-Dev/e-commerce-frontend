@@ -97,7 +97,8 @@ const ensureS3Url = (value) => {
 
 // Create Axios instance with base URL from environment
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || "http://localhost:3001/api",
+  // baseURL: import.meta.env.VITE_API_URL || "http://localhost:3001/api",
+  baseURL: import.meta.env.VITE_API_URL || "https://apis.qrfolio.net/api",
 });
 
 api.interceptors.request.use((config) => {

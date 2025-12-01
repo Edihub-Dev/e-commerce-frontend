@@ -13,6 +13,8 @@ const addressSlice = createSlice({
     resetAddressState: () => initialState,
     setAddresses: (state, action) => {
       state.addresses = action.payload;
+      state.loading = false;
+      state.error = null;
     },
     setAddressLoading: (state, action) => {
       state.loading = action.payload;

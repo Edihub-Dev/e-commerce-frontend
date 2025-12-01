@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { Loader2, MapPin, PencilLine } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { useAuth } from "../contexts/AuthContext";
 import { fetchAddresses, updateAddress } from "../utils/api";
 import { pageVariants, scaleIn } from "../utils/animations";
+import { STATE_OPTIONS, getCitiesForState } from "../constants/indiaLocations";
 
 const createInitialFormState = () => ({
   fullName: "",
@@ -176,6 +177,14 @@ const Profile = () => {
   const [accountNameInput, setAccountNameInput] = useState(user?.name || "");
   const [accountSaving, setAccountSaving] = useState(false);
 
+  const cityOptions = useMemo(() => {
+    const cities = getCitiesForState(formState.state) || [];
+    if (formState.city && cities.length && !cities.includes(formState.city)) {
+      return [...cities, formState.city];
+    }
+    return cities;
+  }, [formState.state, formState.city]);
+
   useEffect(() => {
     const loadAddresses = async () => {
       setLoadingAddresses(true);
@@ -218,6 +227,7 @@ const Profile = () => {
     setFormState((previous) => ({
       ...previous,
       [name]: value,
+      ...(name === "state" && previous.state !== value ? { city: "" } : {}),
     }));
   };
 
@@ -478,24 +488,41 @@ const Profile = () => {
                         </label>
                         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                           <label className="text-sm font-medium text-secondary/80">
-                            City
-                            <input
-                              name="city"
-                              value={formState.city}
-                              onChange={handleFormChange}
-                              className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
-                              placeholder="City"
-                            />
-                          </label>
-                          <label className="text-sm font-medium text-secondary/80">
                             State
-                            <input
+                            <select
                               name="state"
                               value={formState.state}
                               onChange={handleFormChange}
                               className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
-                              placeholder="State"
-                            />
+                            >
+                              <option value="">Select state</option>
+                              {STATE_OPTIONS.map((state) => (
+                                <option key={state} value={state}>
+                                  {state}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+                          <label className="text-sm font-medium text-secondary/80">
+                            City
+                            <select
+                              name="city"
+                              value={formState.city}
+                              onChange={handleFormChange}
+                              disabled={!formState.state}
+                              className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:cursor-not-allowed disabled:bg-slate-100"
+                            >
+                              <option value="">
+                                {formState.state
+                                  ? "Select city"
+                                  : "Select state first"}
+                              </option>
+                              {cityOptions.map((city) => (
+                                <option key={city} value={city}>
+                                  {city}
+                                </option>
+                              ))}
+                            </select>
                           </label>
                           <label className="text-sm font-medium text-secondary/80 md:col-span-1">
                             PIN Code

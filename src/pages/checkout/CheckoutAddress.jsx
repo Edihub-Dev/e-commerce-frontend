@@ -20,6 +20,10 @@ import {
 } from "../../utils/api";
 import { toast } from "react-hot-toast";
 import { useAuth } from "../../contexts/AuthContext";
+import {
+  STATE_OPTIONS,
+  getCitiesForState,
+} from "../../constants/indiaLocations";
 
 const createInitialFormState = (email = "", fullName = "") => ({
   fullName: fullName || "",
@@ -195,6 +199,14 @@ const CheckoutAddress = () => {
   );
   const [editingAddressId, setEditingAddressId] = useState(null);
 
+  const cityOptions = useMemo(() => {
+    const cities = getCitiesForState(formState.state) || [];
+    if (formState.city && cities.length && !cities.includes(formState.city)) {
+      return [...cities, formState.city];
+    }
+    return cities;
+  }, [formState.state, formState.city]);
+
   useEffect(() => {
     dispatch(setCheckoutStep("address"));
     if (!items.length) {
@@ -262,9 +274,12 @@ const CheckoutAddress = () => {
 
   const handleFormChange = (event) => {
     const { name, value, type, checked } = event.target;
+    const resolvedValue = type === "checkbox" ? checked : value;
+
     setFormState((prev) => ({
       ...prev,
-      [name]: type === "checkbox" ? checked : value,
+      [name]: resolvedValue,
+      ...(name === "state" && prev.state !== resolvedValue ? { city: "" } : {}),
       ...(name === "addressLine" ||
       name === "city" ||
       name === "state" ||
@@ -641,25 +656,40 @@ const CheckoutAddress = () => {
               </label>
               <label className="space-y-2 text-sm font-medium text-secondary/80">
                 State
-                <input
-                  type="text"
+                <select
                   name="state"
                   value={formState.state}
                   onChange={handleFormChange}
                   required
                   className="w-full rounded-lg border border-slate-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
-                />
+                >
+                  <option value="">Select state</option>
+                  {STATE_OPTIONS.map((state) => (
+                    <option key={state} value={state}>
+                      {state}
+                    </option>
+                  ))}
+                </select>
               </label>
               <label className="space-y-2 text-sm font-medium text-secondary/80">
                 City
-                <input
-                  type="text"
+                <select
                   name="city"
                   value={formState.city}
                   onChange={handleFormChange}
                   required
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
-                />
+                  disabled={!formState.state}
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary disabled:cursor-not-allowed disabled:bg-slate-100"
+                >
+                  <option value="">
+                    {formState.state ? "Select city" : "Select state first"}
+                  </option>
+                  {cityOptions.map((city) => (
+                    <option key={city} value={city}>
+                      {city}
+                    </option>
+                  ))}
+                </select>
               </label>
             </div>
             <label className="space-y-2 text-sm font-medium text-secondary/80 block">

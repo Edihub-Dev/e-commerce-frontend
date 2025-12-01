@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { Loader2, MapPin, PencilLine } from "lucide-react";
 import { toast } from "react-hot-toast";
@@ -6,6 +6,11 @@ import { useAuth } from "../contexts/AuthContext";
 import { fetchAddresses, updateAddress } from "../utils/api";
 import { pageVariants, scaleIn } from "../utils/animations";
 import { STATE_OPTIONS, getCitiesForState } from "../constants/indiaLocations";
+import {
+  fetchLocationByPincode,
+  verifyAddressWithPostalApi,
+  doesAddressMatchLocation,
+} from "../utils/postalLookup";
 
 const createInitialFormState = () => ({
   fullName: "",
@@ -19,72 +24,6 @@ const createInitialFormState = () => ({
 const MOBILE_REGEX = /^[6-9]\d{9}$/;
 const LOCATION_REGEX = /^[A-Za-z\s.'-]{2,}$/;
 const PINCODE_REGEX = /^[1-9]\d{5}$/;
-
-const normalizeLocation = (value = "") =>
-  value.toString().trim().toLowerCase().replace(/\s+/g, " ");
-
-const verifyAddressWithPostalApi = async ({ pincode, state, city }) => {
-  try {
-    const trimmedPincode = String(pincode || "").trim();
-    const response = await fetch(
-      `https://api.postalpincode.in/pincode/${encodeURIComponent(
-        trimmedPincode
-      )}`
-    );
-
-    if (!response.ok) {
-      throw new Error("Unable to reach postal validation service.");
-    }
-
-    const data = await response.json();
-    const result = Array.isArray(data) ? data[0] : null;
-
-    if (!result || result.Status !== "Success" || !result.PostOffice?.length) {
-      return {
-        success: false,
-        message: "Pincode is invalid or currently not serviceable.",
-      };
-    }
-
-    const normalizedState = normalizeLocation(state);
-    const normalizedCity = normalizeLocation(city);
-
-    const matchedOffice = result.PostOffice.find((office) => {
-      const officeState = normalizeLocation(office.State);
-      const officeDistrict = normalizeLocation(office.District);
-      const officeName = normalizeLocation(office.Name);
-
-      return (
-        officeState === normalizedState &&
-        (officeDistrict === normalizedCity || officeName === normalizedCity)
-      );
-    });
-
-    if (!matchedOffice) {
-      const suggestion = result.PostOffice[0];
-      return {
-        success: false,
-        message: `City/State do not match this PIN code. Try "${
-          suggestion?.District || suggestion?.Name || ""
-        }, ${suggestion?.State || ""}" for PIN ${trimmedPincode}.`,
-      };
-    }
-
-    return {
-      success: true,
-      data: {
-        state: matchedOffice.State,
-        city: matchedOffice.District || matchedOffice.Name,
-        postOffice: matchedOffice.Name,
-      },
-    };
-  } catch (error) {
-    return {
-      success: false,
-      message: error.message || "Failed to validate address with map service.",
-    };
-  }
-};
 
 const fetchGeoCoordinates = async ({ city, state, pincode }) => {
   try {
@@ -176,6 +115,7 @@ const Profile = () => {
   const [isEditingAccountName, setIsEditingAccountName] = useState(false);
   const [accountNameInput, setAccountNameInput] = useState(user?.name || "");
   const [accountSaving, setAccountSaving] = useState(false);
+  const lastResolvedPincodeRef = useRef("");
 
   const cityOptions = useMemo(() => {
     const cities = getCitiesForState(formState.state) || [];
@@ -184,6 +124,26 @@ const Profile = () => {
     }
     return cities;
   }, [formState.state, formState.city]);
+
+  const normalizeForMatch = (value = "") =>
+    value
+      .toString()
+      .toLowerCase()
+      .replace(/&/g, "and")
+      .replace(/\./g, "")
+      .replace(/\s+/g, " ")
+      .trim();
+
+  const resolveStateName = (candidate = "") => {
+    if (!candidate) {
+      return "";
+    }
+    const normalizedCandidate = normalizeForMatch(candidate);
+    const matched = STATE_OPTIONS.find(
+      (option) => normalizeForMatch(option) === normalizedCandidate
+    );
+    return matched || candidate;
+  };
 
   useEffect(() => {
     const loadAddresses = async () => {
@@ -204,6 +164,75 @@ const Profile = () => {
 
     loadAddresses();
   }, []);
+
+  useEffect(() => {
+    const trimmedPincode = String(formState.pincode || "").trim();
+
+    if (
+      !PINCODE_REGEX.test(trimmedPincode) ||
+      trimmedPincode === lastResolvedPincodeRef.current
+    ) {
+      return;
+    }
+
+    let isActive = true;
+    lastResolvedPincodeRef.current = trimmedPincode;
+
+    const resolveLocation = async () => {
+      const lookup = await fetchLocationByPincode(trimmedPincode);
+
+      if (!isActive) {
+        return;
+      }
+
+      if (!lookup.success) {
+        toast.error(lookup.message);
+        return;
+      }
+
+      const resolvedState = resolveStateName(lookup.data.state);
+      const resolvedCity = (lookup.data.city || "").trim();
+      const suggestedAddressLine =
+        lookup.data.addressLineSuggestion?.trim() || "";
+
+      if (!resolvedState && !resolvedCity) {
+        return;
+      }
+
+      setFormState((previous) => {
+        const nextState = resolvedState || previous.state;
+        const nextCity = resolvedCity || previous.city;
+        const shouldUpdateAddressLine =
+          suggestedAddressLine &&
+          (!previous.addressLine ||
+            !doesAddressMatchLocation(previous.addressLine, {
+              city: nextCity,
+              state: nextState,
+            }));
+
+        if (previous.state === nextState && previous.city === nextCity) {
+          if (!shouldUpdateAddressLine) {
+            return previous;
+          }
+        }
+
+        return {
+          ...previous,
+          state: nextState,
+          city: nextCity,
+          ...(shouldUpdateAddressLine
+            ? { addressLine: suggestedAddressLine }
+            : {}),
+        };
+      });
+    };
+
+    resolveLocation();
+
+    return () => {
+      isActive = false;
+    };
+  }, [formState.pincode]);
 
   const startEditing = (address) => {
     setEditingAddressId(address._id || address.id);
@@ -264,6 +293,19 @@ const Profile = () => {
 
       payload.state = mapValidation.data.state;
       payload.city = mapValidation.data.city;
+
+      if (
+        !doesAddressMatchLocation(payload.addressLine, {
+          city: payload.city,
+          state: payload.state,
+        })
+      ) {
+        toast.error(
+          "Address line must include the resolved city and state for this PIN."
+        );
+        setSaving(false);
+        return;
+      }
 
       const geoCoordinates = await fetchGeoCoordinates(payload);
       if (geoCoordinates) {

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -24,6 +24,11 @@ import {
   STATE_OPTIONS,
   getCitiesForState,
 } from "../../constants/indiaLocations";
+import {
+  fetchLocationByPincode,
+  verifyAddressWithPostalApi,
+  doesAddressMatchLocation,
+} from "../../utils/postalLookup";
 
 const createInitialFormState = (email = "", fullName = "") => ({
   fullName: fullName || "",
@@ -44,72 +49,6 @@ const createInitialFormState = (email = "", fullName = "") => ({
 const MOBILE_REGEX = /^[6-9]\d{9}$/;
 const PINCODE_REGEX = /^[1-9]\d{5}$/;
 const LOCATION_REGEX = /^[A-Za-z\s.'-]{2,}$/;
-
-const normalizeLocation = (value = "") =>
-  value.toString().trim().toLowerCase().replace(/\s+/g, " ");
-
-const verifyAddressWithPostalApi = async ({ pincode, state, city }) => {
-  try {
-    const trimmedPincode = String(pincode || "").trim();
-    const response = await fetch(
-      `https://api.postalpincode.in/pincode/${encodeURIComponent(
-        trimmedPincode
-      )}`
-    );
-
-    if (!response.ok) {
-      throw new Error("Unable to reach postal validation service.");
-    }
-
-    const data = await response.json();
-    const result = Array.isArray(data) ? data[0] : null;
-
-    if (!result || result.Status !== "Success" || !result.PostOffice?.length) {
-      return {
-        success: false,
-        message: "Pincode is invalid or currently not serviceable.",
-      };
-    }
-
-    const normalizedState = normalizeLocation(state);
-    const normalizedCity = normalizeLocation(city);
-
-    const matchedOffice = result.PostOffice.find((office) => {
-      const officeState = normalizeLocation(office.State);
-      const officeDistrict = normalizeLocation(office.District);
-      const officeName = normalizeLocation(office.Name);
-
-      return (
-        officeState === normalizedState &&
-        (officeDistrict === normalizedCity || officeName === normalizedCity)
-      );
-    });
-
-    if (!matchedOffice) {
-      const suggestion = result.PostOffice[0];
-      return {
-        success: false,
-        message: `City/State do not match this PIN code. Try "${
-          suggestion?.District || suggestion?.Name || ""
-        }, ${suggestion?.State || ""}" for PIN ${trimmedPincode}.`,
-      };
-    }
-
-    return {
-      success: true,
-      data: {
-        state: matchedOffice.State,
-        city: matchedOffice.District || matchedOffice.Name,
-        postOffice: matchedOffice.Name,
-      },
-    };
-  } catch (error) {
-    return {
-      success: false,
-      message: error.message || "Failed to validate address with map service.",
-    };
-  }
-};
 
 const fetchGeoCoordinates = async ({ city, state, pincode }) => {
   try {
@@ -198,6 +137,7 @@ const CheckoutAddress = () => {
     createInitialFormState(user?.email, customerName)
   );
   const [editingAddressId, setEditingAddressId] = useState(null);
+  const lastResolvedPincodeRef = useRef("");
 
   const cityOptions = useMemo(() => {
     const cities = getCitiesForState(formState.state) || [];
@@ -206,6 +146,26 @@ const CheckoutAddress = () => {
     }
     return cities;
   }, [formState.state, formState.city]);
+
+  const normalizeForMatch = (value = "") =>
+    value
+      .toString()
+      .toLowerCase()
+      .replace(/&/g, "and")
+      .replace(/\./g, "")
+      .replace(/\s+/g, " ")
+      .trim();
+
+  const resolveStateName = (candidate = "") => {
+    if (!candidate) {
+      return "";
+    }
+    const normalizedCandidate = normalizeForMatch(candidate);
+    const matched = STATE_OPTIONS.find(
+      (option) => normalizeForMatch(option) === normalizedCandidate
+    );
+    return matched || candidate;
+  };
 
   useEffect(() => {
     dispatch(setCheckoutStep("address"));
@@ -267,6 +227,79 @@ const CheckoutAddress = () => {
     }
   }, [addresses, selectedId, user?.email]);
 
+  useEffect(() => {
+    const trimmedPincode = String(formState.pincode || "").trim();
+
+    if (
+      !PINCODE_REGEX.test(trimmedPincode) ||
+      trimmedPincode === lastResolvedPincodeRef.current
+    ) {
+      return;
+    }
+
+    let isActive = true;
+    lastResolvedPincodeRef.current = trimmedPincode;
+
+    const resolveLocation = async () => {
+      const lookup = await fetchLocationByPincode(trimmedPincode);
+
+      if (!isActive) {
+        return;
+      }
+
+      if (!lookup.success) {
+        toast.error(lookup.message);
+        return;
+      }
+
+      const resolvedState = resolveStateName(lookup.data.state);
+      const resolvedCity = (lookup.data.city || "").trim();
+      const suggestedAddressLine =
+        lookup.data.addressLineSuggestion?.trim() || "";
+
+      if (!resolvedState && !resolvedCity) {
+        return;
+      }
+
+      setFormState((previous) => {
+        const nextState = resolvedState || previous.state;
+        const nextCity = resolvedCity || previous.city;
+        const shouldUpdateAddressLine =
+          suggestedAddressLine &&
+          (!previous.addressLine ||
+            !doesAddressMatchLocation(previous.addressLine, {
+              city: nextCity,
+              state: nextState,
+            }));
+
+        if (previous.state === nextState && previous.city === nextCity) {
+          if (!shouldUpdateAddressLine) {
+            return previous;
+          }
+        }
+
+        return {
+          ...previous,
+          state: nextState,
+          city: nextCity,
+          ...(shouldUpdateAddressLine
+            ? { addressLine: suggestedAddressLine }
+            : {}),
+          isGeoVerified: false,
+          latitude: null,
+          longitude: null,
+          formattedAddress: "",
+        };
+      });
+    };
+
+    resolveLocation();
+
+    return () => {
+      isActive = false;
+    };
+  }, [formState.pincode]);
+
   const selectedAddress = useMemo(
     () => addresses.find((address) => address._id === selectedId) || null,
     [addresses, selectedId]
@@ -322,6 +355,37 @@ const CheckoutAddress = () => {
 
       payload.state = mapValidation.data.state;
       payload.city = mapValidation.data.city;
+
+      const suggestedAddressLine =
+        mapValidation.data.addressLineSuggestion?.trim() || "";
+
+      if (suggestedAddressLine) {
+        const normalizedMatch = doesAddressMatchLocation(payload.addressLine, {
+          city: payload.city,
+          state: payload.state,
+        });
+
+        if (!normalizedMatch) {
+          payload.addressLine = suggestedAddressLine;
+          setFormState((previous) => ({
+            ...previous,
+            addressLine: suggestedAddressLine,
+          }));
+        }
+      }
+
+      if (
+        !doesAddressMatchLocation(payload.addressLine, {
+          city: payload.city,
+          state: payload.state,
+        })
+      ) {
+        toast.error(
+          "Provide an address line that includes the resolved city and state for this PIN."
+        );
+        setSubmitting(false);
+        return;
+      }
 
       const geoCoordinates = await fetchGeoCoordinates({
         city: payload.city,
@@ -678,11 +742,13 @@ const CheckoutAddress = () => {
                   value={formState.city}
                   onChange={handleFormChange}
                   required
-                  disabled={!formState.state}
+                  disabled={!formState.state && !cityOptions.length}
                   className="w-full rounded-lg border border-slate-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary disabled:cursor-not-allowed disabled:bg-slate-100"
                 >
                   <option value="">
-                    {formState.state ? "Select city" : "Select state first"}
+                    {formState.state || cityOptions.length
+                      ? "Select city"
+                      : "Select state first"}
                   </option>
                   {cityOptions.map((city) => (
                     <option key={city} value={city}>

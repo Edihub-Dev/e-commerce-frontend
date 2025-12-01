@@ -7,6 +7,7 @@ const initialState = {
   paymentMethod: null,
   paymentStatus: "pending",
   orderId: null,
+  appliedCoupon: null,
   totals: {
     subtotal: 0,
     shippingFee: 0,
@@ -107,13 +108,24 @@ const checkoutSlice = createSlice({
       state.paymentStatus = action.payload;
     },
     setCheckoutTotals: (state, action) => {
+      const payload = action.payload || {};
+      const { baseSubtotal, baseTotal, ...rest } = payload;
+
       state.totals = {
         ...state.totals,
-        ...action.payload,
+        ...rest,
+        ...(baseSubtotal !== undefined ? { baseSubtotal: baseSubtotal } : {}),
+        ...(baseTotal !== undefined ? { baseTotal: baseTotal } : {}),
       };
     },
     setOrderId: (state, action) => {
       state.orderId = action.payload;
+    },
+    setAppliedCoupon: (state, action) => {
+      state.appliedCoupon = action.payload;
+    },
+    clearAppliedCoupon: (state) => {
+      state.appliedCoupon = null;
     },
   },
 });
@@ -127,6 +139,8 @@ export const {
   setPaymentStatus,
   setCheckoutTotals,
   setOrderId,
+  setAppliedCoupon,
+  clearAppliedCoupon,
 } = checkoutSlice.actions;
 
 export default checkoutSlice.reducer;

@@ -9,6 +9,7 @@ import {
   setOrderId,
   setCheckoutTotals,
   resetCheckout,
+  clearAppliedCoupon,
 } from "../../store/slices/checkoutSlice";
 import {
   createOrder,
@@ -18,6 +19,7 @@ import {
 import { useCart } from "../../contexts/CartContext";
 import { toast } from "react-hot-toast";
 import QRCode from "react-qr-code";
+import { resetCouponState } from "../../store/slices/couponSlice";
 
 const POLLING_INTERVAL_MS = 3500;
 const MAX_POLL_ATTEMPTS = 40;
@@ -58,9 +60,10 @@ const CheckoutPayment = () => {
     shippingAddress,
     totals,
     orderId: checkoutOrderId,
+    appliedCoupon,
   } = useSelector((state) => state.checkout);
   const { removeItems } = useCart();
-  const [selectedMethod, setSelectedMethod] = useState("upi");
+  const [selectedMethod, setSelectedMethod] = useState("cod");
   const [isProcessing, setIsProcessing] = useState(false);
   const [isAwaitingConfirmation, setIsAwaitingConfirmation] = useState(false);
   const [pollingError, setPollingError] = useState(null);
@@ -161,8 +164,9 @@ const CheckoutPayment = () => {
       taxAmount: resolvedTotals.taxAmount,
       discount: resolvedTotals.discount,
       currency: resolvedTotals.currency,
+      baseSubtotal: fallbackSubtotal,
     }),
-    [resolvedTotals]
+    [fallbackSubtotal, resolvedTotals]
   );
 
   const sanitizedAddress = useMemo(() => {
@@ -222,6 +226,8 @@ const CheckoutPayment = () => {
       });
 
       dispatch(resetCheckout());
+      dispatch(clearAppliedCoupon());
+      dispatch(resetCouponState());
     },
     [dispatch, navigate, orderItems, removeItems, stopPolling]
   );
@@ -376,6 +382,13 @@ const CheckoutPayment = () => {
         method: "cod",
         status: "pending",
       },
+      ...(appliedCoupon?.code
+        ? {
+            coupon: {
+              code: appliedCoupon.code,
+            },
+          }
+        : {}),
     };
 
     const response = await createOrder(payload);
@@ -548,6 +561,12 @@ const CheckoutPayment = () => {
       setIsProcessing(false);
     }
   };
+
+  const couponDiscountAmount = appliedCoupon?.discountAmount || 0;
+  const displayedDiscount =
+    resolvedTotals.discount > 0
+      ? resolvedTotals.discount
+      : couponDiscountAmount;
 
   const paymentSessionStatus = paymentSession
     ? String(paymentSession.paymentStatus || "PENDING").toUpperCase()
@@ -863,99 +882,114 @@ const CheckoutPayment = () => {
             </div>
           </div>
 
-          <aside className="space-y-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm lg:sticky lg:top-10 lg:h-max">
-            <div>
-              <h3 className="text-lg font-semibold text-secondary">
-                Order Summary
-              </h3>
-              <div className="mt-4 space-y-3 text-sm text-medium-text">
-                {items.map((item) => (
-                  <div
-                    key={`${item.product || item.id}-${item.size || "default"}`}
-                    className="flex flex-col gap-1 rounded-xl border border-slate-100 bg-slate-50 px-3 py-2"
-                  >
-                    <div className="flex flex-col gap-1">
-                      <span className="font-medium text-secondary">
-                        {item.name}
-                      </span>
-                      <span className="text-xs text-slate-500">
-                        Qty: {item.quantity}
+          <aside className="lg:sticky lg:top-10 lg:h-max">
+            <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+              <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+                <h3 className="text-lg font-semibold text-secondary">
+                  Order Summary
+                </h3>
+                {appliedCoupon?.code && (
+                  <span className="rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-emerald-600">
+                    Coupon {appliedCoupon.code}
+                  </span>
+                )}
+              </div>
+
+              <div className="space-y-5 px-5 pb-5 pt-4 text-sm text-medium-text">
+                <div className="space-y-3">
+                  {items.map((item) => (
+                    <div
+                      key={`${item.product || item.id}-${
+                        item.size || "default"
+                      }`}
+                      className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3"
+                    >
+                      <div className="flex flex-col gap-1">
+                        <span className="font-medium text-secondary">
+                          {item.name}
+                        </span>
+                        <span className="text-xs text-slate-500">
+                          Qty: {item.quantity}
+                        </span>
+                      </div>
+                      {item.size && (
+                        <span className="mt-1 text-xs uppercase text-slate-500">
+                          Size: {item.size}
+                        </span>
+                      )}
+                      <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
+                        <span>HSN: {item?.hsnCode ? item.hsnCode : "--"}</span>
+                        <span className="text-slate-300">|</span>
+                        <span>
+                          GST:{" "}
+                          {Number.isFinite(Number(item?.gstRate))
+                            ? `${Number(item.gstRate)
+                                .toFixed(2)
+                                .replace(/\.00$/, "")} %`
+                            : "--"}
+                        </span>
+                      </div>
+                      <span className="mt-2 block text-xs text-slate-500">
+                        Unit Price: ₹{item.price?.toLocaleString?.() || 0}
                       </span>
                     </div>
-                    {item.size && (
-                      <span className="text-xs text-slate-500">
-                        Size: {item.size}
-                      </span>
-                    )}
-                    <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
-                      <span>HSN: {item?.hsnCode ? item.hsnCode : "--"}</span>
-                      <span className="text-slate-300">|</span>
-                      <span>
-                        GST:{" "}
-                        {Number.isFinite(Number(item?.gstRate))
-                          ? `${Number(item.gstRate)
-                              .toFixed(2)
-                              .replace(/\.00$/, "")}%`
-                          : "--"}
-                      </span>
-                    </div>
-                    <span className="text-xs text-slate-500">
-                      Unit Price: ₹{item.price?.toLocaleString?.() || 0}
+                  ))}
+                </div>
+
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span>Subtotal</span>
+                    <span>
+                      {formatCurrency(
+                        resolvedTotals.subtotal,
+                        resolvedTotals.currency
+                      )}
                     </span>
                   </div>
-                ))}
-                <div className="flex items-center justify-between">
-                  <span>Subtotal</span>
-                  <span>
-                    {formatCurrency(
-                      resolvedTotals.subtotal,
-                      resolvedTotals.currency
-                    )}
-                  </span>
+                  <div className="flex items-center justify-between">
+                    <span>Shipping Fee</span>
+                    <span>
+                      {formatCurrency(
+                        resolvedTotals.shippingFee,
+                        resolvedTotals.currency
+                      )}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>Tax</span>
+                    <span>
+                      {formatCurrency(
+                        resolvedTotals.taxAmount,
+                        resolvedTotals.currency
+                      )}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between font-semibold text-emerald-600">
+                    <span>Discount</span>
+                    <span>
+                      -
+                      {formatCurrency(
+                        displayedDiscount > 0 ? displayedDiscount : 0,
+                        resolvedTotals.currency
+                      )}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between border-t border-slate-200 pt-3 text-base font-semibold text-secondary">
+                    <span>Total</span>
+                    <span>
+                      {formatCurrency(
+                        resolvedTotals.total,
+                        resolvedTotals.currency
+                      )}
+                    </span>
+                  </div>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span>Shipping Fee</span>
-                  <span>
-                    {formatCurrency(
-                      resolvedTotals.shippingFee,
-                      resolvedTotals.currency
-                    )}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span>Tax</span>
-                  <span>
-                    {formatCurrency(
-                      resolvedTotals.taxAmount,
-                      resolvedTotals.currency
-                    )}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between text-success font-medium">
-                  <span>Discount</span>
-                  <span>
-                    -
-                    {formatCurrency(
-                      resolvedTotals.discount,
-                      resolvedTotals.currency
-                    )}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between border-t border-slate-200 pt-3 text-base font-semibold text-secondary">
-                  <span>Total</span>
-                  <span>
-                    {formatCurrency(
-                      resolvedTotals.total,
-                      resolvedTotals.currency
-                    )}
-                  </span>
+
+                <div className="rounded-xl bg-primary/5 px-4 py-3 text-xs text-medium-text">
+                  All card and UPI transactions on MegaMart are 100% secure and
+                  encrypted.
                 </div>
               </div>
-            </div>
-
-            <div className="rounded-2xl bg-primary/5 p-4 text-sm text-medium-text">
-              All card and UPI transactions on MegaMart are 100% secure and
-              encrypted.
             </div>
           </aside>
         </div>

@@ -37,6 +37,7 @@ import AdminOrderDetailsPage from "./pages/AdminOrderDetailsPage";
 import AdminHelpSupportPage from "./pages/AdminHelpSupportPage";
 import AdminHeroCarouselPage from "./pages/AdminHeroCarouselPage";
 import AdminCustomersPage from "./pages/AdminCustomersPage";
+import AdminCouponsPage from "./pages/AdminCouponsPage";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 const ScrollToTop = () => {
@@ -140,6 +141,14 @@ function App() {
           element={
             <ProtectedRoute requireAdmin>
               <AdminOrdersPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/coupons"
+          element={
+            <ProtectedRoute requireAdmin>
+              <AdminCouponsPage />
             </ProtectedRoute>
           }
         />

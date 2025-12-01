@@ -20,6 +20,7 @@
     "framer-motion": "^12.23.22",
     "joi": "^18.0.1",
     "jspdf": "^3.0.3",
+    "country-state-city": "^3.2.1",
     "lodash.debounce": "^4.0.8",
     "lucide-react": "^0.545.0",
     "prop-types": "^15.8.1",

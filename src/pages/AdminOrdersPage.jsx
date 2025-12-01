@@ -1034,13 +1034,34 @@ const AdminOrdersPage = () => {
     setEditForm((prev) => ({ ...prev, [field]: value }));
   };
 
+  const normalizedOrderPaymentStatus = (editingOrder?.payment?.status || "")
+    .toString()
+    .toLowerCase();
+  const normalizedFormPaymentStatus = (editForm.paymentStatus || "")
+    .toString()
+    .toLowerCase();
+  const effectivePaymentStatus =
+    normalizedFormPaymentStatus || normalizedOrderPaymentStatus;
+  const normalizedFormStatus = (editForm.status || "").toString().toLowerCase();
+
   const isDeliveryDateLocked = editingOrder
-    ? ["delivered", "returned"].includes(editingOrder.status)
+    ? ["delivered", "returned"].includes(
+        (editingOrder.status || "").toString().toLowerCase()
+      )
     : false;
 
   const isPaymentStatusLocked =
-    editingOrder?.payment?.status === "paid" ||
-    editForm.paymentStatus === "paid";
+    normalizedOrderPaymentStatus === "paid" ||
+    normalizedFormPaymentStatus === "paid";
+
+  const isPaymentSuccessful = [
+    "paid",
+    "success",
+    "successful",
+    "completed",
+  ].includes(effectivePaymentStatus);
+  const requiresPaymentSuccess = normalizedFormStatus === "delivered";
+  const canSaveEdit = !requiresPaymentSuccess || isPaymentSuccessful;
 
   const handleEstimatedDeliveryChange = (event) => {
     const { value } = event.target;
@@ -1053,6 +1074,14 @@ const AdminOrdersPage = () => {
 
   const handleSaveEdit = async () => {
     if (!editingOrder) return;
+
+    if (requiresPaymentSuccess && !isPaymentSuccessful) {
+      toast.error(
+        "Payment must be successful before marking an order as delivered."
+      );
+      return;
+    }
+
     setIsSavingEdit(true);
     try {
       const payload = {
@@ -1656,7 +1685,7 @@ const AdminOrdersPage = () => {
                                         !isPaymentPaid ||
                                         downloadingInvoiceId === orderId
                                       }
-                                      className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover-border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                                      className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
                                       aria-label={`Download invoice for order ${orderId}`}
                                       title={
                                         isPaymentPaid
@@ -2097,7 +2126,13 @@ const AdminOrdersPage = () => {
                 </label>
               </div>
 
-              <div className="mt-6 flex items-center justify-end gap-3">
+              <div className="mt-6 flex flex-wrap items-center justify-end gap-3">
+                {requiresPaymentSuccess && !isPaymentSuccessful ? (
+                  <p className="mr-auto text-xs text-rose-500">
+                    Mark payment as successful before setting the order to
+                    Delivered.
+                  </p>
+                ) : null}
                 <button
                   type="button"
                   className="rounded-xl border border-slate-200 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50"
@@ -2108,9 +2143,9 @@ const AdminOrdersPage = () => {
                 </button>
                 <button
                   type="button"
-                  className="rounded-xl bg-blue-600 px-5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 disabled:opacity-60"
+                  className="rounded-xl bg-blue-600 px-5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
                   onClick={handleSaveEdit}
-                  disabled={isSavingEdit}
+                  disabled={isSavingEdit || !canSaveEdit}
                 >
                   {isSavingEdit ? "Saving..." : "Save Changes"}
                 </button>

@@ -15,6 +15,7 @@ import {
   createPhonePePayment,
   fetchPaymentStatus,
 } from "../../utils/api";
+import { useCart } from "../../contexts/CartContext";
 import { toast } from "react-hot-toast";
 import QRCode from "react-qr-code";
 
@@ -58,6 +59,7 @@ const CheckoutPayment = () => {
     totals,
     orderId: checkoutOrderId,
   } = useSelector((state) => state.checkout);
+  const { removeItems } = useCart();
   const [selectedMethod, setSelectedMethod] = useState("upi");
   const [isProcessing, setIsProcessing] = useState(false);
   const [isAwaitingConfirmation, setIsAwaitingConfirmation] = useState(false);
@@ -194,6 +196,12 @@ const CheckoutPayment = () => {
         dispatch(setOrderId(orderId));
       }
 
+      const itemsToRemove =
+        Array.isArray(order?.items) && order.items.length
+          ? order.items
+          : orderItems;
+      removeItems(itemsToRemove);
+
       toast.success("Payment Success ✅");
       stopPolling();
       setIsAwaitingConfirmation(false);
@@ -215,7 +223,7 @@ const CheckoutPayment = () => {
 
       dispatch(resetCheckout());
     },
-    [dispatch, navigate, stopPolling]
+    [dispatch, navigate, orderItems, removeItems, stopPolling]
   );
 
   const handlePaymentFailure = useCallback(
@@ -371,10 +379,13 @@ const CheckoutPayment = () => {
     };
 
     const response = await createOrder(payload);
-    const orderId = response?.data?._id;
+    const orderData = response?.data;
+    const orderId = orderData?._id;
 
     dispatch(setPaymentStatus("pending"));
     dispatch(setOrderId(orderId));
+
+    removeItems(Array.isArray(orderData?.items) ? orderData.items : orderItems);
 
     toast.success("Order placed successfully");
     navigate("/", {
@@ -393,6 +404,7 @@ const CheckoutPayment = () => {
     resolvedTotals.subtotal,
     resolvedTotals.total,
     sanitizedAddress,
+    removeItems,
   ]);
 
   const handleManualRefresh = useCallback(() => {

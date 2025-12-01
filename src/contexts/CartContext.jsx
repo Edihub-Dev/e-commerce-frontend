@@ -141,6 +141,66 @@ export const CartProvider = ({ children }) => {
     toast.info(`Item removed from cart.`, { autoClose: 1000 });
   };
 
+  const resolveEntryKey = (entry) => {
+    if (!entry) {
+      return null;
+    }
+
+    const rawId =
+      entry.id ??
+      entry.product ??
+      entry.mongoId ??
+      entry._id ??
+      entry.slug ??
+      null;
+
+    if (!rawId) {
+      return null;
+    }
+
+    const normalizedId = String(rawId).trim();
+    if (!normalizedId) {
+      return null;
+    }
+
+    const normalizedSize =
+      entry.size === undefined || entry.size === null
+        ? ""
+        : String(entry.size).trim();
+
+    return `${normalizedId}::${normalizedSize}`;
+  };
+
+  const removeItems = (itemsToRemove = []) => {
+    if (!Array.isArray(itemsToRemove) || itemsToRemove.length === 0) {
+      return;
+    }
+
+    setCartItems((prevItems) => {
+      const removalKeys = new Set(
+        itemsToRemove
+          .map((entry) => resolveEntryKey(entry))
+          .filter((key) => Boolean(key))
+      );
+
+      if (!removalKeys.size) {
+        return prevItems;
+      }
+
+      let didRemove = false;
+      const nextItems = prevItems.filter((item) => {
+        const key = resolveEntryKey(item);
+        if (key && removalKeys.has(key)) {
+          didRemove = true;
+          return false;
+        }
+        return true;
+      });
+
+      return didRemove ? nextItems : prevItems;
+    });
+  };
+
   const updateQuantity = (productId, quantity, size) => {
     if (quantity <= 0) {
       removeItem(productId, size);
@@ -176,6 +236,7 @@ export const CartProvider = ({ children }) => {
     cartItems,
     addItem,
     removeItem,
+    removeItems,
     updateQuantity,
     clearCart,
     cartCount,

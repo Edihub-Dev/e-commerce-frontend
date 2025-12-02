@@ -7,6 +7,7 @@ import {
   Users,
   Home,
   MessageCircleQuestion,
+  List,
 } from "lucide-react";
 import PropTypes from "prop-types";
 import { Link } from "react-router-dom";
@@ -19,6 +20,11 @@ const navItems = [
   { label: "Orders", icon: ShoppingBag, to: "/admin/orders" },
   { label: "Customers", icon: Users, to: "/admin/customers" },
   { label: "Coupons", icon: TicketPercent, to: "/admin/coupons" },
+  {
+    label: "Footer Categories",
+    icon: List,
+    to: "/admin/footer-categories",
+  },
   {
     label: "Help & Support",
     icon: MessageCircleQuestion,

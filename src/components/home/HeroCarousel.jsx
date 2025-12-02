@@ -366,8 +366,8 @@ const HeroCarousel = () => {
               event.preventDefault();
             }
           }}
-          className="hero-slider h-full"
-          style={{ minHeight: "82vh", width: "100%" }}
+          className="hero-slider h-full min-h-[40vh] md:min-h-[82vh]"
+          style={{ width: "100%" }}
         >
           {slidesToRender.map((slide) => {
             const backgroundImage = slide.background || slide.spotlightImage;
@@ -383,29 +383,26 @@ const HeroCarousel = () => {
             return (
               <SwiperSlide
                 key={slide.id}
-                className="relative flex w-full"
-                style={{ minHeight: "82vh", width: "100%" }}
+                className="relative flex w-full min-h-[40vh] md:min-h-[82vh]"
+                style={{ width: "100%" }}
               >
-                <div
-                  className="relative flex h-full w-full items-center justify-center overflow-hidden"
-                  style={{ minHeight: "82vh" }}
-                >
+                <div className="relative flex h-full w-full items-center justify-center overflow-hidden min-h-[40vh] md:min-h-[82vh]">
                   <div
                     className="absolute inset-0 bg-cover"
                     style={{
                       backgroundImage: backgroundImage
                         ? `url(${backgroundImage})`
                         : undefined,
-                      backgroundPosition: "center 20%",
+                      backgroundPosition: "center",
                     }}
                   />
                   <div className="absolute inset-0 bg-slate-950/55" />
                   <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(148,163,184,0.18),transparent_70%)]" />
 
-                  <div className="relative z-10 mx-auto flex max-w-3xl flex-col items-center gap-6 px-4 pt-10 text-center text-white sm:px-6 md:pt-14">
+                  <div className="relative z-10 mx-auto flex max-w-3xl flex-col items-center gap-4 px-4 pt-6 text-center text-white sm:gap-6 sm:px-6 sm:pt-10 md:pt-14">
                     {slide.showOverline !== false && slide.overline && (
                       <p
-                        className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-200/80"
+                        className="text-[11px] font-semibold uppercase tracking-[0.35em] text-slate-200/80 sm:text-xs"
                         style={{ color: slide.overlineColor || undefined }}
                       >
                         {slide.overline}
@@ -413,7 +410,7 @@ const HeroCarousel = () => {
                     )}
                     {slide.showTitle !== false && (
                       <h1
-                        className="text-4xl font-semibold leading-tight tracking-tight text-white sm:text-5xl md:text-6xl"
+                        className="text-2xl font-semibold leading-tight tracking-tight text-white sm:text-4xl md:text-6xl"
                         style={{ color: slide.titleColor || undefined }}
                       >
                         {slide.title}
@@ -421,7 +418,7 @@ const HeroCarousel = () => {
                     )}
                     {slide.showDescription !== false && slide.description && (
                       <p
-                        className="max-w-2xl text-base text-slate-200 sm:text-lg"
+                        className="hidden max-w-2xl text-xs text-slate-200 sm:block sm:text-sm md:text-lg"
                         style={{ color: slide.descriptionColor || undefined }}
                       >
                         {slide.description}
@@ -429,20 +426,20 @@ const HeroCarousel = () => {
                     )}
 
                     {(showPrimary || showSecondary) && (
-                      <div className="flex flex-col gap-4 sm:flex-row">
+                      <div className="flex w-full flex-row flex-wrap items-center justify-center gap-3 sm:w-auto sm:gap-4">
                         {showPrimary && (
                           <Link
                             to={primaryCta.href}
-                            className="inline-flex items-center justify-center gap-2 rounded-full bg-[#008ECC] px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-[#008ECC]/30 transition hover:bg-[#009ee3]"
+                            className="inline-flex items-center justify-center gap-2 rounded-full bg-[#008ECC] px-4 py-2 text-xs font-semibold text-white shadow-lg shadow-[#008ECC]/30 transition hover:bg-[#009ee3] sm:px-5 sm:py-3 sm:text-sm"
                           >
                             {primaryCta.label}
-                            <ChevronRight size={18} />
+                            <ChevronRight size={16} className="sm:size-5" />
                           </Link>
                         )}
                         {showSecondary && (
                           <Link
                             to={secondaryCta.href}
-                            className="inline-flex items-center justify-center gap-2 rounded-full bg-[#008ECC] px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-[#008ECC]/20 transition hover:bg-[#009ee3]"
+                            className="inline-flex items-center justify-center gap-2 rounded-full bg-[#008ECC] px-4 py-2 text-xs font-semibold text-white shadow-lg shadow-[#008ECC]/20 transition hover:bg-[#009ee3] sm:px-5 sm:py-3 sm:text-sm"
                           >
                             {secondaryCta.label}
                           </Link>

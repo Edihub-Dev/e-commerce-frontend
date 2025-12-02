@@ -38,6 +38,7 @@ import AdminHelpSupportPage from "./pages/AdminHelpSupportPage";
 import AdminHeroCarouselPage from "./pages/AdminHeroCarouselPage";
 import AdminCustomersPage from "./pages/AdminCustomersPage";
 import AdminCouponsPage from "./pages/AdminCouponsPage";
+import AdminFooterCategoriesPage from "./pages/AdminFooterCategoriesPage";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 const ScrollToTop = () => {
@@ -149,6 +150,14 @@ function App() {
           element={
             <ProtectedRoute requireAdmin>
               <AdminCouponsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/footer-categories"
+          element={
+            <ProtectedRoute requireAdmin>
+              <AdminFooterCategoriesPage />
             </ProtectedRoute>
           }
         />

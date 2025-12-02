@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { fetchProducts } from "../utils/api";
+import { fetchPublicFooterCategories } from "../services/footerCategoryApi";
 
 const Footer = () => {
   const [categories, setCategories] = useState([]);
@@ -18,30 +18,17 @@ const Footer = () => {
     const loadCategories = async () => {
       setLoadingCategories(true);
       try {
-        const { data } = await fetchProducts({ limit: 200 });
+        const response = await fetchPublicFooterCategories();
         if (!isMounted) return;
 
-        const categoryMap = new Map();
-        data.forEach((product) => {
-          const rawCategory =
-            typeof product.category === "string" ? product.category : "";
-          const name = rawCategory.trim();
-          if (!name) return;
+        const data = Array.isArray(response.data) ? response.data : [];
 
-          const slug = name
-            .toLowerCase()
-            .replace(/[^a-z0-9]+/g, "-")
-            .replace(/^-+|-+$/g, "");
-
-          if (!categoryMap.has(name)) {
-            categoryMap.set(name, {
-              name,
-              slug: slug || "",
-            });
-          }
-        });
-
-        setCategories(Array.from(categoryMap.values()));
+        setCategories(
+          data.map((category) => ({
+            name: category.name,
+            slug: category.slug || "",
+          }))
+        );
       } catch (error) {
         console.error("Failed to load footer categories", error);
         if (isMounted) {

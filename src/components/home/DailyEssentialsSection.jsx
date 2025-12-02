@@ -1,3 +1,4 @@
+/*
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -119,5 +120,10 @@ const DailyEssentialsSection = () => {
     </motion.section>
   );
 };
+
+export default DailyEssentialsSection;
+*/
+
+const DailyEssentialsSection = () => null;
 
 export default DailyEssentialsSection;

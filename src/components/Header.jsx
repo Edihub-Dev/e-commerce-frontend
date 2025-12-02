@@ -451,7 +451,7 @@ const Header = () => {
               onKeyDown={handleKeyDown}
               onFocus={() => setIsSearchFocused(true)}
               onBlur={() => setTimeout(() => setIsSearchFocused(false), 200)}
-              placeholder="Search essentials, groceries and more..."
+              placeholder="Search T-SHIRTS, Office Essentials, Accessories and more..."
               className="bg-transparent py-2 px-3 w-full focus:outline-none text-sm text-gray-800 placeholder-gray-400 rounded-r-md"
               aria-label="Search products"
             />

@@ -123,7 +123,7 @@ const PrivacyPolicy = () => {
             >
               megamart@edihub.in
             </a>
-            . We respond to privacy requests within 3 business days.
+            . We respond to privacy requests within 7 business days.
           </p>
         </section>
       </div>

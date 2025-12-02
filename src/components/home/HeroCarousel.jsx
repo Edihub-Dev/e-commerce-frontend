@@ -388,12 +388,11 @@ const HeroCarousel = () => {
               >
                 <div className="relative flex h-full w-full items-center justify-center overflow-hidden min-h-[40vh] md:min-h-[82vh]">
                   <div
-                    className="absolute inset-0 bg-cover"
+                    className="absolute inset-0 bg-cover bg-center md:bg-[center_20%]"
                     style={{
                       backgroundImage: backgroundImage
                         ? `url(${backgroundImage})`
                         : undefined,
-                      backgroundPosition: "center",
                     }}
                   />
                   <div className="absolute inset-0 bg-slate-950/55" />

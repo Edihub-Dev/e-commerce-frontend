@@ -104,7 +104,10 @@ const Navbar = ({
                   {adminRole || "Administrator"}
                 </p>
               </div>
-              <ChevronDown size={18} className="hidden text-slate-400 sm:block" />
+              <ChevronDown
+                size={18}
+                className="hidden text-slate-400 sm:block"
+              />
             </button>
 
             <AnimatePresence>
@@ -117,8 +120,12 @@ const Navbar = ({
                   className="absolute right-0 z-20 mt-2 w-48 rounded-2xl border border-slate-200 bg-white shadow-xl"
                 >
                   <div className="px-4 py-3 text-sm">
-                    <p className="font-semibold text-slate-900">{displayName}</p>
-                    <p className="text-xs text-slate-500">{adminRole || "Administrator"}</p>
+                    <p className="font-semibold text-slate-900">
+                      {displayName}
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      {adminRole || "Administrator"}
+                    </p>
                   </div>
                   <div className="border-t border-slate-100">
                     <button

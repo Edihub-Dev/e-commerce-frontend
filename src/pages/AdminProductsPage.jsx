@@ -1,4 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import React, {
+  useEffect,
+  useMemo,
+  useState,
+  useCallback,
+  useRef,
+  useId,
+} from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   Search,
@@ -13,6 +20,7 @@ import {
   Loader2,
   X,
   Star,
+  ChevronDown,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
@@ -66,6 +74,100 @@ const stockOptions = [
   { label: "Preorder", value: "preorder" },
 ];
 
+const FilterSelect = ({ label, value, onChange, options, ariaLabel }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef(null);
+  const labelId = useId();
+  const listboxId = useId();
+
+  const selectedOption =
+    options.find((option) => option.value === value) ?? options[0];
+  const fallbackLabel = selectedOption?.fallbackLabel;
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (!containerRef.current?.contains(event.target)) {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("touchstart", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("touchstart", handleClickOutside);
+    };
+  }, []);
+
+  return (
+    <div className="flex flex-col gap-1 text-xs font-medium text-slate-500">
+      <span id={labelId}>{label}</span>
+      <div ref={containerRef} className="relative">
+        <button
+          type="button"
+          onClick={() => setIsOpen((prev) => !prev)}
+          className={`inline-flex w-full items-center justify-between gap-2 rounded-xl border px-3 py-2 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-blue-100 ${
+            isOpen
+              ? "border-blue-400 bg-white text-blue-600"
+              : "border-slate-200 bg-white text-slate-600 hover:border-blue-300"
+          }`}
+          aria-haspopup="listbox"
+          aria-expanded={isOpen}
+          aria-labelledby={`${labelId} ${listboxId}`}
+          aria-label={ariaLabel}
+        >
+          <span>{selectedOption?.label || fallbackLabel || label}</span>
+          <ChevronDown
+            size={14}
+            className={`transition ${
+              isOpen ? "rotate-180 text-blue-500" : "text-slate-400"
+            }`}
+          />
+        </button>
+
+        {isOpen && (
+          <div
+            id={listboxId}
+            role="listbox"
+            className="absolute left-0 top-[calc(100%+0.35rem)] z-30 w-48 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg"
+          >
+            <ul className="max-h-48 overflow-y-auto py-1">
+              {options.map((option) => {
+                const isActive = option.value === value;
+                return (
+                  <li key={option.value}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onChange(option.value);
+                        setIsOpen(false);
+                      }}
+                      className={`flex w-full items-center justify-between px-3 py-2 text-xs font-semibold transition ${
+                        isActive
+                          ? "bg-blue-50 text-blue-600"
+                          : "text-slate-600 hover:bg-slate-50"
+                      }`}
+                      role="option"
+                      aria-selected={isActive}
+                    >
+                      {option.label || option.fallbackLabel || label}
+                      {isActive && (
+                        <span className="text-[10px] font-bold uppercase text-blue-500">
+                          Selected
+                        </span>
+                      )}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 const AdminProductsPage = () => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
@@ -81,16 +183,50 @@ const AdminProductsPage = () => {
   const [isSubmittingProduct, setIsSubmittingProduct] = useState(false);
   const [viewProduct, setViewProduct] = useState(null);
   const { user, logout } = useAuth();
+  const [categoryCache, setCategoryCache] = useState([]);
 
-  const categoryOptions = useMemo(() => {
-    const set = new Set();
-    items.forEach((product) => {
-      if (product.category) {
-        set.add(product.category);
+  useEffect(() => {
+    setCategoryCache((previous) => {
+      const nextSet = new Set(previous);
+      items.forEach((product) => {
+        if (product?.category) {
+          nextSet.add(product.category);
+        }
+      });
+      if (filters.category) {
+        nextSet.add(filters.category);
       }
+      const sorted = Array.from(nextSet).sort((a, b) => a.localeCompare(b));
+      const hasChanged =
+        sorted.length !== previous.length ||
+        sorted.some((value, index) => value !== previous[index]);
+      return hasChanged ? sorted : previous;
     });
-    return ["", ...Array.from(set)];
-  }, [items]);
+  }, [items, filters.category]);
+
+  const categoryOptions = useMemo(
+    () => ["", ...categoryCache],
+    [categoryCache]
+  );
+
+  const filterDropdowns = useMemo(() => {
+    const buildOptions = (entries, appendAllLabel) =>
+      entries.map((entry) => {
+        if (typeof entry === "string") {
+          return {
+            value: entry,
+            label: entry || appendAllLabel,
+          };
+        }
+        return entry;
+      });
+
+    return {
+      categories: buildOptions(categoryOptions, "All Categories"),
+      statuses: buildOptions(statusOptions, "All Status"),
+      stocks: buildOptions(stockOptions, "All Stock"),
+    };
+  }, [categoryOptions]);
 
   const queryParams = useMemo(() => {
     const params = {
@@ -209,16 +345,16 @@ const AdminProductsPage = () => {
     dispatch(setPage(page));
   };
 
-  const handleCategoryChange = (event) => {
-    dispatch(setFilters({ category: event.target.value }));
+  const handleCategoryChange = (nextValue) => {
+    dispatch(setFilters({ category: nextValue }));
   };
 
-  const handleStatusChange = (event) => {
-    dispatch(setFilters({ status: event.target.value }));
+  const handleStatusChange = (nextValue) => {
+    dispatch(setFilters({ status: nextValue }));
   };
 
-  const handleStockChange = (event) => {
-    dispatch(setFilters({ stockStatus: event.target.value }));
+  const handleStockChange = (nextValue) => {
+    dispatch(setFilters({ stockStatus: nextValue }));
   };
 
   const handleDateChange = (field, value) => {
@@ -613,48 +749,27 @@ const AdminProductsPage = () => {
                     exit={{ opacity: 0, y: -8 }}
                     className="mt-3 grid gap-3 md:grid-cols-4"
                   >
-                    <label className="flex flex-col gap-1 text-xs font-medium text-slate-500">
-                      Category
-                      <select
-                        value={filters.category}
-                        onChange={handleCategoryChange}
-                        className="rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-blue-400 focus:outline-none"
-                      >
-                        {categoryOptions.map((option) => (
-                          <option key={option} value={option}>
-                            {option || "All Categories"}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <label className="flex flex-col gap-1 text-xs font-medium text-slate-500">
-                      Status
-                      <select
-                        value={filters.status}
-                        onChange={handleStatusChange}
-                        className="rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-blue-400 focus:outline-none"
-                      >
-                        {statusOptions.map((option) => (
-                          <option key={option.value} value={option.value}>
-                            {option.label}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <label className="flex flex-col gap-1 text-xs font-medium text-slate-500">
-                      Stock Status
-                      <select
-                        value={filters.stockStatus}
-                        onChange={handleStockChange}
-                        className="rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-blue-400 focus:outline-none"
-                      >
-                        {stockOptions.map((option) => (
-                          <option key={option.value} value={option.value}>
-                            {option.label}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
+                    <FilterSelect
+                      label="Category"
+                      value={filters.category}
+                      onChange={handleCategoryChange}
+                      options={filterDropdowns.categories}
+                      ariaLabel="Filter products by category"
+                    />
+                    <FilterSelect
+                      label="Status"
+                      value={filters.status}
+                      onChange={handleStatusChange}
+                      options={filterDropdowns.statuses}
+                      ariaLabel="Filter products by status"
+                    />
+                    <FilterSelect
+                      label="Stock Status"
+                      value={filters.stockStatus}
+                      onChange={handleStockChange}
+                      options={filterDropdowns.stocks}
+                      ariaLabel="Filter products by stock status"
+                    />
                     <div className="flex flex-col items-end md:flex-row md:items-center md:justify-end">
                       <button
                         type="button"

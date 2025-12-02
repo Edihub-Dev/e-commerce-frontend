@@ -16,6 +16,8 @@ import {
   CheckCircle2,
   CircleDashed,
   Download,
+  Filter,
+  ChevronDown,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import Sidebar from "../components/admin/Sidebar";
@@ -109,6 +111,103 @@ const formatDateTime = (value) => {
   });
 };
 
+const parseDiscountBound = (value) => {
+  if (value === null || value === undefined || value === "") {
+    return null;
+  }
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return null;
+  return Math.min(Math.max(numeric, 0), 100);
+};
+
+const isCouponRedeemed = (coupon) =>
+  Boolean(coupon?.isFullyRedeemed || coupon?.redemptionStatus === "redeemed");
+
+const FilterSelect = ({ value, onValueChange, options, ariaLabel }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (!containerRef.current?.contains(event.target)) {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("touchstart", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("touchstart", handleClickOutside);
+    };
+  }, []);
+
+  const selectedOption =
+    options.find((option) => option.value === value) ?? options[0];
+
+  const handleSelect = (nextValue) => {
+    onValueChange(nextValue);
+    setIsOpen(false);
+  };
+
+  return (
+    <div ref={containerRef} className="relative">
+      <button
+        type="button"
+        onClick={() => setIsOpen((prev) => !prev)}
+        className={`inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold transition focus:outline-none focus:ring-2 focus:ring-blue-100 ${
+          isOpen
+            ? "border-blue-400 bg-white text-blue-600"
+            : "border-slate-200 bg-white text-slate-600 hover:border-blue-300"
+        }`}
+        aria-label={ariaLabel}
+        aria-haspopup="listbox"
+        aria-expanded={isOpen}
+      >
+        <span>{selectedOption?.label}</span>
+        <ChevronDown
+          size={14}
+          className={`transition ${
+            isOpen ? "rotate-180 text-blue-500" : "text-slate-400"
+          }`}
+        />
+      </button>
+
+      {isOpen && (
+        <div className="absolute left-0 top-[calc(100%+0.35rem)] z-30 w-40 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg">
+          <ul className="max-h-48 overflow-y-auto py-1" role="listbox">
+            {options.map((option) => {
+              const isActive = option.value === value;
+              return (
+                <li key={option.value}>
+                  <button
+                    type="button"
+                    onClick={() => handleSelect(option.value)}
+                    className={`flex w-full items-center justify-between px-3 py-2 text-xs font-semibold transition ${
+                      isActive
+                        ? "bg-blue-50 text-blue-600"
+                        : "text-slate-600 hover:bg-slate-50"
+                    }`}
+                    role="option"
+                    aria-selected={isActive}
+                  >
+                    {option.label}
+                    {isActive && (
+                      <span className="text-[10px] font-bold uppercase text-blue-500">
+                        Selected
+                      </span>
+                    )}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+};
+
 const transformCouponsForExport = (couponList) =>
   (Array.isArray(couponList) ? couponList : []).map((coupon, index) => ({
     "#": index + 1,
@@ -157,6 +256,10 @@ const AdminCouponsPage = () => {
   const [editingCoupon, setEditingCoupon] = useState(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isGeneratingCode, setIsGeneratingCode] = useState(false);
+  const [filterType, setFilterType] = useState("all");
+  const [filterStatus, setFilterStatus] = useState("all");
+  const [filterDiscountMin, setFilterDiscountMin] = useState("");
+  const [filterDiscountMax, setFilterDiscountMax] = useState("");
   const [selectedCouponIds, setSelectedCouponIds] = useState([]);
   const selectAllCheckboxRef = useRef(null);
   const isEditing = Boolean(editingCoupon);
@@ -167,12 +270,52 @@ const AdminCouponsPage = () => {
   const isFetching = status === "loading";
   const isMutating = mutationStatus === "loading";
 
+  const filteredCoupons = useMemo(() => {
+    const min = parseDiscountBound(filterDiscountMin);
+    const max = parseDiscountBound(filterDiscountMax);
+
+    return coupons.filter((coupon) => {
+      if (filterType !== "all" && coupon.type !== filterType) {
+        return false;
+      }
+
+      const matchesStatus = (() => {
+        switch (filterStatus) {
+          case "active":
+            return coupon.isActive !== false;
+          case "inactive":
+            return coupon.isActive === false;
+          case "redeemed":
+            return isCouponRedeemed(coupon);
+          case "not-redeemed":
+            return !isCouponRedeemed(coupon);
+          default:
+            return true;
+        }
+      })();
+
+      if (!matchesStatus) {
+        return false;
+      }
+
+      const discountNumeric = Number(coupon.discountValue) || 0;
+      if (min !== null && discountNumeric < min) {
+        return false;
+      }
+      if (max !== null && discountNumeric > max) {
+        return false;
+      }
+
+      return true;
+    });
+  }, [coupons, filterDiscountMax, filterDiscountMin, filterStatus, filterType]);
+
   const selectableCouponIds = useMemo(
     () =>
-      coupons
+      filteredCoupons
         .map((coupon) => (coupon?._id ? String(coupon._id) : null))
         .filter(Boolean),
-    [coupons]
+    [filteredCoupons]
   );
 
   const isAllSelected =
@@ -181,6 +324,17 @@ const AdminCouponsPage = () => {
 
   const selectedCount = selectedCouponIds.length;
   const hasSelection = selectedCount > 0;
+  const hasFiltersApplied =
+    filterType !== "all" ||
+    filterStatus !== "all" ||
+    filterDiscountMin !== "" ||
+    filterDiscountMax !== "";
+  const noCouponsMessage =
+    filteredCoupons.length === 0
+      ? coupons.length === 0
+        ? "No coupons found. Create a coupon to get started."
+        : "No coupons match the selected filters."
+      : "";
 
   useEffect(() => {
     setSelectedCouponIds((prev) =>
@@ -206,6 +360,13 @@ const AdminCouponsPage = () => {
       toast.error(mutationError);
     }
   }, [mutationStatus, mutationError]);
+
+  const handleResetFilters = useCallback(() => {
+    setFilterType("all");
+    setFilterStatus("all");
+    setFilterDiscountMin("");
+    setFilterDiscountMax("");
+  }, []);
 
   const summary = useMemo(() => {
     const total = coupons.length;
@@ -547,9 +708,6 @@ const AdminCouponsPage = () => {
       await dispatch(deleteAdminCouponsBulkThunk(selectedCouponIds)).unwrap();
       toast.success("Selected coupons deleted");
       setSelectedCouponIds([]);
-      if (status !== "loading") {
-        dispatch(fetchAdminCouponsThunk());
-      }
     } catch (bulkError) {
       const message =
         bulkError?.message ||
@@ -561,15 +719,14 @@ const AdminCouponsPage = () => {
   const handleRefresh = () => {
     dispatch(fetchAdminCouponsThunk());
   };
-
   const handleExportXlsx = useCallback(() => {
-    if (!Array.isArray(coupons) || coupons.length === 0) {
+    if (!Array.isArray(filteredCoupons) || filteredCoupons.length === 0) {
       toast.error("No coupons available to export");
       return;
     }
 
     try {
-      const rows = transformCouponsForExport(coupons);
+      const rows = transformCouponsForExport(filteredCoupons);
 
       if (!rows.length) {
         toast.error("No coupons available to export");
@@ -712,11 +869,16 @@ const AdminCouponsPage = () => {
 
           <div className="mt-4 space-y-4">
             <div>
-              <label className="text-sm font-medium text-slate-600">
+              <label
+                htmlFor="coupon-code"
+                className="text-sm font-medium text-slate-600"
+              >
                 Coupon Code
               </label>
               <div className="mt-1 flex flex-col gap-3 sm:flex-row sm:items-center">
                 <input
+                  id="coupon-code"
+                  name="code"
                   type="text"
                   value={formState.code}
                   onChange={handleInputChange("code")}
@@ -748,10 +910,15 @@ const AdminCouponsPage = () => {
             </div>
 
             <div>
-              <label className="text-sm font-medium text-slate-600">
+              <label
+                htmlFor="coupon-description"
+                className="text-sm font-medium text-slate-600"
+              >
                 Description
               </label>
               <textarea
+                id="coupon-description"
+                name="description"
                 value={formState.description}
                 onChange={handleInputChange("description")}
                 className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-blue-500 focus:outline-none"
@@ -762,10 +929,15 @@ const AdminCouponsPage = () => {
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <label className="text-sm font-medium text-slate-600">
+                <label
+                  htmlFor="coupon-discount-value"
+                  className="text-sm font-medium text-slate-600"
+                >
                   Discount (%)
                 </label>
                 <input
+                  id="coupon-discount-value"
+                  name="discountValue"
                   type="number"
                   min={1}
                   max={100}
@@ -777,10 +949,15 @@ const AdminCouponsPage = () => {
                 />
               </div>
               <div>
-                <label className="text-sm font-medium text-slate-600">
+                <label
+                  htmlFor="coupon-max-discount"
+                  className="text-sm font-medium text-slate-600"
+                >
                   Max Discount Amount (optional)
                 </label>
                 <input
+                  id="coupon-max-discount"
+                  name="maxDiscountAmount"
                   type="number"
                   min={0}
                   value={formState.maxDiscountAmount}
@@ -793,10 +970,15 @@ const AdminCouponsPage = () => {
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <label className="text-sm font-medium text-slate-600">
+                <label
+                  htmlFor="coupon-min-order"
+                  className="text-sm font-medium text-slate-600"
+                >
                   Minimum Order Amount
                 </label>
                 <input
+                  id="coupon-min-order"
+                  name="minOrderAmount"
                   type="number"
                   min={0}
                   value={formState.minOrderAmount}
@@ -834,10 +1016,15 @@ const AdminCouponsPage = () => {
           <div className="mt-4 space-y-4">
             {!isEditing && (
               <div>
-                <label className="text-sm font-medium text-slate-600">
+                <label
+                  htmlFor="coupon-count"
+                  className="text-sm font-medium text-slate-600"
+                >
                   Number of coupons to generate
                 </label>
                 <input
+                  id="coupon-count"
+                  name="count"
                   type="number"
                   min={1}
                   max={200}
@@ -854,13 +1041,18 @@ const AdminCouponsPage = () => {
             )}
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <label className="text-sm font-medium text-slate-600">
+                <label
+                  htmlFor="coupon-max-redemptions"
+                  className="text-sm font-medium text-slate-600"
+                >
                   Total Redemptions
                   {formState.type === "multi"
                     ? " (leave blank for unlimited)"
                     : ""}
                 </label>
                 <input
+                  id="coupon-max-redemptions"
+                  name="maxRedemptions"
                   type="number"
                   min={formState.type === "single" ? 1 : 0}
                   value={formState.maxRedemptions}
@@ -871,13 +1063,18 @@ const AdminCouponsPage = () => {
                 />
               </div>
               <div>
-                <label className="text-sm font-medium text-slate-600">
+                <label
+                  htmlFor="coupon-max-redemptions-per-user"
+                  className="text-sm font-medium text-slate-600"
+                >
                   Per Customer Limit
                   {formState.type === "multi"
                     ? " (leave blank for unlimited)"
                     : ""}
                 </label>
                 <input
+                  id="coupon-max-redemptions-per-user"
+                  name="maxRedemptionsPerUser"
                   type="number"
                   min={formState.type === "single" ? 1 : 0}
                   value={formState.maxRedemptionsPerUser}
@@ -891,10 +1088,15 @@ const AdminCouponsPage = () => {
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <label className="text-sm font-medium text-slate-600">
+                <label
+                  htmlFor="coupon-start-date"
+                  className="text-sm font-medium text-slate-600"
+                >
                   Start Date
                 </label>
                 <input
+                  id="coupon-start-date"
+                  name="startDate"
                   type="date"
                   value={formState.startDate}
                   onChange={handleInputChange("startDate")}
@@ -902,10 +1104,15 @@ const AdminCouponsPage = () => {
                 />
               </div>
               <div>
-                <label className="text-sm font-medium text-slate-600">
+                <label
+                  htmlFor="coupon-end-date"
+                  className="text-sm font-medium text-slate-600"
+                >
                   End Date
                 </label>
                 <input
+                  id="coupon-end-date"
+                  name="endDate"
                   type="date"
                   value={formState.endDate}
                   onChange={handleInputChange("endDate")}
@@ -947,11 +1154,79 @@ const AdminCouponsPage = () => {
       <div className="flex flex-col gap-2 border-b border-slate-100 px-4 py-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:px-5">
         <div className="space-y-1">
           <h3 className="text-base font-semibold text-slate-900">Coupons</h3>
-          <p className="text-sm text-slate-500">
+          {/* <p className="text-sm text-slate-500">
             Track and manage coupon codes applied during checkout and payment.
-          </p>
+          </p> */}
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 shadow-sm">
+            {/* <span className="inline-flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+              <Filter size={12} /> Filters
+            </span> */}
+            <FilterSelect
+              value={filterType}
+              onValueChange={setFilterType}
+              options={[
+                { value: "all", label: "All types" },
+                { value: "single", label: "Single use" },
+                { value: "multi", label: "Multi use" },
+              ]}
+              ariaLabel="Filter coupons by type"
+            />
+            <FilterSelect
+              value={filterStatus}
+              onValueChange={setFilterStatus}
+              options={[
+                { value: "all", label: "All statuses" },
+                { value: "active", label: "Active" },
+                { value: "inactive", label: "Inactive" },
+                { value: "redeemed", label: "Redeemed" },
+                { value: "not-redeemed", label: "Not redeemed" },
+              ]}
+              ariaLabel="Filter coupons by status"
+            />
+            <div className="flex items-center gap-1">
+              <label htmlFor="filter-discount-min" className="sr-only">
+                Minimum discount percentage
+              </label>
+              <input
+                id="filter-discount-min"
+                name="filterDiscountMin"
+                type="number"
+                min={0}
+                max={100}
+                value={filterDiscountMin}
+                onChange={(event) => setFilterDiscountMin(event.target.value)}
+                className="w-20 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                placeholder="Min %"
+                aria-label="Minimum discount percentage"
+              />
+              <span className="text-xs font-medium text-slate-400">-</span>
+              <label htmlFor="filter-discount-max" className="sr-only">
+                Maximum discount percentage
+              </label>
+              <input
+                id="filter-discount-max"
+                name="filterDiscountMax"
+                type="number"
+                min={0}
+                max={100}
+                value={filterDiscountMax}
+                onChange={(event) => setFilterDiscountMax(event.target.value)}
+                className="w-20 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                placeholder="Max %"
+                aria-label="Maximum discount percentage"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={handleResetFilters}
+              className="text-xs font-semibold text-slate-500 transition hover:text-blue-600 disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={!hasFiltersApplied}
+            >
+              Reset
+            </button>
+          </div>
           <button
             type="button"
             onClick={handleBulkDelete}
@@ -1020,19 +1295,19 @@ const AdminCouponsPage = () => {
               </tr>
             )}
 
-            {!isFetching && coupons.length === 0 && (
+            {!isFetching && filteredCoupons.length === 0 && (
               <tr>
                 <td
                   colSpan={9}
                   className="px-4 py-6 text-center text-slate-500 sm:px-5"
                 >
-                  No coupons found. Create a coupon to get started.
+                  {noCouponsMessage}
                 </td>
               </tr>
             )}
 
             {!isFetching &&
-              coupons.map((coupon) => (
+              filteredCoupons.map((coupon) => (
                 <tr key={coupon._id} className="hover:bg-slate-50/60">
                   <td className="px-4 py-4 align-top sm:px-5">
                     <input

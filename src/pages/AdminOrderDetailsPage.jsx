@@ -332,11 +332,12 @@ const AdminOrderDetailsPage = () => {
     [order?.estimatedDeliveryDate]
   );
 
-  const subtotal = order?.pricing?.subtotal ?? order?.pricing?.itemTotal ?? 0;
+  const subtotal = order?.pricing?.subtotal ?? 0;
   const shippingFee = order?.pricing?.shippingFee ?? 0;
   const taxAmount = order?.pricing?.taxAmount ?? 0;
   const discount = order?.pricing?.discount ?? 0;
-  const total = order?.pricing?.total ?? order?.totalAmount ?? 0;
+  const total = order?.pricing?.total ?? 0;
+  const coupon = order?.coupon;
 
   const items = Array.isArray(order?.items) ? order.items : [];
 
@@ -633,9 +634,16 @@ const AdminOrderDetailsPage = () => {
                 </div>
 
                 <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-                  <h3 className="text-lg font-semibold text-slate-900">
-                    Payment summary
-                  </h3>
+                  <div className="mb-3 flex items-center justify-between gap-3">
+                    <h3 className="text-lg font-semibold text-slate-900">
+                      Payment summary
+                    </h3>
+                    {coupon?.code && (
+                      <span className="inline-flex items-center rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-emerald-600">
+                        Coupon applied
+                      </span>
+                    )}
+                  </div>
                   <div className="mt-4 space-y-3 text-sm text-slate-600">
                     <div className="flex items-center justify-between">
                       <span>Subtotal</span>

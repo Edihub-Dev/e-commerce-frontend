@@ -669,6 +669,24 @@ const OrderDetailsPage = () => {
     URL.revokeObjectURL(url);
   };
 
+  const formatCurrency = (value) => {
+    const amount = Number.isFinite(Number(value)) ? Number(value) : 0;
+    return amount.toLocaleString("en-IN", {
+      style: "currency",
+      currency: "INR",
+    });
+  };
+
+  const subtotal = order?.pricing?.subtotal ?? order?.pricing?.itemTotal ?? 0;
+  const shippingFee = order?.pricing?.shippingFee ?? 0;
+  const taxAmount = order?.pricing?.taxAmount ?? 0;
+  const discount = order?.pricing?.discount ?? 0;
+  const total = order?.pricing?.total ?? order?.totalAmount ?? 0;
+  const coupon = order?.coupon;
+  const couponDiscount = Number.isFinite(Number(coupon?.discountAmount))
+    ? Number(coupon.discountAmount)
+    : discount;
+
   return (
     <div className="max-w-5xl mx-auto px-4 lg:px-6 py-8 lg:py-10 space-y-6">
       <button
@@ -1083,28 +1101,35 @@ const OrderDetailsPage = () => {
           <p>Email: {order.shippingAddress?.email}</p>
         </div>
         <div className="space-y-2 text-sm text-medium-text">
-          <h3 className="text-lg font-semibold text-secondary mb-2">
-            Payment Summary
-          </h3>
+          <div className="mb-2 flex items-center justify-between gap-3">
+            <h3 className="text-lg font-semibold text-secondary">
+              Payment Summary
+            </h3>
+            {coupon?.code && (
+              <span className="inline-flex items-center rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-emerald-600">
+                Coupon applied
+              </span>
+            )}
+          </div>
           <p className="flex justify-between gap-3">
             <span>Subtotal</span>
-            <span>₹{order.pricing?.subtotal?.toLocaleString?.()}</span>
+            <span>{formatCurrency(subtotal)}</span>
           </p>
           <p className="flex justify-between gap-3">
             <span>Shipping Fee</span>
-            <span>₹{order.pricing?.shippingFee?.toLocaleString?.()}</span>
+            <span>{formatCurrency(shippingFee)}</span>
           </p>
           <p className="flex justify-between gap-3">
             <span>Tax</span>
-            <span>₹{order.pricing?.taxAmount?.toLocaleString?.()}</span>
+            <span>{formatCurrency(taxAmount)}</span>
           </p>
           <p className="flex justify-between text-success font-medium gap-3">
             <span>Discount</span>
-            <span>-₹{order.pricing?.discount?.toLocaleString?.()}</span>
+            <span>-{formatCurrency(discount)}</span>
           </p>
-          <p className="flex justify-between text-base font-semibold text-secondary border-t border-slate-200 pt-3 gap-3">
+          <p className="flex justify-between text-base font-semibold text-slate-900 border-t border-slate-200 pt-3 gap-3">
             <span>Total</span>
-            <span>₹{order.pricing?.total?.toLocaleString?.()}</span>
+            <span>{formatCurrency(total)}</span>
           </p>
           <p className="text-xs text-slate-400 pt-1 break-words">
             Method: {order.payment?.method?.toUpperCase?.()} • Status:{" "}

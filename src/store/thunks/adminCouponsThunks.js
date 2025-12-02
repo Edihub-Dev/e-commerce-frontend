@@ -2,6 +2,7 @@ import { createAsyncThunk } from "@reduxjs/toolkit";
 import {
   fetchAdminCoupons,
   createAdminCoupon,
+  createAdminCouponsBulk,
   updateAdminCoupon,
   deleteAdminCoupon,
 } from "../../services/adminCouponsApi";
@@ -24,6 +25,17 @@ export const createAdminCouponThunk = createAsyncThunk(
       return await createAdminCoupon(payload);
     } catch (error) {
       return rejectWithValue(error.message || "Failed to create coupon");
+    }
+  }
+);
+
+export const createAdminCouponsBulkThunk = createAsyncThunk(
+  "adminCoupons/createBulk",
+  async (payload, { rejectWithValue }) => {
+    try {
+      return await createAdminCouponsBulk(payload);
+    } catch (error) {
+      return rejectWithValue(error.message || "Failed to create coupons");
     }
   }
 );

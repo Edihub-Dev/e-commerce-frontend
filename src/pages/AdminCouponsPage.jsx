@@ -24,6 +24,7 @@ import { useAppDispatch, useAppSelector } from "../store/hooks";
 import {
   fetchAdminCouponsThunk,
   createAdminCouponThunk,
+  createAdminCouponsBulkThunk,
   updateAdminCouponThunk,
   deleteAdminCouponThunk,
 } from "../store/thunks/adminCouponsThunks";
@@ -41,6 +42,7 @@ const buildDefaultFormState = (type = "single") => ({
   startDate: "",
   endDate: "",
   isActive: true,
+  count: "1",
 });
 
 const toDateInputValue = (value) => {
@@ -93,6 +95,10 @@ const AdminCouponsPage = () => {
   const [editingCoupon, setEditingCoupon] = useState(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isGeneratingCode, setIsGeneratingCode] = useState(false);
+  const isEditing = Boolean(editingCoupon);
+  const countValue = Number(formState.count || "1");
+  const isBulkCreate =
+    !isEditing && Number.isFinite(countValue) && countValue > 1;
 
   const isFetching = status === "loading";
   const isMutating = mutationStatus === "loading";
@@ -184,9 +190,15 @@ const AdminCouponsPage = () => {
   }, [coupons]);
 
   const handleTypeChange = (nextType) => {
-    setFormState((prev) =>
-      buildDefaultFormState(nextType === "multi" ? "multi" : "single")
-    );
+    setFormState((prev) => {
+      const base = buildDefaultFormState(
+        nextType === "multi" ? "multi" : "single"
+      );
+      return {
+        ...base,
+        count: prev.count || "1",
+      };
+    });
     setEditingCoupon((prev) => (prev && prev.type !== nextType ? null : prev));
   };
 
@@ -219,7 +231,7 @@ const AdminCouponsPage = () => {
   };
 
   const validateForm = () => {
-    if (!formState.code.trim()) {
+    if (!isBulkCreate && !formState.code.trim()) {
       toast.error("Coupon code is required");
       return false;
     }
@@ -267,6 +279,13 @@ const AdminCouponsPage = () => {
         start > end
       ) {
         toast.error("End date must be after start date");
+        return false;
+      }
+    }
+
+    if (!isEditing) {
+      if (!Number.isFinite(countValue) || countValue < 1) {
+        toast.error("Count must be at least 1");
         return false;
       }
     }
@@ -324,8 +343,15 @@ const AdminCouponsPage = () => {
         ).unwrap();
         toast.success("Coupon updated successfully");
       } else {
-        await dispatch(createAdminCouponThunk(payload)).unwrap();
-        toast.success("Coupon created successfully");
+        if (isBulkCreate) {
+          await dispatch(
+            createAdminCouponsBulkThunk({ ...payload, count: countValue })
+          ).unwrap();
+          toast.success(`Created ${countValue} coupons`);
+        } else {
+          await dispatch(createAdminCouponThunk(payload)).unwrap();
+          toast.success("Coupon created successfully");
+        }
       }
       resetForm();
       if (status !== "loading") {
@@ -373,6 +399,7 @@ const AdminCouponsPage = () => {
       startDate: toDateInputValue(coupon.startDate),
       endDate: toDateInputValue(coupon.endDate),
       isActive: coupon.isActive !== false,
+      count: "1",
     });
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -526,15 +553,16 @@ const AdminCouponsPage = () => {
                   value={formState.code}
                   onChange={handleInputChange("code")}
                   className="flex-1 rounded-xl border border-slate-200 px-3 py-2 text-sm uppercase tracking-wider text-slate-700 focus:border-blue-500 focus:outline-none"
-                  placeholder="MEGA50"
+                  placeholder={isBulkCreate ? "Auto-generated" : "MEGA50"}
                   maxLength={20}
-                  required
+                  required={!isBulkCreate}
+                  disabled={isBulkCreate}
                 />
                 <button
                   type="button"
                   onClick={handleGenerateCode}
                   className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 transition hover:border-blue-200 hover:text-blue-600"
-                  disabled={isGeneratingCode || isMutating}
+                  disabled={isGeneratingCode || isMutating || isBulkCreate}
                 >
                   {isGeneratingCode ? (
                     <Loader2 size={16} className="animate-spin" />
@@ -544,6 +572,11 @@ const AdminCouponsPage = () => {
                   Generate
                 </button>
               </div>
+              {isBulkCreate && (
+                <p className="mt-1 text-xs text-slate-500">
+                  Codes will be generated automatically for bulk creation.
+                </p>
+              )}
             </div>
 
             <div>
@@ -631,6 +664,26 @@ const AdminCouponsPage = () => {
           </p>
 
           <div className="mt-4 space-y-4">
+            {!isEditing && (
+              <div>
+                <label className="text-sm font-medium text-slate-600">
+                  Number of coupons to generate
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  max={200}
+                  value={formState.count}
+                  onChange={handleInputChange("count")}
+                  className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-blue-500 focus:outline-none"
+                  placeholder="1"
+                />
+                <p className="mt-1 text-xs text-slate-500">
+                  A unique code will be generated for each coupon when count is
+                  greater than 1.
+                </p>
+              </div>
+            )}
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
                 <label className="text-sm font-medium text-slate-600">

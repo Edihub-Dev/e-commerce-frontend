@@ -2,6 +2,7 @@ import { createSlice } from "@reduxjs/toolkit";
 import {
   fetchAdminCouponsThunk,
   createAdminCouponThunk,
+  createAdminCouponsBulkThunk,
   updateAdminCouponThunk,
   deleteAdminCouponThunk,
 } from "../thunks/adminCouponsThunks";
@@ -58,6 +59,21 @@ const adminCouponsSlice = createSlice({
         state.mutationStatus = "failed";
         state.mutationError =
           action.payload || action.error?.message || "Failed to create coupon";
+      })
+      .addCase(createAdminCouponsBulkThunk.pending, (state) => {
+        state.mutationStatus = "loading";
+        state.mutationError = "";
+      })
+      .addCase(createAdminCouponsBulkThunk.fulfilled, (state, action) => {
+        state.mutationStatus = "succeeded";
+        if (Array.isArray(action.payload) && action.payload.length) {
+          state.items = sortCoupons([...action.payload, ...state.items]);
+        }
+      })
+      .addCase(createAdminCouponsBulkThunk.rejected, (state, action) => {
+        state.mutationStatus = "failed";
+        state.mutationError =
+          action.payload || action.error?.message || "Failed to create coupons";
       })
       .addCase(updateAdminCouponThunk.pending, (state) => {
         state.mutationStatus = "loading";

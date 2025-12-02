@@ -27,6 +27,15 @@ export const createAdminCoupon = async (payload) => {
   return data.data;
 };
 
+export const createAdminCouponsBulk = async (payload) => {
+  const response = await api.post("/admin/coupons/bulk", payload);
+  const data = response.data || {};
+  if (data.success === false) {
+    throw new Error(data.message || "Failed to create coupons");
+  }
+  return Array.isArray(data.data) ? data.data : [];
+};
+
 export const updateAdminCoupon = async (id, payload) => {
   const response = await api.put(`/admin/coupons/${id}`, payload);
   const data = response.data || {};

@@ -582,7 +582,7 @@ const CheckoutPayment = () => {
   return (
     <>
       <div className="min-h-[calc(100vh-180px)] bg-light-bg">
-        <div className="mx-auto grid w-full max-w-6xl gap-6 p-6 lg:grid-cols-[2fr,1fr] lg:p-10">
+        <div className="mx-auto w-full max-w-6xl p-6 lg:p-10">
           <div className="space-y-6">
             <motion.header
               initial={{ opacity: 0, y: 16 }}
@@ -653,345 +653,381 @@ const CheckoutPayment = () => {
               )}
             </section>
 
-            <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-              <h3 className="text-base font-semibold text-secondary">
-                Payment options
-              </h3>
-              <div className="mt-4 grid gap-3">
-                {paymentOptions.map((option) => {
-                  const isActive = selectedMethod === option.id;
-                  return (
-                    <button
-                      key={option.id}
-                      type="button"
-                      onClick={() => setSelectedMethod(option.id)}
-                      className={`flex items-start gap-4 rounded-2xl border px-5 py-4 text-left transition-all ${
-                        isActive
-                          ? "border-primary bg-primary/5 shadow-lg shadow-primary/10"
-                          : "border-slate-200 hover:border-primary/40"
-                      }`}
-                    >
-                      <span
-                        className={`mt-1 flex h-5 w-5 items-center justify-center rounded-full border-2 ${
-                          isActive
-                            ? "border-primary bg-primary"
-                            : "border-slate-300"
-                        }`}
-                      >
-                        {isActive && (
-                          <span className="h-2 w-2 rounded-full bg-white" />
-                        )}
+            <div className="flex flex-col gap-8 lg:grid lg:grid-cols-[1.1fr,0.9fr]">
+              <aside className="order-1 lg:order-2 lg:sticky lg:top-10 lg:h-max">
+                <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+                  <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+                    <h3 className="text-lg font-semibold text-secondary">
+                      Order Summary
+                    </h3>
+                    {appliedCoupon?.code && (
+                      <span className="rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-emerald-600">
+                        Coupon {appliedCoupon.code}
                       </span>
-                      <div className="space-y-1">
-                        <p className="text-base font-semibold text-secondary">
-                          {option.title}
-                        </p>
-                        <p className="text-sm text-medium-text">
-                          {option.description}
-                        </p>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            </section>
+                    )}
+                  </div>
 
-            <AnimatePresence mode="wait">
-              {selectedMethod !== "cod" && (
-                <motion.section
-                  key={
-                    paymentSession ? "phonepe-session" : "phonepe-instructions"
-                  }
-                  initial={{ opacity: 0, y: 16 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -12 }}
-                  transition={{ duration: 0.25 }}
-                  className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
-                >
-                  {paymentSession ? (
-                    <div className="flex flex-col gap-6">
-                      <div className="flex flex-wrap items-center justify-between gap-3">
-                        <h3 className="text-base font-semibold text-secondary">
-                          Complete your PhonePe payment
-                        </h3>
-                        <span
-                          className={`inline-flex items-center justify-center rounded-full px-3 py-1 text-xs font-semibold ${paymentStatusBadgeClass}`}
+                  <div className="space-y-5 px-5 pb-5 pt-4 text-sm text-medium-text">
+                    <div className="space-y-3">
+                      {items.map((item) => (
+                        <div
+                          key={`${item.product || item.id}-${
+                            item.size || "default"
+                          }`}
+                          className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3"
                         >
-                          {paymentSessionStatus}
+                          <div className="flex flex-col gap-1">
+                            <span className="font-medium text-secondary">
+                              {item.name}
+                            </span>
+                            <span className="text-xs text-slate-500">
+                              Qty: {item.quantity}
+                            </span>
+                          </div>
+                          {item.size && (
+                            <span className="mt-1 text-xs uppercase text-slate-500">
+                              Size: {item.size}
+                            </span>
+                          )}
+                          <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
+                            <span>
+                              HSN: {item?.hsnCode ? item.hsnCode : "--"}
+                            </span>
+                            <span className="text-slate-300">|</span>
+                            <span>
+                              GST:{" "}
+                              {Number.isFinite(Number(item?.gstRate))
+                                ? `${Number(item.gstRate)
+                                    .toFixed(2)
+                                    .replace(/\.00$/, "")} %`
+                                : "--"}
+                            </span>
+                          </div>
+                          <span className="mt-2 block text-xs text-slate-500">
+                            Unit Price: ₹{item.price?.toLocaleString?.() || 0}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span>Subtotal</span>
+                        <span>
+                          {formatCurrency(
+                            resolvedTotals.subtotal,
+                            resolvedTotals.currency
+                          )}
                         </span>
                       </div>
-                      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr),minmax(0,1fr)]">
-                        <div className="flex flex-col items-center justify-center gap-4 rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 p-6">
-                          {paymentSession.qrData ? (
-                            <>
-                              <QRCode
-                                value={paymentSession.qrData}
-                                size={220}
-                                includeMargin
-                                renderAs="svg"
-                              />
-                              <p className="text-sm font-medium text-secondary">
-                                Scan using the PhonePe app to pay{" "}
-                                {formatCurrency(
-                                  paymentSession.amountInRupees,
-                                  resolvedTotals.currency
-                                )}
-                              </p>
-                            </>
-                          ) : (
-                            <p className="text-center text-sm text-medium-text">
-                              Generating QR code… follow the redirect link below
-                              to continue in the PhonePe app.
-                            </p>
+                      <div className="flex items-center justify-between">
+                        <span>Shipping Fee</span>
+                        <span>
+                          {formatCurrency(
+                            resolvedTotals.shippingFee,
+                            resolvedTotals.currency
                           )}
-                        </div>
-                        <div className="space-y-4">
-                          <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 text-sm text-secondary">
-                            <div className="flex items-center justify-between gap-2">
-                              <span className="font-medium">
-                                Transaction ID
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  handleCopyTransactionId(
-                                    paymentSession.merchantTransactionId
-                                  )
-                                }
-                                className="text-xs font-semibold text-primary hover:underline"
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span>Tax</span>
+                        <span>
+                          {formatCurrency(
+                            resolvedTotals.taxAmount,
+                            resolvedTotals.currency
+                          )}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between font-semibold text-emerald-600">
+                        <span>Discount</span>
+                        <span>
+                          -
+                          {formatCurrency(
+                            displayedDiscount > 0 ? displayedDiscount : 0,
+                            resolvedTotals.currency
+                          )}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between border-t border-slate-200 pt-3 text-base font-semibold text-secondary">
+                        <span>Total</span>
+                        <span>
+                          {formatCurrency(
+                            resolvedTotals.total,
+                            resolvedTotals.currency
+                          )}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="rounded-xl bg-primary/5 px-4 py-3 text-xs text-medium-text">
+                      All card and UPI transactions on MegaMart are 100% secure
+                      and encrypted.
+                    </div>
+                  </div>
+                </div>
+              </aside>
+
+              <div className="order-2 space-y-6 lg:order-1">
+                <header className="flex flex-col gap-4 rounded-3xl border border-slate-100 bg-white p-6 shadow-sm lg:flex-row lg:items-center lg:justify-between">
+                  <div className="space-y-1">
+                    <h2 className="text-xl font-semibold text-secondary">
+                      Choose your payment method
+                    </h2>
+                    <p className="text-sm text-medium-text">
+                      Select a secure payment option to complete your order.
+                    </p>
+                  </div>
+                  <div className="rounded-2xl bg-primary/5 px-4 py-2 text-sm text-primary">
+                    Total payable:{" "}
+                    {formatCurrency(
+                      resolvedTotals.total,
+                      resolvedTotals.currency
+                    )}
+                  </div>
+                </header>
+
+                <section className="rounded-3xl border border-slate-100 bg-white p-6 shadow-sm">
+                  <div className="space-y-4">
+                    <div>
+                      <p className="text-sm font-semibold text-secondary">
+                        Payment Options
+                      </p>
+                      <p className="text-xs text-medium-text">
+                        All transactions are secure and encrypted. Select your
+                        preferred method below.
+                      </p>
+                    </div>
+
+                    <div className="space-y-3">
+                      {paymentOptions.map((option) => {
+                        const isSelected = selectedMethod === option.id;
+                        return (
+                          <button
+                            key={option.id}
+                            type="button"
+                            onClick={() => handleSelectPaymentOption(option.id)}
+                            className={`w-full rounded-2xl border px-4 py-4 text-left transition ${
+                              isSelected
+                                ? "border-primary bg-primary/5 text-primary shadow-sm"
+                                : "border-slate-200 bg-white text-secondary hover:border-primary/40 hover:bg-primary/5"
+                            }`}
+                          >
+                            <div className="flex items-start justify-between">
+                              <div className="space-y-1">
+                                <p className="text-sm font-semibold">
+                                  {option.title}
+                                </p>
+                                <p className="text-xs text-medium-text">
+                                  {option.description}
+                                </p>
+                              </div>
+                              <span
+                                className={`mt-1 inline-flex h-5 w-5 items-center justify-center rounded-full border text-[10px] font-semibold transition ${
+                                  isSelected
+                                    ? "border-primary bg-primary text-white"
+                                    : "border-slate-300 text-slate-400"
+                                }`}
                               >
-                                Copy
-                              </button>
-                            </div>
-                            <p className="mt-1 break-all font-mono text-xs text-medium-text">
-                              {paymentSession.merchantTransactionId}
-                            </p>
-                            <p className="mt-3 flex items-center justify-between text-sm">
-                              <span>Amount</span>
-                              <span className="font-semibold text-secondary">
-                                {formatCurrency(
-                                  paymentSession.amountInRupees,
-                                  resolvedTotals.currency
-                                )}
+                                {isSelected ? "" : ""}
                               </span>
-                            </p>
-                            {paymentSession.initiatedAt && (
-                              <p className="mt-1 text-xs text-medium-text">
-                                Initiated at{" "}
-                                {paymentSession.initiatedAt.toLocaleTimeString?.(
-                                  "en-IN",
-                                  { hour: "2-digit", minute: "2-digit" }
-                                )}
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </section>
+
+                <AnimatePresence>
+                  <motion.section
+                    key={
+                      paymentSession
+                        ? "phonepe-session"
+                        : "phonepe-instructions"
+                    }
+                    initial={{ opacity: 0, y: 16 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -12 }}
+                    transition={{ duration: 0.25 }}
+                    className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
+                  >
+                    {paymentSession ? (
+                      <div className="flex flex-col gap-6">
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                          <h3 className="text-base font-semibold text-secondary">
+                            Complete your PhonePe payment
+                          </h3>
+                          <span
+                            className={`inline-flex items-center justify-center rounded-full px-3 py-1 text-xs font-semibold ${paymentStatusBadgeClass}`}
+                          >
+                            {paymentSessionStatus}
+                          </span>
+                        </div>
+                        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr),minmax(0,1fr)]">
+                          <div className="flex flex-col items-center justify-center gap-4 rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 p-6">
+                            {paymentSession.qrData ? (
+                              <>
+                                <QRCode
+                                  value={paymentSession.qrData}
+                                  size={220}
+                                  includeMargin
+                                  renderAs="svg"
+                                />
+                                <p className="text-sm font-medium text-secondary">
+                                  Scan using the PhonePe app to pay{" "}
+                                  {formatCurrency(
+                                    paymentSession.amountInRupees,
+                                    resolvedTotals.currency
+                                  )}
+                                </p>
+                              </>
+                            ) : (
+                              <p className="text-center text-sm text-medium-text">
+                                Generating QR code… follow the redirect link
+                                below to continue in the PhonePe app.
                               </p>
                             )}
                           </div>
+                          <div className="space-y-4">
+                            <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 text-sm text-secondary">
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="font-medium">
+                                  Transaction ID
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    handleCopyTransactionId(
+                                      paymentSession.merchantTransactionId
+                                    )
+                                  }
+                                  className="text-xs font-semibold text-primary hover:underline"
+                                >
+                                  Copy
+                                </button>
+                              </div>
+                              <p className="mt-1 break-all font-mono text-xs text-medium-text">
+                                {paymentSession.merchantTransactionId}
+                              </p>
+                              <p className="mt-3 flex items-center justify-between text-sm">
+                                <span>Amount</span>
+                                <span className="font-semibold text-secondary">
+                                  {formatCurrency(
+                                    paymentSession.amountInRupees,
+                                    resolvedTotals.currency
+                                  )}
+                                </span>
+                              </p>
+                              {paymentSession.initiatedAt && (
+                                <p className="mt-1 text-xs text-medium-text">
+                                  Initiated at{" "}
+                                  {paymentSession.initiatedAt.toLocaleTimeString?.(
+                                    "en-IN",
+                                    {
+                                      hour: "2-digit",
+                                      minute: "2-digit",
+                                    }
+                                  )}
+                                </p>
+                              )}
+                            </div>
 
-                          {paymentSession.redirectUrl && (
-                            <button
-                              type="button"
-                              onClick={() =>
-                                handleOpenRedirect(paymentSession.redirectUrl)
-                              }
-                              className="w-full rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-white shadow hover:bg-primary-dark"
-                            >
-                              Open PhonePe payment page
-                            </button>
-                          )}
+                            {paymentSession.redirectUrl && (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  handleOpenRedirect(paymentSession.redirectUrl)
+                                }
+                                className="w-full rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-white shadow hover:bg-primary-dark"
+                              >
+                                Open PhonePe payment page
+                              </button>
+                            )}
 
-                          <div className="flex flex-wrap items-center gap-3">
-                            <button
-                              type="button"
-                              onClick={handleManualRefresh}
-                              className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-secondary transition hover:border-primary/60 hover:text-primary"
-                            >
-                              Refresh status
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setPaymentSession(null)}
-                              className="rounded-xl border border-transparent px-4 py-2 text-sm text-medium-text underline-offset-4 hover:text-primary hover:underline"
-                            >
-                              Try a different method
-                            </button>
+                            <div className="flex flex-wrap items-center gap-3">
+                              <button
+                                type="button"
+                                onClick={handleManualRefresh}
+                                className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-secondary transition hover:border-primary/60 hover:text-primary"
+                              >
+                                Refresh status
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setPaymentSession(null)}
+                                className="rounded-xl border border-transparent px-4 py-2 text-sm text-medium-text underline-offset-4 hover:text-primary hover:underline"
+                              >
+                                Try a different method
+                              </button>
+                            </div>
+
+                            {pollingError && (
+                              <p className="rounded-xl border border-amber-400 bg-amber-50 p-3 text-sm text-amber-700">
+                                {pollingError}
+                              </p>
+                            )}
                           </div>
-
-                          {pollingError && (
-                            <p className="rounded-xl border border-amber-400 bg-amber-50 p-3 text-sm text-amber-700">
-                              {pollingError}
-                            </p>
-                          )}
                         </div>
                       </div>
-                    </div>
-                  ) : (
-                    <div className="space-y-4 text-sm text-medium-text">
-                      <h3 className="text-base font-semibold text-secondary">
-                        How PhonePe checkout works
-                      </h3>
-                      <ol className="list-decimal space-y-2 pl-5">
-                        <li>
-                          Click “Pay &amp; Place Order” to create a secure
-                          PhonePe transaction.
-                        </li>
-                        <li>
-                          Scan the QR on desktop or continue in the PhonePe app
-                          on mobile.
-                        </li>
-                        <li>
-                          We’ll automatically confirm your payment and place the
-                          order.
-                        </li>
-                      </ol>
-                      <p className="text-xs text-slate-500">
-                        Need to change the payment option? You can always switch
-                        back to Cash on Delivery.
-                      </p>
-                    </div>
-                  )}
-                </motion.section>
-              )}
-            </AnimatePresence>
+                    ) : (
+                      <div className="space-y-4 text-sm text-medium-text">
+                        <h3 className="text-base font-semibold text-secondary">
+                          How PhonePe checkout works
+                        </h3>
+                        <ol className="list-decimal space-y-2 pl-5">
+                          <li>
+                            Click “Pay &amp; Place Order” to create a secure
+                            PhonePe transaction.
+                          </li>
+                          <li>
+                            Scan the QR on desktop or continue in the PhonePe
+                            app on mobile.
+                          </li>
+                          <li>
+                            We’ll automatically confirm your payment and place
+                            the order.
+                          </li>
+                        </ol>
+                        <p className="text-xs text-slate-500">
+                          Need to change the payment option? You can always
+                          switch back to Cash on Delivery.
+                        </p>
+                      </div>
+                    )}
+                  </motion.section>
+                </AnimatePresence>
 
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <button
-                type="button"
-                onClick={() => navigate("/checkout/address")}
-                className="w-full rounded-xl border border-slate-300 px-5 py-3 text-sm font-semibold text-secondary transition hover:border-primary/50 hover:bg-primary/5 sm:w-auto"
-              >
-                Back to Address
-              </button>
-              <motion.button
-                whileHover={{
-                  scale: isProcessing || isAwaitingConfirmation ? 1 : 1.02,
-                }}
-                whileTap={{ scale: 0.98 }}
-                onClick={handlePlaceOrder}
-                disabled={isProcessing || isAwaitingConfirmation}
-                className="w-full rounded-xl bg-primary px-6 py-3 text-sm font-semibold text-white shadow-md shadow-primary/20 transition disabled:cursor-not-allowed disabled:opacity-60 hover:bg-primary-dark sm:w-auto"
-              >
-                {isProcessing
-                  ? selectedMethod === "cod"
-                    ? "Placing Order..."
-                    : "Contacting PhonePe..."
-                  : selectedMethod === "cod"
-                  ? "Place Order"
-                  : paymentSession
-                  ? "Regenerate Payment"
-                  : "Pay & Place Order"}
-              </motion.button>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <button
+                    type="button"
+                    onClick={() => navigate("/checkout/address")}
+                    className="w-full rounded-xl border border-slate-300 px-5 py-3 text-sm font-semibold text-secondary transition hover:border-primary/50 hover:bg-primary/5 sm:w-auto"
+                  >
+                    Back to Address
+                  </button>
+                  <motion.button
+                    whileHover={{
+                      scale: isProcessing || isAwaitingConfirmation ? 1 : 1.02,
+                    }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={handlePlaceOrder}
+                    disabled={isProcessing || isAwaitingConfirmation}
+                    className="w-full rounded-xl bg-primary px-6 py-3 text-sm font-semibold text-white shadow-md shadow-primary/20 transition disabled:cursor-not-allowed disabled:opacity-60 hover:bg-primary-dark sm:w-auto"
+                  >
+                    {isProcessing
+                      ? selectedMethod === "cod"
+                        ? "Placing Order..."
+                        : "Contacting PhonePe..."
+                      : selectedMethod === "cod"
+                      ? "Place Order"
+                      : paymentSession
+                      ? "Regenerate Payment"
+                      : "Pay & Place Order"}
+                  </motion.button>
+                </div>
+              </div>
             </div>
           </div>
-
-          <aside className="lg:sticky lg:top-10 lg:h-max">
-            <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
-              <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
-                <h3 className="text-lg font-semibold text-secondary">
-                  Order Summary
-                </h3>
-                {appliedCoupon?.code && (
-                  <span className="rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-emerald-600">
-                    Coupon {appliedCoupon.code}
-                  </span>
-                )}
-              </div>
-
-              <div className="space-y-5 px-5 pb-5 pt-4 text-sm text-medium-text">
-                <div className="space-y-3">
-                  {items.map((item) => (
-                    <div
-                      key={`${item.product || item.id}-${
-                        item.size || "default"
-                      }`}
-                      className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3"
-                    >
-                      <div className="flex flex-col gap-1">
-                        <span className="font-medium text-secondary">
-                          {item.name}
-                        </span>
-                        <span className="text-xs text-slate-500">
-                          Qty: {item.quantity}
-                        </span>
-                      </div>
-                      {item.size && (
-                        <span className="mt-1 text-xs uppercase text-slate-500">
-                          Size: {item.size}
-                        </span>
-                      )}
-                      <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
-                        <span>HSN: {item?.hsnCode ? item.hsnCode : "--"}</span>
-                        <span className="text-slate-300">|</span>
-                        <span>
-                          GST:{" "}
-                          {Number.isFinite(Number(item?.gstRate))
-                            ? `${Number(item.gstRate)
-                                .toFixed(2)
-                                .replace(/\.00$/, "")} %`
-                            : "--"}
-                        </span>
-                      </div>
-                      <span className="mt-2 block text-xs text-slate-500">
-                        Unit Price: ₹{item.price?.toLocaleString?.() || 0}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span>Subtotal</span>
-                    <span>
-                      {formatCurrency(
-                        resolvedTotals.subtotal,
-                        resolvedTotals.currency
-                      )}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span>Shipping Fee</span>
-                    <span>
-                      {formatCurrency(
-                        resolvedTotals.shippingFee,
-                        resolvedTotals.currency
-                      )}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span>Tax</span>
-                    <span>
-                      {formatCurrency(
-                        resolvedTotals.taxAmount,
-                        resolvedTotals.currency
-                      )}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between font-semibold text-emerald-600">
-                    <span>Discount</span>
-                    <span>
-                      -
-                      {formatCurrency(
-                        displayedDiscount > 0 ? displayedDiscount : 0,
-                        resolvedTotals.currency
-                      )}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between border-t border-slate-200 pt-3 text-base font-semibold text-secondary">
-                    <span>Total</span>
-                    <span>
-                      {formatCurrency(
-                        resolvedTotals.total,
-                        resolvedTotals.currency
-                      )}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="rounded-xl bg-primary/5 px-4 py-3 text-xs text-medium-text">
-                  All card and UPI transactions on MegaMart are 100% secure and
-                  encrypted.
-                </div>
-              </div>
-            </div>
-          </aside>
         </div>
       </div>
 

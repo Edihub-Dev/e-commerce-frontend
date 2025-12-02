@@ -139,7 +139,7 @@ const CheckoutOrder = () => {
   }
 
   return (
-    <div className="grid lg:grid-cols-[2fr,1fr] gap-0">
+    <div className="grid gap-6 lg:grid-cols-[2fr,1fr] lg:gap-0">
       <div className="p-6 lg:p-10">
         <div className="flex justify-between items-center mb-6">
           <div>
@@ -204,7 +204,7 @@ const CheckoutOrder = () => {
           ))}
         </div>
 
-        <div className="mt-10 flex justify-end">
+        <div className="mt-10 hidden justify-end lg:flex">
           <motion.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
@@ -216,7 +216,7 @@ const CheckoutOrder = () => {
         </div>
       </div>
 
-      <aside className="border-l border-slate-100 bg-slate-50 p-6 lg:p-8">
+      <aside className="border-t border-slate-100 bg-slate-50 p-6 lg:border-t-0 lg:border-l lg:p-8">
         <div className="space-y-6">
           <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <div className="flex flex-wrap items-start justify-between gap-3">
@@ -321,6 +321,17 @@ const CheckoutOrder = () => {
           </section>
         </div>
       </aside>
+
+      <div className="px-6 pb-6 lg:hidden">
+        <motion.button
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          onClick={handleContinue}
+          className="w-full rounded-xl bg-primary px-6 py-3 text-base font-semibold text-white shadow-md shadow-primary/20 transition hover:bg-primary-dark"
+        >
+          Continue to Address
+        </motion.button>
+      </div>
     </div>
   );
 };

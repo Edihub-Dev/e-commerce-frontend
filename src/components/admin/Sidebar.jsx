@@ -14,11 +14,11 @@ import { useEffect, useState } from "react";
 
 const navItems = [
   { label: "Dashboard", icon: LayoutDashboard, to: "/admin" },
+  { label: "Hero Carousel", icon: Home, to: "/admin/hero-carousel" },
   { label: "Products", icon: Package, to: "/admin/products" },
   { label: "Orders", icon: ShoppingBag, to: "/admin/orders" },
-  { label: "Coupons", icon: TicketPercent, to: "/admin/coupons" },
-  { label: "Hero Carousel", icon: Home, to: "/admin/hero-carousel" },
   { label: "Customers", icon: Users, to: "/admin/customers" },
+  { label: "Coupons", icon: TicketPercent, to: "/admin/coupons" },
   {
     label: "Help & Support",
     icon: MessageCircleQuestion,

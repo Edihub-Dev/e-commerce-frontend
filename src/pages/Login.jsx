@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Eye, EyeOff } from "lucide-react";
@@ -12,6 +12,7 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
+  const passwordInputRef = useRef(null);
   const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -20,6 +21,13 @@ const Login = () => {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleEmailKeyDown = (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      passwordInputRef.current?.focus();
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -76,6 +84,7 @@ const Login = () => {
               id="email"
               value={formData.email}
               onChange={handleChange}
+              onKeyDown={handleEmailKeyDown}
               className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary sm:text-sm ${
                 errors.email ? "border-red-500" : "border-gray-300"
               }`}
@@ -106,6 +115,7 @@ const Login = () => {
                 id="password"
                 value={formData.password}
                 onChange={handleChange}
+                ref={passwordInputRef}
                 className={`block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary sm:text-sm ${
                   errors.password ? "border-red-500" : "border-gray-300"
                 }`}

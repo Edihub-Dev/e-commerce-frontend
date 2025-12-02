@@ -57,10 +57,10 @@ const ReturnPolicy = () => {
               Open <strong>My Orders</strong>, choose the product, and tap
               <em>Request Return</em> with a short note on what went wrong.
             </li>
-            <li>
+            {/* <li>
               If the issue is physical damage or a defect, attach 1–2 clear
               photos so our team can fast-track the review.
-            </li>
+            </li> */}
             <li>
               We’ll share pick-up or self-ship instructions within 24 hours.
               Self-ship charges are reimbursed as store credit once verified.

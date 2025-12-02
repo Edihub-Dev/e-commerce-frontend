@@ -5,6 +5,7 @@ import {
   createAdminCouponsBulkThunk,
   updateAdminCouponThunk,
   deleteAdminCouponThunk,
+  deleteAdminCouponsBulkThunk,
 } from "../thunks/adminCouponsThunks";
 
 const sortCoupons = (list = []) =>
@@ -109,6 +110,27 @@ const adminCouponsSlice = createSlice({
         state.mutationStatus = "failed";
         state.mutationError =
           action.payload || action.error?.message || "Failed to delete coupon";
+      })
+      .addCase(deleteAdminCouponsBulkThunk.pending, (state) => {
+        state.mutationStatus = "loading";
+        state.mutationError = "";
+      })
+      .addCase(deleteAdminCouponsBulkThunk.fulfilled, (state, action) => {
+        state.mutationStatus = "succeeded";
+        const deletedIds = Array.isArray(action.payload) ? action.payload : [];
+        if (deletedIds.length) {
+          const idSet = new Set(deletedIds.map(String));
+          state.items = state.items.filter(
+            (item) => !idSet.has(String(item._id))
+          );
+        }
+      })
+      .addCase(deleteAdminCouponsBulkThunk.rejected, (state, action) => {
+        state.mutationStatus = "failed";
+        state.mutationError =
+          action.payload ||
+          action.error?.message ||
+          "Failed to delete selected coupons";
       });
   },
 });

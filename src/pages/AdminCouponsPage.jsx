@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   Plus,
@@ -15,6 +15,7 @@ import {
   Lock,
   CheckCircle2,
   CircleDashed,
+  Download,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import Sidebar from "../components/admin/Sidebar";
@@ -27,8 +28,10 @@ import {
   createAdminCouponsBulkThunk,
   updateAdminCouponThunk,
   deleteAdminCouponThunk,
+  deleteAdminCouponsBulkThunk,
 } from "../store/thunks/adminCouponsThunks";
 import { generateAdminCouponCode } from "../services/adminCouponsApi";
+import { utils as XLSXUtils, writeFile as writeXlsxFile } from "xlsx";
 
 const buildDefaultFormState = (type = "single") => ({
   code: "",
@@ -80,6 +83,65 @@ const formatCurrency = (amount) => {
   }).format(numeric);
 };
 
+const formatBoolean = (value) => (value ? "Yes" : "No");
+
+const formatLimit = (value) => {
+  if (value === null || value === undefined) {
+    return "Unlimited";
+  }
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric) || numeric <= 0) {
+    return "Unlimited";
+  }
+  return numeric;
+};
+
+const formatDateTime = (value) => {
+  if (!value) return "--";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "--";
+  return date.toLocaleString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+};
+
+const transformCouponsForExport = (couponList) =>
+  (Array.isArray(couponList) ? couponList : []).map((coupon, index) => ({
+    "#": index + 1,
+    Code: coupon.code || "",
+    Type: coupon.type === "single" ? "Single use" : "Multi use",
+    "Discount (%)": Number(coupon.discountValue) || 0,
+    "Max Discount Amount": formatCurrency(coupon.maxDiscountAmount),
+    "Min Order Amount": formatCurrency(coupon.minOrderAmount),
+    "Total Redemptions": formatLimit(
+      coupon.maxRedemptions ?? coupon.totalRedemptions
+    ),
+    "Per User Limit": formatLimit(
+      coupon.maxRedemptionsPerUser ?? coupon.perUserLimit
+    ),
+    "Usage Count": Number(coupon.usageCount) || 0,
+    "Remaining Redemptions":
+      coupon.remainingRedemptions === null ||
+      coupon.remainingRedemptions === undefined
+        ? "Unlimited"
+        : Number(coupon.remainingRedemptions),
+    Status:
+      coupon.isActive === false
+        ? "Inactive"
+        : coupon.redemptionStatus === "redeemed"
+        ? "Redeemed"
+        : "Active",
+    "Start Date": formatDateDisplay(coupon.startDate),
+    "End Date": formatDateDisplay(coupon.endDate),
+    Active: formatBoolean(coupon.isActive !== false),
+    "Created At": formatDateTime(coupon.createdAt),
+    "Updated At": formatDateTime(coupon.updatedAt),
+  }));
+
 const AdminCouponsPage = () => {
   const dispatch = useAppDispatch();
   const { user, logout } = useAuth();
@@ -95,6 +157,8 @@ const AdminCouponsPage = () => {
   const [editingCoupon, setEditingCoupon] = useState(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isGeneratingCode, setIsGeneratingCode] = useState(false);
+  const [selectedCouponIds, setSelectedCouponIds] = useState([]);
+  const selectAllCheckboxRef = useRef(null);
   const isEditing = Boolean(editingCoupon);
   const countValue = Number(formState.count || "1");
   const isBulkCreate =
@@ -102,6 +166,34 @@ const AdminCouponsPage = () => {
 
   const isFetching = status === "loading";
   const isMutating = mutationStatus === "loading";
+
+  const selectableCouponIds = useMemo(
+    () =>
+      coupons
+        .map((coupon) => (coupon?._id ? String(coupon._id) : null))
+        .filter(Boolean),
+    [coupons]
+  );
+
+  const isAllSelected =
+    selectableCouponIds.length > 0 &&
+    selectableCouponIds.every((id) => selectedCouponIds.includes(id));
+
+  const selectedCount = selectedCouponIds.length;
+  const hasSelection = selectedCount > 0;
+
+  useEffect(() => {
+    setSelectedCouponIds((prev) =>
+      prev.filter((id) => selectableCouponIds.includes(id))
+    );
+  }, [selectableCouponIds]);
+
+  useEffect(() => {
+    if (selectAllCheckboxRef.current) {
+      selectAllCheckboxRef.current.indeterminate =
+        !isAllSelected && selectedCount > 0;
+    }
+  }, [isAllSelected, selectedCount]);
 
   useEffect(() => {
     if (status === "idle") {
@@ -414,6 +506,9 @@ const AdminCouponsPage = () => {
     try {
       await dispatch(deleteAdminCouponThunk(coupon._id)).unwrap();
       toast.success("Coupon deleted");
+      setSelectedCouponIds((prev) =>
+        prev.filter((id) => id !== String(coupon._id))
+      );
     } catch (deleteError) {
       const message =
         deleteError?.message || "Unable to delete coupon. Please try again.";
@@ -421,9 +516,82 @@ const AdminCouponsPage = () => {
     }
   };
 
+  const handleToggleSelectAll = useCallback(() => {
+    setSelectedCouponIds((prev) =>
+      isAllSelected ? [] : [...selectableCouponIds]
+    );
+  }, [isAllSelected, selectableCouponIds]);
+
+  const handleToggleSelect = useCallback((couponId) => {
+    if (!couponId) return;
+    const id = String(couponId);
+    setSelectedCouponIds((prev) =>
+      prev.includes(id)
+        ? prev.filter((existingId) => existingId !== id)
+        : [...prev, id]
+    );
+  }, []);
+
+  const handleBulkDelete = useCallback(async () => {
+    if (!hasSelection) return;
+
+    const confirmed = window.confirm(
+      `Delete ${selectedCount} selected coupon${
+        selectedCount > 1 ? "s" : ""
+      }? This action cannot be undone.`
+    );
+
+    if (!confirmed) return;
+
+    try {
+      await dispatch(deleteAdminCouponsBulkThunk(selectedCouponIds)).unwrap();
+      toast.success("Selected coupons deleted");
+      setSelectedCouponIds([]);
+      if (status !== "loading") {
+        dispatch(fetchAdminCouponsThunk());
+      }
+    } catch (bulkError) {
+      const message =
+        bulkError?.message ||
+        "Failed to delete selected coupons. Please retry.";
+      toast.error(message);
+    }
+  }, [dispatch, hasSelection, selectedCount, selectedCouponIds, status]);
+
   const handleRefresh = () => {
     dispatch(fetchAdminCouponsThunk());
   };
+
+  const handleExportXlsx = useCallback(() => {
+    if (!Array.isArray(coupons) || coupons.length === 0) {
+      toast.error("No coupons available to export");
+      return;
+    }
+
+    try {
+      const rows = transformCouponsForExport(coupons);
+
+      if (!rows.length) {
+        toast.error("No coupons available to export");
+        return;
+      }
+
+      const worksheet = XLSXUtils.json_to_sheet(rows);
+      const workbook = XLSXUtils.book_new();
+      XLSXUtils.book_append_sheet(workbook, worksheet, "Coupons");
+
+      const timestamp = new Date();
+      const datePart = timestamp.toISOString().slice(0, 10);
+      const timePart = timestamp.toISOString().slice(11, 19).replace(/:/g, "");
+      const fileName = `coupons-${datePart}-${timePart}.xlsx`;
+
+      writeXlsxFile(workbook, fileName);
+      toast.success("Coupons exported successfully");
+    } catch (exportError) {
+      console.error("Failed to export coupons", exportError);
+      toast.error("Unable to export coupons. Please try again.");
+    }
+  }, [coupons]);
 
   const renderStatusBadge = (coupon) => {
     const isActive = coupon.isActive !== false;
@@ -783,6 +951,24 @@ const AdminCouponsPage = () => {
             Track and manage coupon codes applied during checkout and payment.
           </p>
         </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={handleBulkDelete}
+            className="inline-flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-medium text-rose-600 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
+            disabled={!hasSelection || isMutating}
+          >
+            <Trash2 size={14} /> Delete selected
+          </button>
+          <button
+            type="button"
+            onClick={handleExportXlsx}
+            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-xs font-medium text-slate-600 transition hover:border-blue-200 hover:text-blue-600 disabled:cursor-not-allowed disabled:opacity-60"
+            disabled={isFetching || coupons.length === 0}
+          >
+            <Download size={14} /> Export
+          </button>
+        </div>
       </div>
 
       {error && (
@@ -795,6 +981,20 @@ const AdminCouponsPage = () => {
         <table className="min-w-full divide-y divide-slate-100 text-sm">
           <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
             <tr>
+              <th className="px-5 py-3">
+                <input
+                  ref={selectAllCheckboxRef}
+                  type="checkbox"
+                  className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                  checked={isAllSelected && hasSelection}
+                  onChange={handleToggleSelectAll}
+                  aria-label={
+                    isAllSelected
+                      ? "Deselect all coupons"
+                      : "Select all coupons"
+                  }
+                />
+              </th>
               <th className="px-5 py-3 text-left">Code</th>
               <th className="px-5 py-3 text-left">Type</th>
               <th className="px-5 py-3 text-left">Discount</th>
@@ -809,7 +1009,7 @@ const AdminCouponsPage = () => {
             {isFetching && (
               <tr>
                 <td
-                  colSpan={8}
+                  colSpan={9}
                   className="px-4 py-6 text-center text-slate-500 sm:px-5"
                 >
                   <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 px-4 py-2 text-sm">
@@ -823,7 +1023,7 @@ const AdminCouponsPage = () => {
             {!isFetching && coupons.length === 0 && (
               <tr>
                 <td
-                  colSpan={8}
+                  colSpan={9}
                   className="px-4 py-6 text-center text-slate-500 sm:px-5"
                 >
                   No coupons found. Create a coupon to get started.
@@ -834,6 +1034,15 @@ const AdminCouponsPage = () => {
             {!isFetching &&
               coupons.map((coupon) => (
                 <tr key={coupon._id} className="hover:bg-slate-50/60">
+                  <td className="px-4 py-4 align-top sm:px-5">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                      checked={selectedCouponIds.includes(String(coupon._id))}
+                      onChange={() => handleToggleSelect(coupon._id)}
+                      aria-label={`Select coupon ${coupon.code}`}
+                    />
+                  </td>
                   <td className="px-4 py-4 align-top sm:px-5">
                     <div className="space-y-1">
                       <p className="font-semibold text-slate-900">
@@ -902,7 +1111,7 @@ const AdminCouponsPage = () => {
                         onClick={() => handleEdit(coupon)}
                         className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-xs font-medium text-slate-600 transition hover:border-blue-200 hover:text-blue-600"
                       >
-                        <Pencil size={14} /> Edit
+                        <Pencil size={14} />
                       </button>
                       <button
                         type="button"
@@ -910,7 +1119,7 @@ const AdminCouponsPage = () => {
                         className="inline-flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-medium text-rose-600 transition hover:bg-rose-100"
                         disabled={isMutating}
                       >
-                        <Trash2 size={14} /> Delete
+                        <Trash2 size={14} />
                       </button>
                     </div>
                   </td>

@@ -5,6 +5,7 @@ import {
   createAdminCouponsBulk,
   updateAdminCoupon,
   deleteAdminCoupon,
+  deleteAdminCouponsBulk,
 } from "../../services/adminCouponsApi";
 
 export const fetchAdminCouponsThunk = createAsyncThunk(
@@ -59,6 +60,20 @@ export const deleteAdminCouponThunk = createAsyncThunk(
       return { _id: id };
     } catch (error) {
       return rejectWithValue(error.message || "Failed to delete coupon");
+    }
+  }
+);
+
+export const deleteAdminCouponsBulkThunk = createAsyncThunk(
+  "adminCoupons/deleteBulk",
+  async (ids, { rejectWithValue }) => {
+    try {
+      const deletedIds = await deleteAdminCouponsBulk(ids);
+      return Array.isArray(deletedIds) ? deletedIds : [];
+    } catch (error) {
+      return rejectWithValue(
+        error.message || "Failed to delete selected coupons"
+      );
     }
   }
 );

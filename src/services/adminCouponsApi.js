@@ -53,3 +53,12 @@ export const deleteAdminCoupon = async (id) => {
   }
   return data;
 };
+
+export const deleteAdminCouponsBulk = async (ids) => {
+  const response = await api.post("/admin/coupons/bulk-delete", { ids });
+  const data = response.data || {};
+  if (data.success === false) {
+    throw new Error(data.message || "Failed to delete selected coupons");
+  }
+  return Array.isArray(data.deletedIds) ? data.deletedIds : [];
+};

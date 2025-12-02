@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Eye, EyeOff } from "lucide-react";
@@ -19,10 +19,20 @@ const Signup = () => {
   const [errors, setErrors] = useState({});
   const { signup } = useAuth();
   const navigate = useNavigate();
+  const emailInputRef = useRef(null);
+  const passwordInputRef = useRef(null);
+  const confirmPasswordInputRef = useRef(null);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleFieldKeyDown = (event, nextRef) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      nextRef?.current?.focus();
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -80,6 +90,7 @@ const Signup = () => {
               id="username"
               value={formData.username}
               onChange={handleChange}
+              onKeyDown={(event) => handleFieldKeyDown(event, emailInputRef)}
               className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary sm:text-sm ${
                 errors.username ? "border-red-500" : "border-gray-300"
               }`}
@@ -101,6 +112,8 @@ const Signup = () => {
               id="email"
               value={formData.email}
               onChange={handleChange}
+              onKeyDown={(event) => handleFieldKeyDown(event, passwordInputRef)}
+              ref={emailInputRef}
               className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary sm:text-sm ${
                 errors.email ? "border-red-500" : "border-gray-300"
               }`}
@@ -123,6 +136,10 @@ const Signup = () => {
                 id="password"
                 value={formData.password}
                 onChange={handleChange}
+                onKeyDown={(event) =>
+                  handleFieldKeyDown(event, confirmPasswordInputRef)
+                }
+                ref={passwordInputRef}
                 className={`block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary sm:text-sm ${
                   errors.password ? "border-red-500" : "border-gray-300"
                 }`}
@@ -154,6 +171,7 @@ const Signup = () => {
                 id="confirmPassword"
                 value={formData.confirmPassword}
                 onChange={handleChange}
+                ref={confirmPasswordInputRef}
                 className={`block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary sm:text-sm ${
                   errors.confirmPassword ? "border-red-500" : "border-gray-300"
                 }`}

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Plus, Pencil, Trash2, X, Save, Loader2 } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
 import toast from "react-hot-toast";
 import Sidebar from "../components/admin/Sidebar";
 import Navbar from "../components/admin/Navbar";
@@ -221,190 +222,225 @@ const AdminHelpSupportPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <Navbar
-        onToggleSidebar={() => setIsSidebarOpen((prev) => !prev)}
-        adminName={user?.name}
-        adminRole={user?.role}
-        onLogout={logout}
-      />
-      <div className="flex">
+    <div className="min-h-screen bg-slate-50 text-slate-900">
+      <div className="flex min-h-screen">
         <Sidebar
           active="Help & Support"
-          className={`${
-            isSidebarOpen ? "block" : "hidden md:block"
-          } w-full md:w-64 lg:w-72`}
+          className="hidden lg:flex lg:w-64 lg:flex-none"
           onNavigate={() => setIsSidebarOpen(false)}
         />
 
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 space-y-6">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div>
-              <h1 className="text-2xl font-semibold text-slate-900">
-                Help &amp; Support Manager
-              </h1>
-              <p className="text-sm text-slate-500">
-                Create, update, and organise chatbot topics and quick answers.
-              </p>
-            </div>
-            <button
-              onClick={() => openEditor(null)}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold shadow-sm hover:bg-blue-700 transition"
+        <AnimatePresence>
+          {isSidebarOpen && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-40 flex md:hidden"
             >
-              <Plus size={16} />
-              Add Topic
-            </button>
-          </div>
+              <motion.div
+                initial={{ x: "-100%" }}
+                animate={{ x: 0 }}
+                exit={{ x: "-100%" }}
+                transition={{ type: "spring", stiffness: 220, damping: 24 }}
+                className="bg-white w-72 max-w-sm h-full shadow-xl"
+              >
+                <Sidebar
+                  active="Help & Support"
+                  className="flex w-full"
+                  onNavigate={() => setIsSidebarOpen(false)}
+                />
+              </motion.div>
+              <button
+                type="button"
+                onClick={() => setIsSidebarOpen(false)}
+                className="flex-1 bg-black/30"
+                aria-label="Close sidebar"
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-          <div className="grid lg:grid-cols-[320px_1fr] gap-6">
-            <section className="bg-white rounded-2xl border border-slate-200 shadow-sm">
-              <header className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
-                <h2 className="text-sm font-semibold text-slate-700 uppercase tracking-wide">
-                  Topics
-                </h2>
-                {loading && (
-                  <Loader2 size={16} className="animate-spin text-slate-400" />
-                )}
-              </header>
-              <div className="max-h-[520px] overflow-y-auto divide-y divide-slate-100">
-                {error ? (
-                  <p className="px-5 py-6 text-sm text-rose-500">{error}</p>
-                ) : topics.length ? (
-                  topics.map((topic) => {
-                    const isActive = topic._id === selectedTopicId;
-                    return (
-                      <button
-                        key={topic._id}
-                        onClick={() => setSelectedTopicId(topic._id)}
-                        className={`w-full text-left px-5 py-4 transition ${
-                          isActive
-                            ? "bg-blue-50 border-l-4 border-blue-500"
-                            : "hover:bg-slate-50"
-                        }`}
-                      >
-                        <p className="text-sm font-semibold text-slate-800 flex items-center gap-2">
-                          {topic.title}
-                          {topic.isActive === false ? (
-                            <span className="text-[10px] uppercase tracking-wide bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full">
-                              Hidden
-                            </span>
-                          ) : null}
-                        </p>
-                        {topic.description ? (
-                          <p className="text-xs text-slate-500 mt-1 line-clamp-2">
-                            {topic.description}
-                          </p>
-                        ) : null}
-                      </button>
-                    );
-                  })
-                ) : (
-                  <div className="px-5 py-6 text-sm text-slate-500">
-                    {loading
-                      ? "Loading topics…"
-                      : "No topics yet. Create the first one."}
-                  </div>
-                )}
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <Navbar
+            onToggleSidebar={() => setIsSidebarOpen((prev) => !prev)}
+            adminName={user?.name}
+            adminRole={user?.role}
+            onLogout={logout}
+          />
+
+          <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 space-y-6">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div>
+                <h1 className="text-2xl font-semibold text-slate-900">
+                  Help &amp; Support Manager
+                </h1>
+                <p className="text-sm text-slate-500">
+                  Create, update, and organise chatbot topics and quick answers.
+                </p>
               </div>
-            </section>
+              <button
+                onClick={() => openEditor(null)}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold shadow-sm hover:bg-blue-700 transition"
+              >
+                <Plus size={16} />
+                Add Topic
+              </button>
+            </div>
 
-            <section className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-6">
-              {selectedTopic ? (
-                <div className="space-y-4">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <h2 className="text-lg font-semibold text-slate-900">
-                        {selectedTopic.title}
-                      </h2>
-                      {selectedTopic.description ? (
-                        <p className="text-sm text-slate-500 mt-1">
-                          {selectedTopic.description}
-                        </p>
-                      ) : null}
-                      <div className="flex flex-wrap gap-2 mt-3 text-xs text-slate-500">
-                        <span className="px-3 py-1 border border-slate-200 rounded-full">
-                          Order: {selectedTopic.order ?? 0}
-                        </span>
-                        <span
-                          className={`px-3 py-1 rounded-full border ${
-                            selectedTopic.isActive === false
-                              ? "bg-slate-100 text-slate-600 border-slate-200"
-                              : "bg-emerald-50 text-emerald-600 border-emerald-100"
+            <div className="grid lg:grid-cols-[320px_1fr] gap-6">
+              <section className="bg-white rounded-2xl border border-slate-200 shadow-sm">
+                <header className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+                  <h2 className="text-sm font-semibold text-slate-700 uppercase tracking-wide">
+                    Topics
+                  </h2>
+                  {loading && (
+                    <Loader2
+                      size={16}
+                      className="animate-spin text-slate-400"
+                    />
+                  )}
+                </header>
+                <div className="max-h-[520px] overflow-y-auto divide-y divide-slate-100">
+                  {error ? (
+                    <p className="px-5 py-6 text-sm text-rose-500">{error}</p>
+                  ) : topics.length ? (
+                    topics.map((topic) => {
+                      const isActive = topic._id === selectedTopicId;
+                      return (
+                        <button
+                          key={topic._id}
+                          onClick={() => setSelectedTopicId(topic._id)}
+                          className={`w-full text-left px-5 py-4 transition ${
+                            isActive
+                              ? "bg-blue-50 border-l-4 border-blue-500"
+                              : "hover:bg-slate-50"
                           }`}
                         >
-                          {selectedTopic.isActive === false
-                            ? "Hidden"
-                            : "Visible"}
-                        </span>
-                        {selectedTopic.slug ? (
-                          <span className="px-3 py-1 border border-slate-200 rounded-full">
-                            Slug: {selectedTopic.slug}
-                          </span>
+                          <p className="text-sm font-semibold text-slate-800 flex items-center gap-2">
+                            {topic.title}
+                            {topic.isActive === false ? (
+                              <span className="text-[10px] uppercase tracking-wide bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full">
+                                Hidden
+                              </span>
+                            ) : null}
+                          </p>
+                          {topic.description ? (
+                            <p className="text-xs text-slate-500 mt-1 line-clamp-2">
+                              {topic.description}
+                            </p>
+                          ) : null}
+                        </button>
+                      );
+                    })
+                  ) : (
+                    <div className="px-5 py-6 text-sm text-slate-500">
+                      {loading
+                        ? "Loading topics…"
+                        : "No topics yet. Create the first one."}
+                    </div>
+                  )}
+                </div>
+              </section>
+
+              <section className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-6">
+                {selectedTopic ? (
+                  <div className="space-y-4">
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <h2 className="text-lg font-semibold text-slate-900">
+                          {selectedTopic.title}
+                        </h2>
+                        {selectedTopic.description ? (
+                          <p className="text-sm text-slate-500 mt-1">
+                            {selectedTopic.description}
+                          </p>
                         ) : null}
+                        <div className="flex flex-wrap gap-2 mt-3 text-xs text-slate-500">
+                          <span className="px-3 py-1 border border-slate-200 rounded-full">
+                            Order: {selectedTopic.order ?? 0}
+                          </span>
+                          <span
+                            className={`px-3 py-1 rounded-full border ${
+                              selectedTopic.isActive === false
+                                ? "bg-slate-100 text-slate-600 border-slate-200"
+                                : "bg-emerald-50 text-emerald-600 border-emerald-100"
+                            }`}
+                          >
+                            {selectedTopic.isActive === false
+                              ? "Hidden"
+                              : "Visible"}
+                          </span>
+                          {selectedTopic.slug ? (
+                            <span className="px-3 py-1 border border-slate-200 rounded-full">
+                              Slug: {selectedTopic.slug}
+                            </span>
+                          ) : null}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => openEditor(selectedTopic)}
+                          className="inline-flex items-center gap-1 px-3 py-2 text-xs font-semibold text-blue-600 border border-blue-100 rounded-lg hover:bg-blue-50 transition"
+                        >
+                          <Pencil size={14} /> Edit
+                        </button>
+                        <button
+                          onClick={() => handleDelete(selectedTopic._id)}
+                          disabled={isDeleting}
+                          className="inline-flex items-center gap-1 px-3 py-2 text-xs font-semibold text-rose-600 border border-rose-100 rounded-lg hover:bg-rose-50 transition disabled:opacity-50"
+                        >
+                          {isDeleting ? (
+                            <Loader2 size={14} className="animate-spin" />
+                          ) : (
+                            <Trash2 size={14} />
+                          )}
+                          Delete
+                        </button>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => openEditor(selectedTopic)}
-                        className="inline-flex items-center gap-1 px-3 py-2 text-xs font-semibold text-blue-600 border border-blue-100 rounded-lg hover:bg-blue-50 transition"
-                      >
-                        <Pencil size={14} /> Edit
-                      </button>
-                      <button
-                        onClick={() => handleDelete(selectedTopic._id)}
-                        disabled={isDeleting}
-                        className="inline-flex items-center gap-1 px-3 py-2 text-xs font-semibold text-rose-600 border border-rose-100 rounded-lg hover:bg-rose-50 transition disabled:opacity-50"
-                      >
-                        {isDeleting ? (
-                          <Loader2 size={14} className="animate-spin" />
-                        ) : (
-                          <Trash2 size={14} />
-                        )}
-                        Delete
-                      </button>
-                    </div>
-                  </div>
 
-                  <div className="space-y-4">
-                    <h3 className="text-sm font-semibold uppercase text-slate-600 tracking-wide">
-                      Questions &amp; Answers
-                    </h3>
-                    <div className="space-y-3">
-                      {selectedTopic.questions?.length ? (
-                        selectedTopic.questions
-                          .slice()
-                          .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
-                          .map((qa) => (
-                            <div
-                              key={qa._id}
-                              className="border border-slate-200 rounded-xl p-4 bg-slate-50"
-                            >
-                              <p className="text-sm font-semibold text-slate-800">
-                                {qa.question}
-                              </p>
-                              <p className="text-sm text-slate-600 mt-2 whitespace-pre-line">
-                                {qa.answer}
-                              </p>
-                            </div>
-                          ))
-                      ) : (
-                        <p className="text-sm text-slate-500">
-                          No questions added yet.
-                        </p>
-                      )}
+                    <div className="space-y-4">
+                      <h3 className="text-sm font-semibold uppercase text-slate-600 tracking-wide">
+                        Questions &amp; Answers
+                      </h3>
+                      <div className="space-y-3">
+                        {selectedTopic.questions?.length ? (
+                          selectedTopic.questions
+                            .slice()
+                            .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+                            .map((qa) => (
+                              <div
+                                key={qa._id}
+                                className="border border-slate-200 rounded-xl p-4 bg-slate-50"
+                              >
+                                <p className="text-sm font-semibold text-slate-800">
+                                  {qa.question}
+                                </p>
+                                <p className="text-sm text-slate-600 mt-2 whitespace-pre-line">
+                                  {qa.answer}
+                                </p>
+                              </div>
+                            ))
+                        ) : (
+                          <p className="text-sm text-slate-500">
+                            No questions added yet.
+                          </p>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center text-center py-12 gap-3 text-slate-500">
-                  <p className="text-sm">
-                    Select a topic on the left to preview its content.
-                  </p>
-                </div>
-              )}
-            </section>
-          </div>
-        </main>
+                ) : (
+                  <div className="flex flex-col items-center justify-center text-center py-12 gap-3 text-slate-500">
+                    <p className="text-sm">
+                      Select a topic on the left to preview its content.
+                    </p>
+                  </div>
+                )}
+              </section>
+            </div>
+          </main>
+        </div>
       </div>
 
       {editorOpen && (

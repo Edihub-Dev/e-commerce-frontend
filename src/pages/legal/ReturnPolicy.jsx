@@ -76,7 +76,7 @@ const ReturnPolicy = () => {
             Once the returned product clears quality checks, we’ll dispatch a
             like-for-like replacement (subject to availability) or issue
             MegaMart store credit you can use on future purchases. Store credit
-            is posted within 3 business days of approval. Cash refunds or
+            is posted within 7 business days of approval. Cash refunds or
             reversal to the original payment method are not offered.
           </p>
         </section>

@@ -17,6 +17,7 @@ import {
   fetchPaymentStatus,
 } from "../../utils/api";
 import { useCart } from "../../contexts/CartContext";
+import { useAuth } from "../../contexts/AuthContext";
 import { toast } from "react-hot-toast";
 import QRCode from "react-qr-code";
 import { resetCouponState } from "../../store/slices/couponSlice";
@@ -55,6 +56,7 @@ const formatCurrency = (value = 0, currency = "INR") =>
 const CheckoutPayment = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const {
     items,
     shippingAddress,
@@ -171,17 +173,22 @@ const CheckoutPayment = () => {
 
   const sanitizedAddress = useMemo(() => {
     if (!shippingAddress) return null;
+    const normalizedEmail =
+      (shippingAddress.email && shippingAddress.email.trim()) ||
+      (user?.email && user.email.trim()) ||
+      "";
+
     return {
       fullName: shippingAddress.fullName,
       mobile: shippingAddress.mobile,
-      email: shippingAddress.email,
+      email: normalizedEmail,
       pincode: shippingAddress.pincode,
       state: shippingAddress.state,
       city: shippingAddress.city,
       addressLine: shippingAddress.addressLine,
       alternatePhone: shippingAddress.alternatePhone || "",
     };
-  }, [shippingAddress]);
+  }, [shippingAddress, user?.email]);
 
   const stopPolling = useCallback(() => {
     if (pollingTimerRef.current) {
@@ -189,6 +196,24 @@ const CheckoutPayment = () => {
       pollingTimerRef.current = null;
     }
   }, []);
+
+  const handleSelectPaymentOption = useCallback(
+    (methodId) => {
+      if (methodId === selectedMethod) {
+        return;
+      }
+
+      if (methodId !== "cod") {
+        stopPolling();
+        setPaymentSession(null);
+        setIsAwaitingConfirmation(false);
+        setPollingError(null);
+      }
+
+      setSelectedMethod(methodId);
+    },
+    [selectedMethod, stopPolling]
+  );
 
   const handlePaymentSuccess = useCallback(
     (transactionId, statusData) => {

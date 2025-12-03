@@ -1,3 +1,5 @@
+import { findPincodeDetails } from "../data/pincodeDataset";
+
 const PINCODE_ENDPOINT = (pincode) =>
   `https://api.postalpincode.in/pincode/${encodeURIComponent(pincode)}`;
 
@@ -65,7 +67,7 @@ const COMMON_NO_VOWEL_WORDS = new Set([
 
 export const validateMeaningfulAddressLine = (
   rawAddressLine,
-  { minimumWords = 8 } = {}
+  { minimumWords = 0, minimumSegments = 5, minSegmentLength = 4 } = {}
 ) => {
   const addressLine = normalizeWhitespace(rawAddressLine);
   const errors = [];
@@ -92,13 +94,19 @@ export const validateMeaningfulAddressLine = (
     .map((token) => token.replace(/^[./-]+|[./-]+$/g, ""))
     .filter(Boolean);
 
-  if (words.length < minimumWords) {
+  const segments = addressLine
+    .split(",")
+    .map((segment) => normalizeWhitespace(segment))
+    .filter(Boolean);
+
+  if (minimumSegments > 0 && segments.length < minimumSegments) {
     errors.push(
-      `Add more detail to the address line (minimum ${minimumWords} words).`
+      "Structure the address line with area, nearby landmark, road, building, city, and state (use commas to separate each part)."
     );
   }
 
   const suspiciousWords = [];
+  const weakSegments = [];
 
   words.forEach((word) => {
     const lowercase = word.toLowerCase();
@@ -138,10 +146,56 @@ export const validateMeaningfulAddressLine = (
     );
   }
 
+  segments.forEach((segment) => {
+    if (segment.length < minSegmentLength) {
+      weakSegments.push(segment);
+      return;
+    }
+
+    const segmentWords = segment
+      .split(/\s+/)
+      .map((token) => token.replace(/^[./-]+|[./-]+$/g, ""))
+      .filter(Boolean);
+
+    const hasMeaningfulWord = segmentWords.some((segmentWord) => {
+      const lowered = segmentWord.toLowerCase();
+
+      if (DEVANAGARI_WORD_PATTERN.test(segmentWord)) {
+        return true;
+      }
+
+      if (/\d/.test(lowered)) {
+        return true;
+      }
+
+      if (
+        LATIN_WORD_PATTERN.test(segmentWord) &&
+        /[aeiou]/i.test(segmentWord)
+      ) {
+        return true;
+      }
+
+      return false;
+    });
+
+    if (!hasMeaningfulWord) {
+      weakSegments.push(segment);
+    }
+  });
+
+  if (weakSegments.length) {
+    errors.push(
+      `Clarify these address parts so they describe the location clearly: ${weakSegments
+        .slice(0, 4)
+        .join(", ")}.`
+    );
+  }
+
   return {
     isValid: errors.length === 0,
     errors,
     wordCount: words.length,
+    segmentCount: segments.length,
     suspiciousWords,
   };
 };
@@ -184,6 +238,14 @@ const buildAddressLineSuggestion = (office, pincode) => {
   return structuredAddress;
 };
 
+const withDefaultPostalFields = (records = [], pincode) =>
+  records.map((record) => ({
+    Country: record.Country || "India",
+    DeliveryStatus: record.DeliveryStatus || "Delivery",
+    Pincode: record.Pincode || String(pincode).trim(),
+    ...record,
+  }));
+
 const fetchPostalDetails = async (rawPincode) => {
   const trimmedPincode = String(rawPincode || "").trim();
 
@@ -192,6 +254,15 @@ const fetchPostalDetails = async (rawPincode) => {
       success: false,
       message: "Pincode is required.",
       postOffices: [],
+    };
+  }
+
+  const localRecords = findPincodeDetails(trimmedPincode);
+  if (Array.isArray(localRecords) && localRecords.length) {
+    return {
+      success: true,
+      postOffices: withDefaultPostalFields(localRecords, trimmedPincode),
+      source: "static",
     };
   }
 
@@ -215,7 +286,8 @@ const fetchPostalDetails = async (rawPincode) => {
 
     return {
       success: true,
-      postOffices: result.PostOffice,
+      postOffices: withDefaultPostalFields(result.PostOffice, trimmedPincode),
+      source: "remote",
     };
   } catch (error) {
     return {

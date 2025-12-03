@@ -50,6 +50,8 @@ const createInitialFormState = (email = "", fullName = "") => ({
 const MOBILE_REGEX = /^[6-9]\d{9}$/;
 const PINCODE_REGEX = /^[1-9]\d{5}$/;
 const LOCATION_REGEX = /^[A-Za-z\s.'-]{2,}$/;
+const MAX_ADDRESS_LINE_LENGTH = 255;
+const MAX_FORMATTED_ADDRESS_LENGTH = 255;
 
 const fetchGeoCoordinates = async ({ city, state, pincode }) => {
   try {
@@ -98,7 +100,9 @@ const validateAddressForm = (formState) => {
   const addressValidation = validateMeaningfulAddressLine(
     formState.addressLine,
     {
-      minimumWords: 10,
+      minimumWords: 0,
+      minimumSegments: 6,
+      minSegmentLength: 5,
     }
   );
 
@@ -267,7 +271,9 @@ const CheckoutAddress = () => {
       const resolvedState = resolveStateName(lookup.data.state);
       const resolvedCity = (lookup.data.city || "").trim();
       const suggestedAddressLine =
-        lookup.data.addressLineSuggestion?.trim() || "";
+        lookup.data.addressLineSuggestion
+          ?.trim()
+          .slice(0, MAX_ADDRESS_LINE_LENGTH) || "";
 
       if (!resolvedState && !resolvedCity) {
         return;
@@ -369,7 +375,9 @@ const CheckoutAddress = () => {
       payload.city = mapValidation.data.city;
 
       const suggestedAddressLine =
-        mapValidation.data.addressLineSuggestion?.trim() || "";
+        mapValidation.data.addressLineSuggestion
+          ?.trim()
+          .slice(0, MAX_ADDRESS_LINE_LENGTH) || "";
 
       if (suggestedAddressLine) {
         const normalizedMatch = doesAddressMatchLocation(payload.addressLine, {
@@ -384,6 +392,13 @@ const CheckoutAddress = () => {
             addressLine: suggestedAddressLine,
           }));
         }
+      }
+
+      if (payload.addressLine.length > MAX_ADDRESS_LINE_LENGTH) {
+        payload.addressLine = payload.addressLine.slice(
+          0,
+          MAX_ADDRESS_LINE_LENGTH
+        );
       }
 
       if (
@@ -408,7 +423,12 @@ const CheckoutAddress = () => {
       if (geoCoordinates) {
         payload.latitude = geoCoordinates.latitude;
         payload.longitude = geoCoordinates.longitude;
-        payload.formattedAddress = geoCoordinates.formattedAddress;
+        payload.formattedAddress = geoCoordinates.formattedAddress
+          .slice(0, MAX_FORMATTED_ADDRESS_LENGTH)
+          .trim();
+        if (!payload.formattedAddress) {
+          delete payload.formattedAddress;
+        }
         payload.isGeoVerified = true;
       }
 
@@ -433,6 +453,13 @@ const CheckoutAddress = () => {
       });
       if (!sanitizedPayload.formattedAddress?.trim()) {
         delete sanitizedPayload.formattedAddress;
+      }
+      if (
+        sanitizedPayload.formattedAddress?.length > MAX_FORMATTED_ADDRESS_LENGTH
+      ) {
+        sanitizedPayload.formattedAddress = sanitizedPayload.formattedAddress
+          .slice(0, MAX_FORMATTED_ADDRESS_LENGTH)
+          .trim();
       }
       if (!sanitizedPayload.alternatePhone?.trim()) {
         delete sanitizedPayload.alternatePhone;

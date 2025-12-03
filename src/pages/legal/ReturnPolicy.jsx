@@ -86,10 +86,10 @@ const ReturnPolicy = () => {
           <p className="text-slate-600">
             Need help? Email
             <a
-              href="mailto:megamart@edihub.in"
+              href="mailto:support@p2pdeal.net"
               className="text-primary underline ml-1"
             >
-              megamart@edihub.in
+              support@p2pdeal.net
             </a>
           </p>
         </section>

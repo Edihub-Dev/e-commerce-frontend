@@ -26,8 +26,8 @@ const Contact = () => {
         animate="animate"
       >
         If you have any questions, feel free to reach out to us at{" "}
-        <a href="mailto:megamart@edihub.in" className="text-primary">
-          megamart@edihub.in
+        <a href="mailto:support@p2pdeal.net" className="link-primary">
+          support@p2pdeal.net
         </a>
         .
       </motion.p>

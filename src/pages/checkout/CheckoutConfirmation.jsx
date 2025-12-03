@@ -353,7 +353,7 @@ const CheckoutConfirmation = () => {
         </div>
         <div className="rounded-2xl bg-primary/5 border border-primary/20 p-4 text-sm text-medium-text">
           Need help with your order? Our support team is available 24/7 at
-          megamart@edihub.in.
+          support@p2pdeal.net.
         </div>
       </aside>
     </div>

@@ -118,10 +118,10 @@ const PrivacyPolicy = () => {
           <p className="text-slate-600">
             Questions about this policy or your information? Email
             <a
-              href="mailto:megamart@edihub.in"
+              href="mailto:support@p2pdeal.net"
               className="text-primary underline ml-1"
             >
-              megamart@edihub.in
+              support@p2pdeal.net
             </a>
             . We respond to privacy requests within 7 business days.
           </p>

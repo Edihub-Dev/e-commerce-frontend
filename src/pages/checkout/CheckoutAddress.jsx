@@ -28,6 +28,7 @@ import {
   fetchLocationByPincode,
   verifyAddressWithPostalApi,
   doesAddressMatchLocation,
+  validateMeaningfulAddressLine,
 } from "../../utils/postalLookup";
 
 const createInitialFormState = (email = "", fullName = "") => ({
@@ -93,6 +94,17 @@ const fetchGeoCoordinates = async ({ city, state, pincode }) => {
 
 const validateAddressForm = (formState) => {
   const errors = [];
+
+  const addressValidation = validateMeaningfulAddressLine(
+    formState.addressLine,
+    {
+      minimumWords: 10,
+    }
+  );
+
+  if (!addressValidation.isValid) {
+    errors.push(...addressValidation.errors);
+  }
 
   const mobile = String(formState.mobile || "").trim();
   if (!MOBILE_REGEX.test(mobile)) {

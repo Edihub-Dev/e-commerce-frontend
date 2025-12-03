@@ -46,6 +46,106 @@ const ensureMinimumWords = (value, minimum = 12) => {
   return enriched;
 };
 
+const ADDRESS_LINE_ALLOWED_PATTERN = /[\p{L}\p{N}\s,./-]+/u;
+const LATIN_WORD_PATTERN = /^[A-Za-z]+$/;
+const DEVANAGARI_WORD_PATTERN = /^[\u0900-\u097F]+$/u;
+const COMMON_NO_VOWEL_WORDS = new Set([
+  "bldg",
+  "nr",
+  "blk",
+  "stn",
+  "rd",
+  "flr",
+  "apt",
+  "gn",
+  "sct",
+  "sec",
+  "opp",
+]);
+
+export const validateMeaningfulAddressLine = (
+  rawAddressLine,
+  { minimumWords = 8 } = {}
+) => {
+  const addressLine = normalizeWhitespace(rawAddressLine);
+  const errors = [];
+
+  if (!addressLine) {
+    return {
+      isValid: false,
+      errors: [
+        "Add a detailed address line covering area, nearby landmark, road, building, city, and state.",
+      ],
+      wordCount: 0,
+      suspiciousWords: [],
+    };
+  }
+
+  if (!ADDRESS_LINE_ALLOWED_PATTERN.test(addressLine)) {
+    errors.push(
+      "Use only Hindi or English letters, numbers, commas, slashes, hyphens, and spaces in the address line."
+    );
+  }
+
+  const words = addressLine
+    .split(/[\s,]+/)
+    .map((token) => token.replace(/^[./-]+|[./-]+$/g, ""))
+    .filter(Boolean);
+
+  if (words.length < minimumWords) {
+    errors.push(
+      `Add more detail to the address line (minimum ${minimumWords} words).`
+    );
+  }
+
+  const suspiciousWords = [];
+
+  words.forEach((word) => {
+    const lowercase = word.toLowerCase();
+
+    if (lowercase.length <= 2) {
+      return;
+    }
+
+    if (/\d/.test(lowercase)) {
+      return;
+    }
+
+    const stripped = lowercase.replace(/[^a-z\u0900-\u097f]/gu, "");
+
+    if (!stripped) {
+      return;
+    }
+
+    if (COMMON_NO_VOWEL_WORDS.has(stripped)) {
+      return;
+    }
+
+    if (DEVANAGARI_WORD_PATTERN.test(stripped)) {
+      return;
+    }
+
+    if (LATIN_WORD_PATTERN.test(stripped) && !/[aeiou]/.test(stripped)) {
+      suspiciousWords.push(word);
+    }
+  });
+
+  if (suspiciousWords.length) {
+    errors.push(
+      `Replace gibberish words in the address line: ${suspiciousWords
+        .slice(0, 4)
+        .join(", ")}.`
+    );
+  }
+
+  return {
+    isValid: errors.length === 0,
+    errors,
+    wordCount: words.length,
+    suspiciousWords,
+  };
+};
+
 const buildAddressLineSuggestion = (office, pincode) => {
   if (!office) {
     return "";

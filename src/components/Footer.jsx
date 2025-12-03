@@ -144,7 +144,7 @@ const Footer = () => {
         </div>
 
         <div className="border-t border-white/15 mt-8 pt-4 text-center">
-          <p className="text-sm">© 2025 All rights reserved. MEGA MART LTD.</p>
+          <p className="text-sm">© 2025 All rights reserved. p2pdeal LTD.</p>
         </div>
       </div>
     </footer>

@@ -64,6 +64,83 @@ export const CartProvider = ({ children }) => {
     }
   }, [cartItems, storageKey]);
 
+  const sanitizeQuantity = (value) => {
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed)) {
+      return 1;
+    }
+    return Math.max(1, Math.floor(parsed));
+  };
+
+  const normalizeSizeToken = (size) =>
+    typeof size === "string" ? size.trim().toUpperCase() : size ?? "";
+
+  const findSizeEntry = (product, sizeToken) => {
+    if (!product?.showSizes) {
+      return null;
+    }
+
+    if (!Array.isArray(product?.sizes) || !product.sizes.length) {
+      return null;
+    }
+
+    const normalizedToken = normalizeSizeToken(sizeToken);
+    if (!normalizedToken) {
+      return null;
+    }
+
+    return (
+      product.sizes.find(
+        (size) =>
+          size?.label?.toString().trim().toUpperCase() === normalizedToken
+      ) || null
+    );
+  };
+
+  const computeAvailableQuantity = (product, sizeToken) => {
+    if (!product) {
+      return Number.POSITIVE_INFINITY;
+    }
+
+    if (product.showSizes) {
+      const sizeEntry = findSizeEntry(product, sizeToken);
+
+      if (sizeEntry) {
+        if (sizeEntry.isAvailable === false) {
+          return 0;
+        }
+
+        const sizeStock = Number(sizeEntry.stock);
+        if (Number.isFinite(sizeStock)) {
+          return Math.max(0, Math.floor(sizeStock));
+        }
+      }
+
+      // If size was explicitly selected but not found, treat as unavailable
+      if (sizeToken) {
+        return 0;
+      }
+    }
+
+    const rawStock = Number(product?.stock);
+    if (Number.isFinite(rawStock)) {
+      return Math.max(0, Math.floor(rawStock));
+    }
+
+    return Number.POSITIVE_INFINITY;
+  };
+
+  const formatLimitedQuantityMessage = (product, available, sizeToken) => {
+    const productName = product?.name || "This item";
+    const sizeLabel = sizeToken ? ` (size ${sizeToken})` : "";
+    if (available <= 0) {
+      return `${productName}${sizeLabel} is currently out of stock.`;
+    }
+    return `Only ${available} unit${
+      available === 1 ? "" : "s"
+    } of ${productName}${sizeLabel} are available.`;
+  };
+
   const addItem = (product, quantity = 1) => {
     const hsnCode =
       typeof product?.hsnCode === "string"
@@ -79,6 +156,20 @@ export const CartProvider = ({ children }) => {
       typeof product?.size === "string" && product.size.trim().length
         ? product.size.trim()
         : product?.size ?? undefined;
+    const normalizedSizeToken = normalizeSizeToken(variantSize);
+    const requestedQuantity = sanitizeQuantity(quantity);
+    const maxAvailable = computeAvailableQuantity(product, normalizedSizeToken);
+
+    if (Number.isFinite(maxAvailable) && maxAvailable <= 0) {
+      toast.error(
+        formatLimitedQuantityMessage(
+          product,
+          maxAvailable,
+          normalizedSizeToken || ""
+        )
+      );
+      return;
+    }
 
     const mongoIdRegex = /^[a-f\d]{24}$/i;
     const rawProductId =
@@ -88,6 +179,10 @@ export const CartProvider = ({ children }) => {
         ? rawProductId
         : undefined;
 
+    let quantityChanged = false;
+    let wasClamped = false;
+    let clampLimit = null;
+
     setCartItems((prevItems) => {
       const existingItem = prevItems.find((item) => {
         const sameId = item.id === product.id;
@@ -95,12 +190,29 @@ export const CartProvider = ({ children }) => {
         return sameId && sameSize;
       });
       if (existingItem) {
+        const existingQuantity = sanitizeQuantity(existingItem.quantity);
+        const desiredQuantity = existingQuantity + requestedQuantity;
+        let nextQuantity = desiredQuantity;
+
+        if (Number.isFinite(maxAvailable) && desiredQuantity > maxAvailable) {
+          nextQuantity = Math.max(maxAvailable, existingQuantity);
+          wasClamped = nextQuantity !== desiredQuantity;
+          clampLimit = maxAvailable;
+        }
+
+        if (nextQuantity === existingQuantity) {
+          wasClamped = true;
+          clampLimit = clampLimit ?? maxAvailable;
+          return prevItems;
+        }
+
+        quantityChanged = true;
         return prevItems.map((item) =>
           item.id === product.id &&
           (item.size ?? null) === (variantSize ?? null)
             ? {
                 ...item,
-                quantity: item.quantity + quantity,
+                quantity: nextQuantity,
                 hsnCode: hsnCode || item.hsnCode,
                 gstRate: Number.isFinite(gstRate) ? gstRate : item.gstRate,
               }
@@ -108,9 +220,24 @@ export const CartProvider = ({ children }) => {
         );
       }
 
+      const initialQuantity = Number.isFinite(maxAvailable)
+        ? Math.min(requestedQuantity, Math.max(1, maxAvailable))
+        : requestedQuantity;
+
+      if (Number.isFinite(maxAvailable) && initialQuantity <= 0) {
+        wasClamped = true;
+        clampLimit = maxAvailable;
+        return prevItems;
+      }
+
+      if (initialQuantity < requestedQuantity) {
+        wasClamped = true;
+        clampLimit = maxAvailable;
+      }
+
       const nextItem = {
         ...product,
-        quantity,
+        quantity: sanitizeQuantity(initialQuantity),
         size: variantSize,
       };
 
@@ -125,8 +252,35 @@ export const CartProvider = ({ children }) => {
         nextItem.gstRate = gstRate;
       }
 
+      quantityChanged = true;
       return [...prevItems, nextItem];
     });
+
+    if (!quantityChanged) {
+      toast.info(
+        formatLimitedQuantityMessage(
+          product,
+          clampLimit ?? maxAvailable,
+          normalizedSizeToken || ""
+        ),
+        {
+          autoClose: 2000,
+        }
+      );
+      return;
+    }
+
+    if (wasClamped) {
+      const limit = clampLimit ?? maxAvailable;
+      toast.info(
+        formatLimitedQuantityMessage(product, limit, normalizedSizeToken || ""),
+        {
+          autoClose: 2000,
+        }
+      );
+      return;
+    }
+
     toast.success(`${product.name} added to cart!`, { autoClose: 1000 });
   };
 
@@ -202,15 +356,64 @@ export const CartProvider = ({ children }) => {
   };
 
   const updateQuantity = (productId, quantity, size) => {
-    if (quantity <= 0) {
+    const normalizedSizeToken = normalizeSizeToken(size);
+    const requestedQuantity = sanitizeQuantity(quantity);
+
+    const existingItem = cartItems.find(
+      (item) => item.id === productId && (item.size ?? null) === (size ?? null)
+    );
+
+    if (!existingItem) {
+      return;
+    }
+
+    if (requestedQuantity <= 0) {
       removeItem(productId, size);
-    } else {
-      setCartItems((prevItems) =>
-        prevItems.map((item) =>
-          item.id === productId && (item.size ?? null) === (size ?? null)
-            ? { ...item, quantity }
-            : item
-        )
+      return;
+    }
+
+    const maxAvailable = computeAvailableQuantity(
+      existingItem,
+      normalizedSizeToken
+    );
+
+    if (Number.isFinite(maxAvailable) && maxAvailable <= 0) {
+      removeItem(productId, size);
+      toast.info(
+        formatLimitedQuantityMessage(
+          existingItem,
+          maxAvailable,
+          normalizedSizeToken || ""
+        ),
+        {
+          autoClose: 2000,
+        }
+      );
+      return;
+    }
+
+    const nextQuantity = Number.isFinite(maxAvailable)
+      ? Math.min(requestedQuantity, Math.max(1, maxAvailable))
+      : requestedQuantity;
+
+    setCartItems((prevItems) =>
+      prevItems.map((item) =>
+        item.id === productId && (item.size ?? null) === (size ?? null)
+          ? { ...item, quantity: nextQuantity }
+          : item
+      )
+    );
+
+    if (nextQuantity < requestedQuantity) {
+      toast.info(
+        formatLimitedQuantityMessage(
+          existingItem,
+          maxAvailable,
+          normalizedSizeToken || ""
+        ),
+        {
+          autoClose: 2000,
+        }
       );
     }
   };

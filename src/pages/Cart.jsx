@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useCart } from "../contexts/CartContext";
 import { Link, useNavigate } from "react-router-dom";
@@ -22,8 +22,92 @@ const Cart = () => {
     useCart();
   const navigate = useNavigate();
   const dispatch = useDispatch();
+  const [pendingQuantities, setPendingQuantities] = useState({});
 
-  const normalizedCartItems = React.useMemo(() => {
+  const getItemKey = useCallback((item) => {
+    if (!item) {
+      return "";
+    }
+
+    const identifier =
+      item.id || item.product || item.mongoId || item._id || item.slug || "";
+    const sizeToken = item.size || "";
+    return `${identifier}::${sizeToken}`;
+  }, []);
+
+  const resolvePendingQuantity = useCallback(
+    (item) => {
+      const key = getItemKey(item);
+      const pending = pendingQuantities[key];
+      if (pending === undefined) {
+        return String(item.quantity);
+      }
+      return pending;
+    },
+    [pendingQuantities, getItemKey]
+  );
+
+  const handleQuantityInputChange = useCallback(
+    (item, value) => {
+      const key = getItemKey(item);
+      const sanitized = value.replace(/[^0-9]/g, "");
+      setPendingQuantities((prev) => ({
+        ...prev,
+        [key]: sanitized,
+      }));
+    },
+    [getItemKey]
+  );
+
+  const commitQuantity = useCallback(
+    (item) => {
+      const key = getItemKey(item);
+      const pendingValue = pendingQuantities[key];
+
+      if (pendingValue === undefined) {
+        return;
+      }
+
+      const nextQuantity = Number(pendingValue);
+
+      if (!Number.isFinite(nextQuantity) || nextQuantity <= 0) {
+        updateQuantity(item.id, 1, item.size);
+        setPendingQuantities((prev) => {
+          const next = { ...prev };
+          delete next[key];
+          return next;
+        });
+        return;
+      }
+
+      updateQuantity(item.id, nextQuantity, item.size);
+      setPendingQuantities((prev) => {
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      });
+    },
+    [getItemKey, pendingQuantities, updateQuantity]
+  );
+
+  const handleQuantityBlur = useCallback(
+    (item) => {
+      commitQuantity(item);
+    },
+    [commitQuantity]
+  );
+
+  const handleQuantityKeyPress = useCallback(
+    (event, item) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        commitQuantity(item);
+      }
+    },
+    [commitQuantity]
+  );
+
+  const normalizedCartItems = useMemo(() => {
     const mongoIdRegex = /^[a-f\d]{24}$/i;
 
     return cartItems.map((item) => {
@@ -212,9 +296,21 @@ const Cart = () => {
                       >
                         <Minus size={16} />
                       </button>
-                      <span className="min-w-[2rem] text-center text-sm font-semibold text-slate-700">
-                        {item.quantity}
-                      </span>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        className="w-14 text-center text-sm font-semibold text-slate-700 border border-transparent focus:border-primary focus:outline-none rounded-md py-1"
+                        value={resolvePendingQuantity(item)}
+                        onChange={(event) =>
+                          handleQuantityInputChange(item, event.target.value)
+                        }
+                        onBlur={() => handleQuantityBlur(item)}
+                        onKeyDown={(event) =>
+                          handleQuantityKeyPress(event, item)
+                        }
+                        aria-label={`Quantity for ${item.name}`}
+                      />
                       <button
                         onClick={() =>
                           updateQuantity(item.id, item.quantity + 1, item.size)

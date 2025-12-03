@@ -69,7 +69,7 @@ const Login = () => {
         initial="initial"
         animate="animate"
       >
-        <h2 className="text-2xl font-bold text-center">Login to MegaMart</h2>
+        <h2 className="text-2xl font-bold text-center">Login to p2pdeal</h2>
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
             <label

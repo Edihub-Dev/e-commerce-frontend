@@ -10,9 +10,9 @@ export const CartProvider = ({ children }) => {
   const computeStorageKey = () => {
     const userId = user?._id || user?.id || user?.email;
     if (isAuthenticated && userId) {
-      return `megamart:cart:${userId}`;
+      return `p2pdeal:cart:${userId}`;
     }
-    return "megamart:cart:guest";
+    return "p2pdeal:cart:guest";
   };
 
   const [storageKey, setStorageKey] = useState(computeStorageKey);

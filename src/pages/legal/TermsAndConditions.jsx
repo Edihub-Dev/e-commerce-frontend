@@ -21,9 +21,9 @@ const TermsAndConditions = () => {
             Terms & Conditions
           </h1>
           <p className="text-base text-slate-600">
-            Thanks for shopping with MegaMart. By accessing our website,
-            creating an account, or placing an order, you agree to the following
-            terms that keep the experience safe and transparent for everyone.
+            Thanks for shopping with p2pdeal. By accessing our website, creating
+            an account, or placing an order, you agree to the following terms
+            that keep the experience safe and transparent for everyone.
           </p>
         </header>
 
@@ -45,7 +45,7 @@ const TermsAndConditions = () => {
             Pricing & payment
           </h2>
           <p className="text-slate-600">
-            Prices shown on MegaMart are in INR and include applicable taxes
+            Prices shown on p2pdeal are in INR and include applicable taxes
             unless noted otherwise. We may update pricing, promotions, or
             product availability without prior notice. Payments are processed
             securely via trusted gateways; we do not store complete card
@@ -81,8 +81,8 @@ const TermsAndConditions = () => {
           <p className="text-slate-600">
             We follow a replacement-first approach. Eligible products can be
             returned within 7 days of delivery for a like-for-like replacement
-            or MegaMart store credit. Cash refunds to the original payment
-            method are not available. Detailed steps are listed in our Return &
+            or p2pdeal store credit. Cash refunds to the original payment method
+            are not available. Detailed steps are listed in our Return &
             Replacement Policy.
           </p>
         </section>
@@ -105,10 +105,10 @@ const TermsAndConditions = () => {
             Intellectual property
           </h2>
           <p className="text-slate-600">
-            All text, graphics, logos, and product imagery available on MegaMart
-            are owned by MegaMart or our brand partners. You may not reproduce
-            or reuse any portion without prior written consent from the
-            respective owner.
+            All text, graphics, logos, and product imagery available on p2pdeal
+            are owned by p2pdeal or our brand partners. You may not reproduce or
+            reuse any portion without prior written consent from the respective
+            owner.
           </p>
         </section>
 
@@ -117,7 +117,7 @@ const TermsAndConditions = () => {
             Limitation of liability
           </h2>
           <p className="text-slate-600">
-            MegaMart’s total liability for any claim relating to an order is
+            p2pdeal’s total liability for any claim relating to an order is
             limited to the amount you paid for that order. We are not
             responsible for indirect, incidental, or consequential damages
             arising from use of the platform.

@@ -3,7 +3,7 @@ import { fetchPublicHelpTopics } from "../services/helpSupportApi";
 
 const initialMessage = {
   sender: "bot",
-  text: "Hi! I'm the MegaMart assistant. Choose a topic below and I'll share the answers you need.",
+  text: "Hi! I'm the p2pdeal assistant. Choose a topic below and I'll share the answers you need.",
 };
 
 const HelpSupport = () => {

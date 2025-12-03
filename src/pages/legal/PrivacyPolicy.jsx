@@ -21,7 +21,7 @@ const PrivacyPolicy = () => {
             Privacy Policy
           </h1>
           <p className="text-base text-slate-600">
-            Your trust matters. This notice describes how MegaMart collects,
+            Your trust matters. This notice describes how p2pdeal collects,
             uses, and protects information when you browse products, create an
             account, place an order, or request a return/replacement.
           </p>
@@ -85,7 +85,7 @@ const PrivacyPolicy = () => {
             keep your data safe. Information is shared only with verified
             partners who enable payments, logistics, analytics, or customer
             support. Each partner is bound by confidentiality agreements and is
-            permitted to use the data solely to serve MegaMart customers.
+            permitted to use the data solely to serve p2pdeal customers.
           </p>
         </section>
 

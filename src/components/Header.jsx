@@ -27,7 +27,7 @@ import { resetCheckout } from "../store/slices/checkoutSlice";
 import { fetchAddresses, fetchProducts } from "../utils/api";
 
 const DEFAULT_LOCATION_LABEL = "Loading delivery address...";
-const LOCATION_STORAGE_KEY = "megamart:lastLocationLabel";
+const LOCATION_STORAGE_KEY = "p2pdeal:lastLocationLabel";
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -382,7 +382,7 @@ const Header = () => {
       {/* Top Bar */}
       <div className="bg-medium-bg text-medium-text text-sm hidden lg:block">
         <div className="container mx-auto px-16 py-2 flex justify-between items-center">
-          <div>Welcome to worldwide Megamart!</div>
+          <div>Welcome to worldwide p2pdeal!</div>
           <div className="flex items-center space-x-6">
             <div className="flex items-center space-x-2">
               <MapPin size={16} style={{ color: "#008ECC" }} />
@@ -430,7 +430,7 @@ const Header = () => {
               className="text-2xl sm:text-3xl font-bold"
               style={{ color: "#008ECC" }}
             >
-              MegaMart
+              p2pdeal
             </Link>
           </div>
 

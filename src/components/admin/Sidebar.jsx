@@ -48,9 +48,9 @@ const Sidebar = ({ active, className, onNavigate }) => {
       <div className="flex flex-col w-full h-full px-6 py-8 space-y-12">
         <div className="flex items-center gap-2 text-xl font-semibold text-slate-900">
           <div className="h-10 w-10 rounded-xl bg-blue-100 text-blue-600 grid place-items-center font-bold">
-            M
+            P
           </div>
-          <span>MegaMart Admin</span>
+          <span>p2pdeal Admin</span>
         </div>
 
         <nav className="flex-1 space-y-2">
@@ -90,7 +90,7 @@ const Sidebar = ({ active, className, onNavigate }) => {
         </nav>
 
         <div className="hidden lg:block text-xs text-slate-400">
-          © {new Date().getFullYear()} MegaMart. All rights reserved.
+          © {new Date().getFullYear()} p2pdeal. All rights reserved.
         </div>
       </div>
     </aside>

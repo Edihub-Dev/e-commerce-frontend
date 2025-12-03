@@ -795,7 +795,7 @@ const ProductFormModal = ({
                     value={formState.brand}
                     onChange={handleChange("brand")}
                     className="rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none"
-                    placeholder="Megamart"
+                    placeholder="p2pdeal"
                   />
                 </label>
                 <label className="flex flex-col gap-1 text-xs font-medium text-slate-500">

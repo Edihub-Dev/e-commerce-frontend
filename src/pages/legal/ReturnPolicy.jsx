@@ -21,7 +21,7 @@ const ReturnPolicy = () => {
             Return & Replacement Policy
           </h1>
           <p className="text-base text-slate-600">
-            We stand behind every order that ships from MegaMart. If something
+            We stand behind every order that ships from p2pdeal. If something
             isn’t quite right, we’ll help you send the item back and arrange a
             replacement or issue store credit so you can try again—no cash
             refunds or reversals to original payment methods are provided.
@@ -35,7 +35,7 @@ const ReturnPolicy = () => {
           <ul className="list-disc pl-6 space-y-2 text-slate-600">
             <li>
               Submit the return request within 7 days of the delivery date shown
-              in your MegaMart account.
+              in your p2pdeal account.
             </li>
             <li>
               The product must be unused, in resalable condition, and include
@@ -74,10 +74,10 @@ const ReturnPolicy = () => {
           </h2>
           <p className="text-slate-600">
             Once the returned product clears quality checks, we’ll dispatch a
-            like-for-like replacement (subject to availability) or issue
-            MegaMart store credit you can use on future purchases. Store credit
-            is posted within 7 business days of approval. Cash refunds or
-            reversal to the original payment method are not offered.
+            like-for-like replacement (subject to availability) or issue p2pdeal
+            store credit you can use on future purchases. Store credit is posted
+            within 7 business days of approval. Cash refunds or reversal to the
+            original payment method are not offered.
           </p>
         </section>
 

@@ -785,7 +785,7 @@ const CheckoutPayment = () => {
                     </div>
 
                     <div className="rounded-xl bg-primary/5 px-4 py-3 text-xs text-medium-text">
-                      All card and UPI transactions on MegaMart are 100% secure
+                      All card and UPI transactions on p2pdeal are 100% secure
                       and encrypted.
                     </div>
                   </div>

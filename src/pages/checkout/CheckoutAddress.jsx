@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -52,6 +52,7 @@ const PINCODE_REGEX = /^[1-9]\d{5}$/;
 const LOCATION_REGEX = /^[A-Za-z\s.'-]{2,}$/;
 const MAX_ADDRESS_LINE_LENGTH = 255;
 const MAX_FORMATTED_ADDRESS_LENGTH = 255;
+const ADDRESS_DRAFT_STORAGE_KEY = "p2pdeal:checkout:address_draft";
 
 const fetchGeoCoordinates = async ({ city, state, pincode }) => {
   try {
@@ -144,16 +145,115 @@ const CheckoutAddress = () => {
     () => user?.name || user?.username || user?.fullName || "",
     [user?.name, user?.username, user?.fullName]
   );
+  const buildInitialFormState = useCallback(
+    () => createInitialFormState(user?.email, customerName),
+    [user?.email, customerName]
+  );
   const { items } = useSelector((state) => state.checkout);
   const { addresses, loading } = useSelector((state) => state.address);
   const [selectedId, setSelectedId] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [formState, setFormState] = useState(() =>
-    createInitialFormState(user?.email, customerName)
-  );
+  const [formState, setFormState] = useState(buildInitialFormState);
   const [editingAddressId, setEditingAddressId] = useState(null);
   const lastResolvedPincodeRef = useRef("");
+  const isHydratingDraftRef = useRef(true);
+  const draftHydratedRef = useRef(false);
+
+  const draftStorageKey = useMemo(() => {
+    const identifier =
+      user?._id || user?.id || user?.email || user?.phone || "guest";
+    return `${ADDRESS_DRAFT_STORAGE_KEY}:${identifier}`;
+  }, [user?._id, user?.email, user?.id, user?.phone]);
+
+  const clearDraft = useCallback(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    try {
+      window.localStorage.removeItem(draftStorageKey);
+    } catch (error) {
+      console.error("Failed to clear address draft", error);
+    }
+  }, [draftStorageKey]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      isHydratingDraftRef.current = false;
+      return;
+    }
+
+    isHydratingDraftRef.current = true;
+
+    try {
+      const rawDraft = window.localStorage.getItem(draftStorageKey);
+      if (!rawDraft) {
+        return;
+      }
+
+      const parsedDraft = JSON.parse(rawDraft);
+
+      if (parsedDraft?.formState) {
+        const mergedFormState = {
+          ...buildInitialFormState(),
+          ...parsedDraft.formState,
+        };
+        setFormState(mergedFormState);
+        setShowForm(parsedDraft.showForm ?? true);
+        setEditingAddressId(parsedDraft.editingAddressId ?? null);
+        draftHydratedRef.current = true;
+      }
+    } catch (error) {
+      console.error("Failed to restore address draft", error);
+    } finally {
+      isHydratingDraftRef.current = false;
+    }
+  }, [draftStorageKey, buildInitialFormState]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    if (isHydratingDraftRef.current) {
+      return;
+    }
+
+    if (!showForm) {
+      clearDraft();
+      return;
+    }
+
+    try {
+      window.localStorage.setItem(
+        draftStorageKey,
+        JSON.stringify({
+          formState,
+          editingAddressId,
+          showForm: true,
+          timestamp: Date.now(),
+        })
+      );
+    } catch (error) {
+      console.error("Failed to persist address draft", error);
+    }
+  }, [formState, editingAddressId, showForm, draftStorageKey, clearDraft]);
+
+  const handleResetForm = useCallback(() => {
+    setFormState(buildInitialFormState());
+    setEditingAddressId(null);
+    setShowForm(true);
+    clearDraft();
+    draftHydratedRef.current = false;
+  }, [buildInitialFormState, clearDraft]);
+
+  const handleCancelForm = useCallback(() => {
+    setShowForm(false);
+    setFormState(buildInitialFormState());
+    setEditingAddressId(null);
+    clearDraft();
+    draftHydratedRef.current = false;
+  }, [buildInitialFormState, clearDraft]);
 
   const cityOptions = useMemo(() => {
     const cities = getCitiesForState(formState.state) || [];
@@ -231,15 +331,22 @@ const CheckoutAddress = () => {
   }, [dispatch]);
 
   useEffect(() => {
+    if (isHydratingDraftRef.current) {
+      return;
+    }
+
     if (!addresses.length) {
       setShowForm(true);
       setSelectedId(null);
       setEditingAddressId(null);
-      setFormState(createInitialFormState(user?.email, customerName));
+      if (!draftHydratedRef.current) {
+        setFormState(buildInitialFormState());
+      }
     } else if (!selectedId) {
       const defaultAddress = addresses.find((address) => address.isDefault);
       setSelectedId(defaultAddress?._id || addresses[0]._id);
       setShowForm(false);
+      draftHydratedRef.current = false;
     }
   }, [addresses, selectedId, user?.email]);
 
@@ -488,7 +595,8 @@ const CheckoutAddress = () => {
       }
 
       setShowForm(false);
-      setFormState(createInitialFormState(user?.email));
+      setFormState(buildInitialFormState());
+      clearDraft();
       setEditingAddressId(null);
     } catch (error) {
       console.error("Failed to save address", error);
@@ -544,7 +652,7 @@ const CheckoutAddress = () => {
 
       if (editingAddressId === address._id) {
         setEditingAddressId(null);
-        setFormState(createInitialFormState(user?.email));
+        setFormState(buildInitialFormState());
         setShowForm(false);
       }
 
@@ -689,7 +797,8 @@ const CheckoutAddress = () => {
               onClick={() => {
                 setShowForm((prev) => !prev);
                 setEditingAddressId(null);
-                setFormState(createInitialFormState(user?.email, customerName));
+                setFormState(buildInitialFormState());
+                clearDraft();
               }}
               className="text-sm font-medium text-primary hover:text-primary-dark"
             >
@@ -840,15 +949,17 @@ const CheckoutAddress = () => {
             <div className="flex justify-end gap-3">
               <button
                 type="button"
-                onClick={() => {
-                  setShowForm(false);
-                  setFormState(
-                    createInitialFormState(user?.email, customerName)
-                  );
-                }}
+                onClick={handleCancelForm}
                 className="px-4 py-2 rounded-lg border border-slate-200 text-secondary hover:bg-slate-50"
               >
                 Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleResetForm}
+                className="px-4 py-2 rounded-lg border border-slate-200 text-secondary hover:bg-slate-50"
+              >
+                Reset
               </button>
               <motion.button
                 type="submit"

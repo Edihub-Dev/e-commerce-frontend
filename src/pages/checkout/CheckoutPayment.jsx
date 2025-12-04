@@ -70,6 +70,7 @@ const CheckoutPayment = () => {
   const [isAwaitingConfirmation, setIsAwaitingConfirmation] = useState(false);
   const [pollingError, setPollingError] = useState(null);
   const [paymentSession, setPaymentSession] = useState(null);
+  const [isMobile, setIsMobile] = useState(() => isMobileViewport());
 
   const pollingAttemptsRef = useRef(0);
   const pollingTimerRef = useRef(null);
@@ -88,6 +89,23 @@ const CheckoutPayment = () => {
     }
     dispatch(setCheckoutStep("payment"));
   }, [dispatch, items.length, shippingAddress, checkoutOrderId, navigate]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const handleResize = () => {
+      setIsMobile(isMobileViewport());
+    };
+
+    handleResize();
+    window.addEventListener("resize", handleResize);
+
+    return () => {
+      window.removeEventListener("resize", handleResize);
+    };
+  }, []);
 
   const orderItems = useMemo(
     () =>
@@ -609,74 +627,78 @@ const CheckoutPayment = () => {
       <div className="min-h-[calc(100vh-180px)] bg-light-bg">
         <div className="mx-auto w-full max-w-6xl p-6 lg:p-10">
           <div className="space-y-6">
-            <motion.header
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3 }}
-              className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm lg:flex-row lg:items-center lg:justify-between"
-            >
-              <div>
-                <p className="text-sm font-semibold uppercase tracking-wide text-primary">
-                  Secure Payment
-                </p>
-                <h2 className="text-2xl font-semibold text-secondary">
-                  Choose how you want to pay
-                </h2>
-                <p className="mt-1 text-sm text-medium-text">
-                  Scan the PhonePe QR or pay via UPI for instant confirmation.
-                </p>
-              </div>
-              <span className="inline-flex w-max items-center justify-center rounded-full bg-primary/10 px-4 py-1 text-sm font-medium text-primary">
-                Step 3 of 4
-              </span>
-            </motion.header>
-
-            <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-              <div className="flex flex-wrap items-start justify-between gap-3">
+            {!isMobile && (
+              <motion.header
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3 }}
+                className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm lg:flex-row lg:items-center lg:justify-between"
+              >
                 <div>
-                  <h3 className="text-base font-semibold text-secondary">
-                    Delivering to
-                  </h3>
+                  <p className="text-sm font-semibold uppercase tracking-wide text-primary">
+                    Secure Payment
+                  </p>
+                  <h2 className="text-2xl font-semibold text-secondary">
+                    Choose how you want to pay
+                  </h2>
                   <p className="mt-1 text-sm text-medium-text">
-                    Review your address before completing the payment.
+                    Scan the PhonePe QR or pay via UPI for instant confirmation.
                   </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => navigate("/checkout/address")}
-                  className="rounded-xl border border-primary/40 px-4 py-2 text-sm font-medium text-primary transition hover:border-primary hover:bg-primary/5"
-                >
-                  Change address
-                </button>
-              </div>
-              {sanitizedAddress && (
-                <div className="mt-4 grid gap-3 text-sm text-secondary sm:grid-cols-2">
+                <span className="inline-flex w-max items-center justify-center rounded-full bg-primary/10 px-4 py-1 text-sm font-medium text-primary">
+                  Step 3 of 4
+                </span>
+              </motion.header>
+            )}
+
+            {!isMobile && (
+              <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
-                    <p className="font-medium">{sanitizedAddress.fullName}</p>
-                    <p className="text-medium-text">
-                      {sanitizedAddress.mobile}
+                    <h3 className="text-base font-semibold text-secondary">
+                      Delivering to
+                    </h3>
+                    <p className="mt-1 text-sm text-medium-text">
+                      Review your address before completing the payment.
                     </p>
-                    {sanitizedAddress.email && (
-                      <p className="text-medium-text">
-                        {sanitizedAddress.email}
-                      </p>
-                    )}
                   </div>
-                  <div>
-                    <p>{sanitizedAddress.addressLine}</p>
-                    <p>
-                      {sanitizedAddress.city}, {sanitizedAddress.state} -{" "}
-                      {sanitizedAddress.pincode}
-                    </p>
-                    {sanitizedAddress.alternatePhone && (
-                      <p className="text-medium-text">
-                        Alt: {sanitizedAddress.alternatePhone}
-                      </p>
-                    )}
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => navigate("/checkout/address")}
+                    className="rounded-xl border border-primary/40 px-4 py-2 text-sm font-medium text-primary transition hover:border-primary hover:bg-primary/5"
+                  >
+                    Change address
+                  </button>
                 </div>
-              )}
-            </section>
+                {sanitizedAddress && (
+                  <div className="mt-4 grid gap-3 text-sm text-secondary sm:grid-cols-2">
+                    <div>
+                      <p className="font-medium">{sanitizedAddress.fullName}</p>
+                      <p className="text-medium-text">
+                        {sanitizedAddress.mobile}
+                      </p>
+                      {sanitizedAddress.email && (
+                        <p className="text-medium-text">
+                          {sanitizedAddress.email}
+                        </p>
+                      )}
+                    </div>
+                    <div>
+                      <p>{sanitizedAddress.addressLine}</p>
+                      <p>
+                        {sanitizedAddress.city}, {sanitizedAddress.state} -{" "}
+                        {sanitizedAddress.pincode}
+                      </p>
+                      {sanitizedAddress.alternatePhone && (
+                        <p className="text-medium-text">
+                          Alt: {sanitizedAddress.alternatePhone}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </section>
+            )}
 
             <div className="flex flex-col gap-8 lg:grid lg:grid-cols-[1.1fr,0.9fr]">
               <aside className="order-1 lg:order-2 lg:sticky lg:top-10 lg:h-max">
@@ -793,23 +815,25 @@ const CheckoutPayment = () => {
               </aside>
 
               <div className="order-2 space-y-6 lg:order-1">
-                <header className="flex flex-col gap-4 rounded-3xl border border-slate-100 bg-white p-6 shadow-sm lg:flex-row lg:items-center lg:justify-between">
-                  <div className="space-y-1">
-                    <h2 className="text-xl font-semibold text-secondary">
-                      Choose your payment method
-                    </h2>
-                    <p className="text-sm text-medium-text">
-                      Select a secure payment option to complete your order.
-                    </p>
-                  </div>
-                  <div className="rounded-2xl bg-primary/5 px-4 py-2 text-sm text-primary">
-                    Total payable:{" "}
-                    {formatCurrency(
-                      resolvedTotals.total,
-                      resolvedTotals.currency
-                    )}
-                  </div>
-                </header>
+                {!isMobile && (
+                  <header className="flex flex-col gap-4 rounded-3xl border border-slate-100 bg-white p-6 shadow-sm lg:flex-row lg:items-center lg:justify-between">
+                    <div className="space-y-1">
+                      <h2 className="text-xl font-semibold text-secondary">
+                        Choose your payment method
+                      </h2>
+                      <p className="text-sm text-medium-text">
+                        Select a secure payment option to complete your order.
+                      </p>
+                    </div>
+                    <div className="rounded-2xl bg-primary/5 px-4 py-2 text-sm text-primary">
+                      Total payable:{" "}
+                      {formatCurrency(
+                        resolvedTotals.total,
+                        resolvedTotals.currency
+                      )}
+                    </div>
+                  </header>
+                )}
 
                 <section className="rounded-3xl border border-slate-100 bg-white p-6 shadow-sm">
                   <div className="space-y-4">
@@ -864,19 +888,15 @@ const CheckoutPayment = () => {
                 </section>
 
                 <AnimatePresence>
-                  <motion.section
-                    key={
-                      paymentSession
-                        ? "phonepe-session"
-                        : "phonepe-instructions"
-                    }
-                    initial={{ opacity: 0, y: 16 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -12 }}
-                    transition={{ duration: 0.25 }}
-                    className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
-                  >
-                    {paymentSession ? (
+                  {paymentSession ? (
+                    <motion.section
+                      key="phonepe-session"
+                      initial={{ opacity: 0, y: 16 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -12 }}
+                      transition={{ duration: 0.25 }}
+                      className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
+                    >
                       <div className="flex flex-col gap-6">
                         <div className="flex flex-wrap items-center justify-between gap-3">
                           <h3 className="text-base font-semibold text-secondary">
@@ -994,42 +1014,55 @@ const CheckoutPayment = () => {
                           </div>
                         </div>
                       </div>
-                    ) : (
-                      <div className="space-y-4 text-sm text-medium-text">
-                        <h3 className="text-base font-semibold text-secondary">
-                          How PhonePe checkout works
-                        </h3>
-                        <ol className="list-decimal space-y-2 pl-5">
-                          <li>
-                            Click “Pay &amp; Place Order” to create a secure
-                            PhonePe transaction.
-                          </li>
-                          <li>
-                            Scan the QR on desktop or continue in the PhonePe
-                            app on mobile.
-                          </li>
-                          <li>
-                            We’ll automatically confirm your payment and place
-                            the order.
-                          </li>
-                        </ol>
-                        <p className="text-xs text-slate-500">
-                          Need to change the payment option? You can always
-                          switch back to Cash on Delivery.
-                        </p>
-                      </div>
-                    )}
-                  </motion.section>
+                    </motion.section>
+                  ) : (
+                    !isMobile && (
+                      <motion.section
+                        key="phonepe-instructions"
+                        initial={{ opacity: 0, y: 16 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -12 }}
+                        transition={{ duration: 0.25 }}
+                        className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
+                      >
+                        <div className="space-y-4 text-sm text-medium-text">
+                          <h3 className="text-base font-semibold text-secondary">
+                            How PhonePe checkout works
+                          </h3>
+                          <ol className="list-decimal space-y-2 pl-5">
+                            <li>
+                              Click “Pay &amp; Place Order” to create a secure
+                              PhonePe transaction.
+                            </li>
+                            <li>
+                              Scan the QR on desktop or continue in the PhonePe
+                              app on mobile.
+                            </li>
+                            <li>
+                              We’ll automatically confirm your payment and place
+                              the order.
+                            </li>
+                          </ol>
+                          <p className="text-xs text-slate-500">
+                            Need to change the payment option? You can always
+                            switch back to Cash on Delivery.
+                          </p>
+                        </div>
+                      </motion.section>
+                    )
+                  )}
                 </AnimatePresence>
 
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <button
-                    type="button"
-                    onClick={() => navigate("/checkout/address")}
-                    className="w-full rounded-xl border border-slate-300 px-5 py-3 text-sm font-semibold text-secondary transition hover:border-primary/50 hover:bg-primary/5 sm:w-auto"
-                  >
-                    Back to Address
-                  </button>
+                  {!isMobile && (
+                    <button
+                      type="button"
+                      onClick={() => navigate("/checkout/address")}
+                      className="w-full rounded-xl border border-slate-300 px-5 py-3 text-sm font-semibold text-secondary transition hover:border-primary/50 hover:bg-primary/5 sm:w-auto"
+                    >
+                      Back to Address
+                    </button>
+                  )}
                   <motion.button
                     whileHover={{
                       scale: isProcessing || isAwaitingConfirmation ? 1 : 1.02,

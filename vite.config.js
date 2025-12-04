@@ -5,16 +5,21 @@ import { dirname, resolve } from "node:path";
 
 const emotionIsPropValidPath = resolve(
   dirname(fileURLToPath(import.meta.url)),
-  "node_modules/@emotion/is-prop-valid/dist/emotion-is-prop-valid.cjs.mjs"
+  "node_modules/@emotion/is-prop-valid/dist/emotion-is-prop-valid.esm.js"
 );
 
 export default defineConfig({
   plugins: [react()],
   root: "./",
+
   resolve: {
     alias: {
       "@emotion/is-prop-valid": emotionIsPropValidPath,
     },
+  },
+
+  optimizeDeps: {
+    include: ["@emotion/is-prop-valid"],
   },
 
   build: {
@@ -36,10 +41,6 @@ export default defineConfig({
         },
       },
     },
-  },
-
-  optimizeDeps: {
-    include: ["@emotion/is-prop-valid"],
   },
 
   publicDir: "public",

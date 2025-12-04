@@ -1,24 +1,13 @@
-// import { defineConfig } from 'vite'
-// import react from '@vitejs/plugin-react'
-
-// // https://vitejs.dev/config/
-// export default defineConfig({
-//   plugins: [react()],
-//   root: './',
-//   build: {
-//     outDir: 'dist',
-//   },
-//   publicDir: 'public'
-// })
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
 export default defineConfig({
   plugins: [react()],
   root: "./",
+
   build: {
     outDir: "dist",
-    chunkSizeWarningLimit: 1500, // Increase limit to 1.5MB
+    chunkSizeWarningLimit: 1500,
     rollupOptions: {
       output: {
         manualChunks: {
@@ -36,5 +25,6 @@ export default defineConfig({
       },
     },
   },
+
   publicDir: "public",
 });

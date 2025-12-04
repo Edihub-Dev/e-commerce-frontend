@@ -24,28 +24,20 @@ export default defineConfig({
 
   build: {
     outDir: "dist",
-    chunkSizeWarningLimit: 1500,
+    chunkSizeWarningLimit: 2500,
     rollupOptions: {
       output: {
-        manualChunks(id) {
-          if (!id.includes("node_modules")) return undefined;
-
-          if (id.includes("react-dom") || id.includes("react")) return "react";
-          if (
-            id.includes("framer-motion") ||
-            id.includes("swiper") ||
-            id.includes("react-icons")
-          ) {
-            return "ui";
-          }
-          if (id.includes("@tanstack/react-query")) return "react-query";
-          if (id.includes("xlsx")) return "xlsx";
-          if (id.includes("axios")) return "axios";
-          if (id.includes("date-fns") || id.includes("lodash.debounce")) {
-            return "utils";
-          }
-
-          return "vendor";
+        manualChunks: {
+          react: ["react", "react-dom"],
+          vendor: [
+            "axios",
+            "lodash.debounce",
+            "date-fns",
+            "swiper",
+            "xlsx",
+            "@tanstack/react-query",
+            "framer-motion",
+          ],
         },
       },
     },

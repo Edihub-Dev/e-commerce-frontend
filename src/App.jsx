@@ -40,6 +40,7 @@ import AdminCustomersPage from "./pages/AdminCustomersPage";
 import AdminCouponsPage from "./pages/AdminCouponsPage";
 import AdminFooterCategoriesPage from "./pages/AdminFooterCategoriesPage";
 import ProtectedRoute from "./components/ProtectedRoute";
+import Offers from "./pages/Offers";
 
 const ScrollToTop = () => {
   const { pathname } = useLocation();
@@ -75,6 +76,7 @@ function App() {
           <Route path="legal/privacy" element={<PrivacyPolicy />} />
           <Route path="legal/terms" element={<TermsAndConditions />} />
           <Route path="legal/returns" element={<ReturnPolicy />} />
+          <Route path="offers" element={<Offers />} />
 
           <Route
             path="checkout"

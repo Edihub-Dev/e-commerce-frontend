@@ -130,13 +130,6 @@ const OrdersPage = () => {
         </ul>
       </div>
 
-      <div className="text-sm text-medium-text space-y-1">
-        <p className="font-medium text-secondary">Total Paid</p>
-        <p className="text-base font-semibold text-secondary">
-          ₹{order.pricing?.total?.toLocaleString?.() || "-"}
-        </p>
-      </div>
-
       <div className="flex justify-end">
         <button
           onClick={() => navigate(`/orders/${order._id}`)}

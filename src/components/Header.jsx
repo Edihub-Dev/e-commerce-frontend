@@ -373,6 +373,9 @@ const Header = () => {
     ? navCategories
     : [{ name: "All Products", slug: "" }];
 
+  const mobileMenuItemClasses =
+    "flex items-center gap-2 rounded-xl px-3 py-2 -mx-3 text-sm font-medium text-secondary hover:bg-slate-100 active:bg-slate-200 transition-colors";
+
   return (
     <header
       className={`bg-white shadow-sm sticky top-0 z-40 transition-transform duration-300 ${
@@ -591,120 +594,136 @@ const Header = () => {
       <AnimatePresence>
         {isMenuOpen && (
           <motion.div
-            className="lg:hidden bg-white absolute top-full left-0 w-full h-screen z-30 p-4 border-t overflow-y-auto"
+            className="lg:hidden bg-white absolute top-full left-0 w-full h-screen z-30 border-t flex flex-col"
             initial={{ opacity: 0, x: -300 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -300 }}
             transition={{ duration: 0.3 }}
           >
-            <div className="flex items-center justify-between mb-4">
-              <span
-                className="text-lg font-semibold"
-                style={{ color: "#008ECC" }}
-              >
-                Menu
-              </span>
-              <button
-                type="button"
-                onClick={() => setIsMenuOpen(false)}
-                className="inline-flex items-center justify-center p-2 rounded-full border border-gray-200 text-gray-500 hover:text-[#008ECC] hover:border-[#008ECC] transition-colors"
-                aria-label="Close navigation menu"
-              >
-                <X size={20} />
-              </button>
+            <div className="px-4 pt-4">
+              <div className="flex items-center justify-between">
+                <span
+                  className="text-lg font-semibold"
+                  style={{ color: "#008ECC" }}
+                >
+                  Menu
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setIsMenuOpen(false)}
+                  className="inline-flex items-center justify-center p-2 rounded-full border border-gray-200 text-gray-500 hover:text-[#008ECC] hover:border-[#008ECC] transition-colors"
+                  aria-label="Close navigation menu"
+                >
+                  <X size={20} />
+                </button>
+              </div>
             </div>
-            <div className="flex items-center bg-light-bg border border-gray-200 rounded-md mb-4">
-              <input
-                type="text"
-                placeholder="Search..."
-                className="bg-transparent py-2 px-4 w-full focus:outline-none"
-              />
-              <button className="p-2 text-medium-text">
-                <SearchIcon size={20} />
-              </button>
+            <div className="px-4 pt-2">
+              <div className="flex items-center bg-light-bg border border-gray-200 rounded-md">
+                <input
+                  type="text"
+                  placeholder="Search..."
+                  className="bg-transparent py-2 px-4 w-full focus:outline-none"
+                />
+                <button className="p-2 text-medium-text">
+                  <SearchIcon size={20} />
+                </button>
+              </div>
             </div>
-            <nav>
-              <ul>
-                {renderedCategories.map((cat, index) => (
-                  <li key={cat.slug || index} className="border-b">
+            <div className="flex-1 overflow-y-auto px-4 pb-8">
+              <nav>
+                <ul>
+                  {renderedCategories.map((cat, index) => (
+                    <li key={cat.slug || index} className="border-b">
+                      <Link
+                        to={cat.slug ? `/category/${cat.slug}` : "/shop"}
+                        className="flex justify-between items-center py-3 text-secondary transition-colors hover:bg-slate-100 hover:text-primary px-3 -mx-3 rounded-xl"
+                        onClick={() => setIsMenuOpen(false)}
+                      >
+                        {cat.name}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </nav>
+              <div className="mt-6 border-t pt-6 space-y-4">
+                {isAuthenticated ? (
+                  <>
+                    {isAdmin && (
+                      <Link
+                        to="/admin"
+                        className={mobileMenuItemClasses}
+                        onClick={() => setIsMenuOpen(false)}
+                      >
+                        <User className="h-5 w-5" />
+                        <span>Admin Profile</span>
+                      </Link>
+                    )}
                     <Link
-                      to={cat.slug ? `/category/${cat.slug}` : "/shop"}
-                      className="flex justify-between items-center py-3"
+                      to="/profile"
+                      className={mobileMenuItemClasses}
                       onClick={() => setIsMenuOpen(false)}
                     >
-                      {cat.name}
+                      <User className="h-5 w-5" />
+                      <span>My Profile</span>
                     </Link>
-                  </li>
-                ))}
-              </ul>
-            </nav>
-            <div className="mt-6 border-t pt-6 space-y-4">
-              {isAuthenticated ? (
-                <>
-                  {isAdmin && (
                     <Link
-                      to="/admin"
-                      className="flex items-center"
+                      to="/orders"
+                      className={mobileMenuItemClasses}
                       onClick={() => setIsMenuOpen(false)}
                     >
-                      <User className="mr-2" /> Admin Profile
+                      <User className="h-5 w-5" />
+                      <span>My Orders</span>
                     </Link>
-                  )}
-                  <Link
-                    to="/profile"
-                    className="flex items-center"
-                    onClick={() => setIsMenuOpen(false)}
-                  >
-                    <User className="mr-2" /> My Profile
-                  </Link>
-                  <Link
-                    to="/orders"
-                    className="flex items-center"
-                    onClick={() => setIsMenuOpen(false)}
-                  >
-                    <User className="mr-2" /> My Orders
-                  </Link>
-                  <button
-                    onClick={() => {
-                      handleLogout();
-                      setIsMenuOpen(false);
-                    }}
-                    className="flex items-center"
-                  >
-                    <User className="mr-2" /> Logout
-                  </button>
-                </>
-              ) : (
-                <div className="flex flex-col gap-3 text-sm">
-                  <Link
-                    to="/signup"
-                    onClick={() => setIsMenuOpen(false)}
-                    className="flex items-center"
-                  >
-                    <User className="mr-2" /> Sign Up
-                  </Link>
-                  <Link
-                    to="/login"
-                    onClick={() => setIsMenuOpen(false)}
-                    className="flex items-center"
-                  >
-                    <User className="mr-2" /> Sign In
-                  </Link>
-                </div>
-              )}
-              <Link
-                to="/cart"
-                onClick={() => setIsMenuOpen(false)}
-                className="flex items-center relative"
-              >
-                <ShoppingCart className="mr-2" /> Cart
-                {cartCount > 0 && (
-                  <span className="ml-2 bg-primary text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                    {cartCount}
-                  </span>
+                  </>
+                ) : (
+                  <div className="flex flex-col gap-3 text-sm">
+                    <Link
+                      to="/signup"
+                      onClick={() => setIsMenuOpen(false)}
+                      className={mobileMenuItemClasses}
+                    >
+                      <User className="h-5 w-5" />
+                      <span>Sign Up</span>
+                    </Link>
+                    <Link
+                      to="/login"
+                      onClick={() => setIsMenuOpen(false)}
+                      className={mobileMenuItemClasses}
+                    >
+                      <User className="h-5 w-5" />
+                      <span>Sign In</span>
+                    </Link>
+                  </div>
                 )}
-              </Link>
+                <Link
+                  to="/cart"
+                  onClick={() => setIsMenuOpen(false)}
+                  className={`${mobileMenuItemClasses} relative`}
+                >
+                  <ShoppingCart className="h-5 w-5" />
+                  <span>Cart</span>
+                  {cartCount > 0 && (
+                    <span className="ml-auto bg-primary text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                      {cartCount}
+                    </span>
+                  )}
+                </Link>
+              </div>
             </div>
+            {isAuthenticated && (
+              <div className="mt-auto px-4 pb-6 flex justify-end">
+                <button
+                  onClick={() => {
+                    handleLogout();
+                    setIsMenuOpen(false);
+                  }}
+                  className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold text-rose-600 transition-colors hover:bg-rose-50 hover:text-rose-700 active:bg-rose-100"
+                >
+                  Logout
+                </button>
+              </div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>

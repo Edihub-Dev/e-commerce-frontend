@@ -9,7 +9,6 @@ import {
   setOrdersError,
 } from "../../store/slices/ordersSlice";
 import { fetchMyOrders } from "../../utils/api";
-import { Package } from "lucide-react";
 
 const OrdersPage = () => {
   const dispatch = useDispatch();
@@ -57,7 +56,10 @@ const OrdersPage = () => {
     };
 
     loadOrders({ showLoader: true });
-    const intervalId = setInterval(() => loadOrders({ showLoader: false }), 15000);
+    const intervalId = setInterval(
+      () => loadOrders({ showLoader: false }),
+      15000
+    );
 
     return () => {
       isMounted = false;
@@ -71,78 +73,74 @@ const OrdersPage = () => {
       key={order._id}
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
-      className="border border-slate-200 rounded-3xl p-6 space-y-6 bg-white"
+      className="border border-slate-200 rounded-3xl p-6 space-y-4 bg-white"
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="flex flex-wrap items-start gap-3 min-w-0">
-          <div className="h-12 w-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center flex-shrink-0">
-            <Package className="h-6 w-6" />
-          </div>
-          <div className="min-w-0">
-            <h2 className="text-base sm:text-lg font-semibold text-secondary break-words">
-              Order #{order._id}
-            </h2>
-            <p className="text-xs sm:text-sm text-medium-text break-words">
-              Placed on {new Date(order.createdAt).toLocaleString()}
-            </p>
-          </div>
+        <div className="min-w-0">
+          <h2 className="text-base sm:text-lg font-semibold text-secondary break-words">
+            Order #{order._id}
+          </h2>
+          <p className="text-xs sm:text-sm text-medium-text break-words">
+            Placed on {new Date(order.createdAt).toLocaleString()}
+          </p>
         </div>
         <span className="text-xs font-medium px-3 py-1 rounded-full bg-primary/10 text-primary flex-shrink-0 text-center">
           {order.status?.replace(/_/g, " ")}
         </span>
       </div>
 
-      <section className="space-y-3 text-sm text-medium-text">
-        <header className="font-medium text-secondary">Items</header>
+      <div className="space-y-3">
+        <p className="text-sm font-medium text-secondary">Items</p>
         <ul className="space-y-3">
-          {order.items?.map((item, index) => (
-            <li key={`${item.name}-${index}`} className="grid sm:grid-cols-[2fr,1fr,1fr] gap-2">
-              <span className="font-medium text-secondary">{item.name}</span>
-              <span>
-                Qty: {item.quantity}
-                {item.size && ` • Size: ${item.size}`}
-              </span>
-              <span>₹{(item.price * item.quantity).toLocaleString()}</span>
+          {(order.items || []).map((item, index) => (
+            <li
+              key={`${item.product || item._id || index}`}
+              className="flex items-start gap-3"
+            >
+              <div className="h-16 w-16 rounded-xl overflow-hidden bg-slate-100 flex-shrink-0">
+                {item.image ? (
+                  <img
+                    src={item.image}
+                    alt={item.name}
+                    className="h-full w-full object-cover"
+                    loading="lazy"
+                  />
+                ) : (
+                  <div className="h-full w-full flex items-center justify-center text-xs text-medium-text">
+                    No image
+                  </div>
+                )}
+              </div>
+              <div className="min-w-0 text-sm text-medium-text">
+                <p className="font-medium text-secondary break-words">
+                  {item.name}
+                </p>
+                <p className="text-xs sm:text-sm">
+                  Qty: {item.quantity}
+                  {item.size ? ` • Size: ${item.size}` : ""}
+                </p>
+                {item.price ? (
+                  <p className="text-xs sm:text-sm">
+                    ₹{(item.price * item.quantity).toLocaleString()}
+                  </p>
+                ) : null}
+              </div>
             </li>
           ))}
         </ul>
-      </section>
+      </div>
 
-      <section className="grid gap-4 text-sm text-medium-text">
-        <div>
-          <header className="font-medium text-secondary mb-1">Delivery Address</header>
-          <p>{order.shippingAddress?.fullName}</p>
-          {order.shippingAddress?.addressLine && <p>{order.shippingAddress.addressLine}</p>}
-          <p>
-            {order.shippingAddress?.city}, {order.shippingAddress?.state} - {order.shippingAddress?.pincode}
-          </p>
-          <p>Mobile: {order.shippingAddress?.mobile}</p>
-        </div>
-        <div>
-          <header className="font-medium text-secondary mb-1">Payment</header>
-          <p>
-            Method: {order.payment?.method?.toUpperCase?.()} <br />
-            Status: {order.payment?.status}
-          </p>
-        </div>
-        <div>
-          <header className="font-medium text-secondary mb-1">Totals</header>
-          <p>
-            Subtotal: ₹{order.pricing?.subtotal?.toLocaleString?.()} <br />
-            Shipping: ₹{order.pricing?.shippingFee?.toLocaleString?.()} <br />
-            Tax: ₹{order.pricing?.taxAmount?.toLocaleString?.()} <br />
-            Discount: ₹{order.pricing?.discount?.toLocaleString?.()} <br />
-            <span className="font-semibold text-secondary">
-              Total: ₹{order.pricing?.total?.toLocaleString?.()}
-            </span>
-          </p>
-        </div>
-      </section>
+      <div className="text-sm text-medium-text space-y-1">
+        <p className="font-medium text-secondary">Total Paid</p>
+        <p className="text-base font-semibold text-secondary">
+          ₹{order.pricing?.total?.toLocaleString?.() || "-"}
+        </p>
+      </div>
 
-      <div className="flex flex-wrap gap-3 justify-end">
+      <div className="flex justify-end">
         <button
           onClick={() => navigate(`/orders/${order._id}`)}
-          className="px-4 py-2 rounded-xl bg-primary text-white hover:bg-primary-dark"
+          className="px-4 py-2 rounded-xl bg-primary text-white text-sm font-medium hover:bg-primary-dark transition"
         >
           View Order Details
         </button>
@@ -163,7 +161,8 @@ const OrdersPage = () => {
       <div className="max-w-5xl mx-auto px-4 lg:px-6 py-12 text-center space-y-3">
         <h2 className="text-xl font-semibold text-secondary">No orders yet</h2>
         <p className="text-medium-text">
-          Orders will appear here as soon as you place one. Try refreshing if youre expecting an update.
+          Orders will appear here as soon as you place one. Try refreshing if
+          youre expecting an update.
         </p>
         {error && <p className="text-sm text-rose-500">{error}</p>}
       </div>

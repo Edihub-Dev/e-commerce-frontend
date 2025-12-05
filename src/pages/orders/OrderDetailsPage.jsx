@@ -745,7 +745,7 @@ const OrderDetailsPage = () => {
           </p>
         </header>
         <div className="relative">
-          <ul className="space-y-0">
+          <ul className="relative">
             {timelineSteps.map((step, index) => {
               const Icon = step.isCompleted ? CheckCircle2 : Circle;
               const isLast = index === timelineSteps.length - 1;
@@ -758,22 +758,31 @@ const OrderDetailsPage = () => {
                   : timelineStep?.isCurrent
                   ? "bg-primary/40"
                   : "bg-slate-200";
+              const markerVars = {
+                "--timeline-marker-size": "1.5rem",
+                "--timeline-gap": "1.5rem",
+              };
               return (
                 <li
                   key={step.key}
-                  className="relative flex gap-4 pb-6 last:pb-0"
+                  className="relative grid grid-cols-[auto,1fr] gap-4 py-6 first:pt-0 last:pb-0"
+                  style={markerVars}
                 >
                   <div className="relative flex w-6 justify-center">
                     {showTopConnector && (
                       <span
+                        aria-hidden="true"
                         className={`absolute left-1/2 w-[2px] -translate-x-1/2 ${resolveConnectorClass(
                           previousStep
                         )}`}
-                        style={{ top: "-12px", height: "calc(50% + 12px)" }}
+                        style={{
+                          top: "calc(-1 * var(--timeline-gap))",
+                          bottom: "calc(var(--timeline-marker-size) / 2)",
+                        }}
                       />
                     )}
                     <span
-                      className={`relative z-10 inline-flex h-6 w-6 items-center justify-center rounded-full border-2 ${
+                      className={`relative z-10 inline-flex h-[var(--timeline-marker-size)] w-[var(--timeline-marker-size)] items-center justify-center rounded-full border-2 ${
                         step.isCompleted
                           ? "border-emerald-500 bg-emerald-500 text-white"
                           : step.isCurrent
@@ -785,17 +794,18 @@ const OrderDetailsPage = () => {
                     </span>
                     {showConnector && (
                       <span
+                        aria-hidden="true"
                         className={`absolute left-1/2 w-[2px] -translate-x-1/2 ${resolveConnectorClass(
                           step
                         )}`}
                         style={{
-                          top: "calc(50%)",
-                          height: "calc(50% + 12px)",
+                          top: "calc(var(--timeline-marker-size) / 2)",
+                          bottom: "calc(-1 * var(--timeline-gap))",
                         }}
                       />
                     )}
                   </div>
-                  <div className="flex-1 space-y-1">
+                  <div className="space-y-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="text-sm font-semibold text-secondary">
                         {step.label}

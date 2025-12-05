@@ -510,6 +510,7 @@ const AdminOrdersPage = () => {
   const [isSavingEdit, setIsSavingEdit] = useState(false);
   const [downloadingInvoiceId, setDownloadingInvoiceId] = useState(null);
   const latestParamsRef = useRef({});
+  const lastNonDeliveredEstimateRef = useRef("");
 
   const socketUrl = useMemo(() => {
     const socketEnv = import.meta.env.VITE_SOCKET_URL;
@@ -1023,6 +1024,11 @@ const AdminOrdersPage = () => {
     };
     setEditingOrder(order);
     setEditForm(nextForm);
+    const initialEstimate =
+      nextForm.status.toLowerCase() === "delivered"
+        ? ""
+        : nextForm.estimatedDeliveryDate;
+    lastNonDeliveredEstimateRef.current = initialEstimate;
   }, []);
 
   const handleCloseEdit = useCallback(() => {
@@ -1032,6 +1038,46 @@ const AdminOrdersPage = () => {
 
   const handleEditFieldChange = (field, value) => {
     setEditForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleStatusFieldChange = (event) => {
+    const nextStatus = event.target.value;
+    setEditForm((prev) => {
+      const prevStatus = String(prev.status || "").toLowerCase();
+      const nextStatusLower = String(nextStatus || "").toLowerCase();
+      const willBeDelivered = nextStatusLower === "delivered";
+      const wasDelivered = prevStatus === "delivered";
+
+      let nextEstimated = prev.estimatedDeliveryDate;
+
+      if (willBeDelivered && !wasDelivered) {
+        if (
+          !prev.estimatedDeliveryDate &&
+          lastNonDeliveredEstimateRef.current
+        ) {
+          // keep stored fallback when returning from delivered later
+        } else {
+          lastNonDeliveredEstimateRef.current =
+            prev.estimatedDeliveryDate ||
+            lastNonDeliveredEstimateRef.current ||
+            "";
+        }
+        nextEstimated = todayInputValue;
+      } else if (!willBeDelivered && wasDelivered) {
+        nextEstimated = lastNonDeliveredEstimateRef.current || "";
+      }
+
+      if (!willBeDelivered) {
+        lastNonDeliveredEstimateRef.current =
+          nextEstimated || lastNonDeliveredEstimateRef.current || "";
+      }
+
+      return {
+        ...prev,
+        status: nextStatus,
+        estimatedDeliveryDate: nextEstimated,
+      };
+    });
   };
 
   const normalizedOrderPaymentStatus = (editingOrder?.payment?.status || "")
@@ -1069,7 +1115,14 @@ const AdminOrdersPage = () => {
       toast.error("Estimated delivery date cannot be changed after delivery.");
       return;
     }
-    handleEditFieldChange("estimatedDeliveryDate", value);
+    setEditForm((prev) => {
+      const isDelivered =
+        String(prev.status || "").toLowerCase() === "delivered";
+      if (!isDelivered) {
+        lastNonDeliveredEstimateRef.current = value;
+      }
+      return { ...prev, estimatedDeliveryDate: value };
+    });
   };
 
   const handleSaveEdit = async () => {
@@ -2042,9 +2095,7 @@ const AdminOrdersPage = () => {
                   Order Status
                   <select
                     value={editForm.status}
-                    onChange={(event) =>
-                      handleEditFieldChange("status", event.target.value)
-                    }
+                    onChange={handleStatusFieldChange}
                     className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   >
                     <option value="confirmed">Order Confirmed</option>

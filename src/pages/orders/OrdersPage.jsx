@@ -10,6 +10,17 @@ import {
 } from "../../store/slices/ordersSlice";
 import { fetchMyOrders } from "../../utils/api";
 
+const formatStatusLabel = (status) => {
+  if (!status) return "";
+  return String(status)
+    .replace(/_/g, " ")
+    .toLowerCase()
+    .split(" ")
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+};
+
 const OrdersPage = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -85,7 +96,7 @@ const OrdersPage = () => {
           </p>
         </div>
         <span className="text-xs font-medium px-3 py-1 rounded-full bg-primary/10 text-primary flex-shrink-0 text-center">
-          {order.status?.replace(/_/g, " ")}
+          {formatStatusLabel(order.status)}
         </span>
       </div>
 

@@ -709,21 +709,21 @@ const Header = () => {
                     </span>
                   )}
                 </Link>
+                {isAuthenticated && (
+                  <div className="border-t border-slate-200 pt-4 flex justify-end">
+                    <button
+                      onClick={() => {
+                        handleLogout();
+                        setIsMenuOpen(false);
+                      }}
+                      className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold text-rose-600 transition-colors hover:bg-rose-50 hover:text-rose-700 active:bg-rose-100"
+                    >
+                      Logout
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
-            {isAuthenticated && (
-              <div className="mt-auto px-4 pb-6 flex justify-end">
-                <button
-                  onClick={() => {
-                    handleLogout();
-                    setIsMenuOpen(false);
-                  }}
-                  className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold text-rose-600 transition-colors hover:bg-rose-50 hover:text-rose-700 active:bg-rose-100"
-                >
-                  Logout
-                </button>
-              </div>
-            )}
           </motion.div>
         )}
       </AnimatePresence>

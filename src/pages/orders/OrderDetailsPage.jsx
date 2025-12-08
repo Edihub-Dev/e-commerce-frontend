@@ -580,7 +580,12 @@ const OrderDetailsPage = () => {
 
     setDownloadingInvoice(true);
 
+    let toastId = null;
     try {
+      toastId = toast.loading("Preparing your invoice...", {
+        duration: 10000,
+        position: "top-center",
+      });
       const response = await api.get(`/orders/${order._id}/invoice`, {
         responseType: "blob",
         headers: {
@@ -601,13 +606,22 @@ const OrderDetailsPage = () => {
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
+      toast.success("Invoice downloaded. Check your files to open it.", {
+        id: toastId,
+        duration: 5000,
+        position: "top-center",
+      });
     } catch (downloadError) {
       console.error("Invoice download failed", downloadError);
       const message =
         downloadError?.response?.data?.message ||
         downloadError?.message ||
         "Unable to download invoice. Please try again.";
-      toast.error(message);
+      toast.error(message, {
+        id: toastId || undefined,
+        duration: 5000,
+        position: "top-center",
+      });
     } finally {
       setDownloadingInvoice(false);
     }

@@ -524,7 +524,15 @@ const AdminOrdersPage = () => {
     if (typeof flag === "string") {
       return flag.toLowerCase() === "true";
     }
-    return false;
+
+    if (typeof window !== "undefined") {
+      const hostname = window.location?.hostname || "";
+      if (hostname.includes("p2pdeal.net")) {
+        return false;
+      }
+    }
+
+    return import.meta.env.DEV;
   }, []);
 
   const socketRef = useSocket(socketUrl, {

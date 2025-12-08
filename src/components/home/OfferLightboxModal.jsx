@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { X, Loader2, Sparkles, Copy } from "lucide-react";
 import { fetchOfferLightbox } from "../../services/offerLightboxApi";
@@ -8,6 +8,8 @@ const OfferLightboxModal = () => {
   const [offer, setOffer] = useState(null);
   const [status, setStatus] = useState("idle");
   const [isVisible, setIsVisible] = useState(false);
+  const [copyFeedbackVisible, setCopyFeedbackVisible] = useState(false);
+  const copyFeedbackTimeoutRef = useRef(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -46,6 +48,7 @@ const OfferLightboxModal = () => {
   useEffect(() => {
     if (!isVisible) {
       document.body.style.removeProperty("overflow");
+      setCopyFeedbackVisible(false);
       return;
     }
 
@@ -53,6 +56,10 @@ const OfferLightboxModal = () => {
     document.body.style.overflow = "hidden";
 
     return () => {
+      if (copyFeedbackTimeoutRef.current) {
+        clearTimeout(copyFeedbackTimeoutRef.current);
+        copyFeedbackTimeoutRef.current = null;
+      }
       if (previous) {
         document.body.style.overflow = previous;
       } else {
@@ -60,6 +67,14 @@ const OfferLightboxModal = () => {
       }
     };
   }, [isVisible]);
+
+  useEffect(() => {
+    return () => {
+      if (copyFeedbackTimeoutRef.current) {
+        clearTimeout(copyFeedbackTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const palette = useMemo(() => {
     return {
@@ -72,22 +87,41 @@ const OfferLightboxModal = () => {
   const couponCode = offer?.couponCode?.trim();
   const couponDescription = offer?.couponDescription?.trim();
 
+  const showCopyFeedback = () => {
+    setCopyFeedbackVisible(true);
+    if (copyFeedbackTimeoutRef.current) {
+      clearTimeout(copyFeedbackTimeoutRef.current);
+    }
+    copyFeedbackTimeoutRef.current = setTimeout(() => {
+      setCopyFeedbackVisible(false);
+      copyFeedbackTimeoutRef.current = null;
+    }, 1600);
+  };
+
   const handleCopy = () => {
     if (!couponCode) {
       return;
     }
 
     try {
-      navigator.clipboard.writeText(couponCode).catch(() => {
-        /* clipboard failure ignored */
-      });
+      navigator.clipboard
+        .writeText(couponCode)
+        .then(showCopyFeedback)
+        .catch(() => {
+          showCopyFeedback();
+        });
     } catch (_error) {
-      /* noop */
+      showCopyFeedback();
     }
   };
 
   const handleClose = () => {
     setIsVisible(false);
+    setCopyFeedbackVisible(false);
+    if (copyFeedbackTimeoutRef.current) {
+      clearTimeout(copyFeedbackTimeoutRef.current);
+      copyFeedbackTimeoutRef.current = null;
+    }
   };
 
   const handlePrimaryAction = () => {
@@ -228,14 +262,29 @@ const OfferLightboxModal = () => {
                         Coupon code
                       </span>
                       {couponCode ? (
-                        <button
-                          type="button"
-                          onClick={handleCopy}
-                          className="flex w-full items-center justify-between rounded-2xl border border-white/70 bg-white/90 px-4 py-3 text-sm font-semibold uppercase tracking-[0.25em] text-black shadow-sm transition hover:border-white"
-                        >
-                          <span>{couponCode}</span>
-                          <Copy size={16} className="text-slate-500" />
-                        </button>
+                        <div className="relative">
+                          <button
+                            type="button"
+                            onClick={handleCopy}
+                            className="flex w-full items-center justify-between rounded-2xl border border-white/70 bg-white/90 px-4 py-3 text-sm font-semibold uppercase tracking-[0.25em] text-black shadow-sm transition hover:border-white focus:outline-none focus:ring-2 focus:ring-white/60"
+                          >
+                            <span>{couponCode}</span>
+                            <Copy size={16} className="text-slate-500" />
+                          </button>
+                          <AnimatePresence>
+                            {copyFeedbackVisible && (
+                              <motion.div
+                                initial={{ opacity: 0, y: 8, scale: 0.9 }}
+                                animate={{ opacity: 1, y: -10, scale: 1 }}
+                                exit={{ opacity: 0, y: 0, scale: 0.9 }}
+                                transition={{ duration: 0.18 }}
+                                className="pointer-events-none absolute right-3 top-0 -translate-y-full rounded-full bg-emerald-500 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-white shadow-lg"
+                              >
+                                Copied!
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </div>
                       ) : (
                         <div className="rounded-2xl border border-white/40 bg-white/60 px-4 py-3 text-xs font-medium text-slate-500">
                           Coupon code coming soon

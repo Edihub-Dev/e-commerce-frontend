@@ -13,11 +13,15 @@ const useSocket = (url, options = {}) => {
   const socketRef = useRef(null);
 
   useEffect(() => {
-    if (!url) return undefined;
+    const { enabled = true, ...socketOptions } = options;
+
+    if (!url || !enabled) {
+      return undefined;
+    }
 
     const socket = io(url, {
       ...defaultOptions,
-      ...options,
+      ...socketOptions,
     });
 
     socketRef.current = socket;
@@ -26,7 +30,11 @@ const useSocket = (url, options = {}) => {
       socket.disconnect();
       socketRef.current = null;
     };
-  }, [url, JSON.stringify(options)]);
+  }, [
+    url,
+    options.enabled,
+    JSON.stringify({ ...options, enabled: undefined }),
+  ]);
 
   return socketRef;
 };

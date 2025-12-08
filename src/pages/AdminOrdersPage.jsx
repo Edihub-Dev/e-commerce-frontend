@@ -519,8 +519,17 @@ const AdminOrdersPage = () => {
     return apiBase.replace(/\/?api\/?$/, "");
   }, []);
 
+  const socketEnabled = useMemo(() => {
+    const flag = import.meta.env.VITE_SOCKET_ENABLED;
+    if (typeof flag === "string") {
+      return flag.toLowerCase() === "true";
+    }
+    return false;
+  }, []);
+
   const socketRef = useSocket(socketUrl, {
     withCredentials: true,
+    enabled: socketEnabled,
   });
 
   const page = meta.page ?? 1;

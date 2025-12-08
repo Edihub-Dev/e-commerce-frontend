@@ -96,7 +96,7 @@ const CheckoutConfirmation = () => {
 
     let toastId = null;
     try {
-      toastId = toast.loading("Preparing your invoice...", {
+      toastId = toast.loading("Downloading invoice...", {
         duration: 10000,
         position: "top-center",
       });
@@ -130,22 +130,18 @@ const CheckoutConfirmation = () => {
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
-      toast.success("Invoice downloaded. Check your downloads folder.", {
+      toast.success("Invoice downloaded.", {
         id: toastId,
-        duration: 5000,
+        duration: 4000,
         position: "top-center",
       });
     } catch (downloadError) {
       console.error("Invoice download failed", downloadError);
-      toast.error(
-        downloadError?.message ||
-          "Unable to download invoice. Please try again.",
-        {
-          id: toastId || undefined,
-          duration: 5000,
-          position: "top-center",
-        }
-      );
+      toast.error(downloadError?.message || "Invoice download failed.", {
+        id: toastId || undefined,
+        duration: 4000,
+        position: "top-center",
+      });
     } finally {
       setDownloadingInvoice(false);
     }

@@ -582,7 +582,7 @@ const OrderDetailsPage = () => {
 
     let toastId = null;
     try {
-      toastId = toast.loading("Preparing your invoice...", {
+      toastId = toast.loading("Downloading invoice...", {
         duration: 10000,
         position: "top-center",
       });
@@ -606,9 +606,9 @@ const OrderDetailsPage = () => {
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
-      toast.success("Invoice downloaded. Check your files to open it.", {
+      toast.success("Invoice downloaded.", {
         id: toastId,
-        duration: 5000,
+        duration: 4000,
         position: "top-center",
       });
     } catch (downloadError) {
@@ -616,10 +616,10 @@ const OrderDetailsPage = () => {
       const message =
         downloadError?.response?.data?.message ||
         downloadError?.message ||
-        "Unable to download invoice. Please try again.";
+        "Invoice download failed.";
       toast.error(message, {
         id: toastId || undefined,
-        duration: 5000,
+        duration: 4000,
         position: "top-center",
       });
     } finally {

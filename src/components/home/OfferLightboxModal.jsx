@@ -223,7 +223,7 @@ const OfferLightboxModal = () => {
                   <img
                     src={offer.imageUrl}
                     alt={offer?.title || "Offer artwork"}
-                    className="h-full w-full object-contain"
+                    className="h-full w-full object-cover"
                     style={{ objectPosition: "center" }}
                   />
                 </div>
@@ -334,7 +334,7 @@ const OfferLightboxModal = () => {
                       <img
                         src={offer.imageUrl}
                         alt={offer?.title || "Offer artwork"}
-                        className="h-full w-full object-contain"
+                        className="h-full w-full object-cover"
                         style={{ objectPosition: "center" }}
                       />
                     )}

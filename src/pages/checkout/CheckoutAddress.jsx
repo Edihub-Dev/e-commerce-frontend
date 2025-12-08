@@ -46,6 +46,7 @@ const MAX_ADDRESS_LINE_LENGTH = 255;
 const MAX_FORMATTED_ADDRESS_LENGTH = 255;
 const ADDRESS_DRAFT_STORAGE_KEY = "p2pdeal:checkout:address_draft";
 const MOBILE_REGEX = /^[6-9]\d{9}$/;
+const TOAST_DURATION = 5500;
 
 const fetchGeoCoordinates = async ({ city, state, pincode }) => {
   try {
@@ -262,7 +263,9 @@ const CheckoutAddress = () => {
   useEffect(() => {
     dispatch(setCheckoutStep("address"));
     if (!items.length) {
-      toast.error("Your checkout session expired. Start again.");
+      toast.error("Your checkout session expired. Start again.", {
+        duration: TOAST_DURATION,
+      });
       navigate("/cart", { replace: true });
     }
   }, [dispatch, items.length, navigate]);
@@ -297,7 +300,9 @@ const CheckoutAddress = () => {
       } catch (error) {
         console.error("Failed to fetch addresses", error);
         dispatch(setAddressError(error.message || "Failed to fetch addresses"));
-        toast.error(error.message || "Failed to fetch addresses");
+        toast.error(error.message || "Failed to fetch addresses", {
+          duration: TOAST_DURATION,
+        });
       } finally {
         dispatch(setAddressLoading(false));
       }
@@ -371,7 +376,9 @@ const CheckoutAddress = () => {
     try {
       const validation = validateAddressForm(formState);
       if (!validation.isValid) {
-        validation.errors.forEach((message) => toast.error(message));
+        validation.errors.forEach((message) =>
+          toast.error(message, { duration: TOAST_DURATION })
+        );
         setSubmitting(false);
         return;
       }
@@ -407,7 +414,9 @@ const CheckoutAddress = () => {
         sanitizedPayload.email?.trim() || user?.email?.trim() || "";
 
       if (!sanitizedPayload.email) {
-        toast.error("Email is required for delivery updates.");
+        toast.error("Email is required for delivery updates.", {
+          duration: TOAST_DURATION,
+        });
         setSubmitting(false);
         return;
       }
@@ -436,10 +445,14 @@ const CheckoutAddress = () => {
 
       if (editingAddressId) {
         response = await updateAddress(editingAddressId, sanitizedPayload);
-        toast.success("Address updated successfully");
+        toast.success("Address updated successfully", {
+          duration: TOAST_DURATION,
+        });
       } else {
         response = await addAddress(sanitizedPayload);
-        toast.success("Address saved successfully");
+        toast.success("Address saved successfully", {
+          duration: TOAST_DURATION,
+        });
       }
 
       const data = Array.isArray(response)
@@ -465,7 +478,8 @@ const CheckoutAddress = () => {
       toast.error(
         error.response?.data?.message ||
           error.message ||
-          "Failed to save address"
+          "Failed to save address",
+        { duration: TOAST_DURATION }
       );
     } finally {
       setSubmitting(false);
@@ -501,7 +515,9 @@ const CheckoutAddress = () => {
     try {
       const targetId = address._id || address.id;
       if (!targetId) {
-        toast.error("Unable to delete address: missing identifier");
+        toast.error("Unable to delete address: missing identifier", {
+          duration: TOAST_DURATION,
+        });
         return;
       }
 
@@ -510,7 +526,7 @@ const CheckoutAddress = () => {
         ? response
         : response?.data?.data || response?.data || [];
       dispatch(setAddresses(data));
-      toast.success("Address removed");
+      toast.success("Address removed", { duration: TOAST_DURATION });
 
       if (editingAddressId === address._id) {
         setEditingAddressId(null);
@@ -530,19 +546,24 @@ const CheckoutAddress = () => {
       toast.error(
         error.response?.data?.message ||
           error.message ||
-          "Failed to delete address"
+          "Failed to delete address",
+        { duration: TOAST_DURATION }
       );
     }
   };
 
   const handleContinue = () => {
     if (showForm && !addresses.length) {
-      toast.error("Please add an address before continuing");
+      toast.error("Please add an address before continuing", {
+        duration: TOAST_DURATION,
+      });
       return;
     }
 
     if (!selectedAddress) {
-      toast.error("Select an address to proceed");
+      toast.error("Select an address to proceed", {
+        duration: TOAST_DURATION,
+      });
       return;
     }
 

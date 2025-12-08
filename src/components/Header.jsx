@@ -3,16 +3,24 @@ import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useDispatch, useSelector } from "react-redux";
 import {
-  MapPin,
-  Truck,
-  Percent,
-  Search as SearchIcon,
-  User,
+  Home,
+  Phone,
   ShoppingCart,
   Menu,
   X,
+  User,
+  Search as SearchIcon,
+  Bell,
+  Settings,
+  LayoutDashboard,
+  Truck,
+  ArrowRight,
+  Tag,
+  Gift,
+  Percent,
+  LogOut,
+  MapPin,
   ChevronDown,
-  X as XIcon,
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { useCart } from "../contexts/CartContext";
@@ -400,10 +408,20 @@ const Header = () => {
               <span>Track your order</span>
             </Link>
             <div className="h-4 border-l border-gray-300"></div>
-            <div className="flex items-center space-x-2">
+            <button
+              type="button"
+              onClick={() => {
+                window.dispatchEvent(
+                  new CustomEvent("open-offer-lightbox", {
+                    detail: { source: "header" },
+                  })
+                );
+              }}
+              className="flex items-center space-x-2 text-left outline-none"
+            >
               <Percent size={16} style={{ color: "#008ECC" }} />
-              <span>All Offers</span>
-            </div>
+              <span className="font-medium text-secondary">All Offers</span>
+            </button>
           </div>
         </div>
       </div>

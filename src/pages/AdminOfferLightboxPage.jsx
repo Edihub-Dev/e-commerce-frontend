@@ -1,0 +1,829 @@
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
+import {
+  Loader2,
+  Upload,
+  Image as ImageIcon,
+  Palette,
+  Sparkles,
+  Send,
+  Clock,
+  X,
+  CheckCircle2,
+  Copy,
+} from "lucide-react";
+import Sidebar from "../components/admin/Sidebar";
+import Navbar from "../components/admin/Navbar";
+import { useAuth } from "../contexts/AuthContext";
+import { useAppDispatch, useAppSelector } from "../store/hooks";
+import {
+  fetchAdminOfferLightboxThunk,
+  upsertAdminOfferLightboxThunk,
+  deleteAdminOfferLightboxThunk,
+} from "../store/thunks/adminOfferLightboxThunks";
+import { resetAdminOfferLightboxState } from "../store/slices/adminOfferLightboxSlice";
+import { toast } from "react-hot-toast";
+
+const MAX_IMAGE_BYTES = 3 * 1024 * 1024; // 3MB
+
+const defaultDraft = {
+  title: "",
+  subtitle: "",
+  description: "",
+  buttonLabel: "",
+  buttonLinkType: "none",
+  buttonLinkValue: "",
+  secondaryLabel: "",
+  secondaryHref: "",
+  imageUrl: "",
+  backgroundColor: "#ffffff",
+  textColor: "#0f172a",
+  accentColor: "#008ecc",
+  couponCode: "",
+  couponDescription: "",
+  stickyTimeoutHours: 24,
+  isActive: true,
+};
+
+const sanitizeNumber = (value, fallback = 24) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+};
+
+const buildPayload = (draft, shouldClearImage) => {
+  const payload = {
+    title: draft.title,
+    subtitle: draft.subtitle,
+    description: draft.description,
+    buttonLabel: draft.buttonLabel,
+    buttonLinkType: draft.buttonLinkType,
+    buttonLinkValue:
+      draft.buttonLinkType && draft.buttonLinkType !== "none"
+        ? draft.buttonLinkValue
+        : "",
+    secondaryLabel: draft.secondaryLabel,
+    secondaryHref: draft.secondaryHref,
+    backgroundColor: draft.backgroundColor,
+    textColor: draft.textColor,
+    accentColor: draft.accentColor,
+    couponCode: draft.couponCode,
+    couponDescription: draft.couponDescription,
+    stickyTimeoutHours: sanitizeNumber(draft.stickyTimeoutHours),
+    isActive: Boolean(draft.isActive),
+  };
+
+  if (draft.imageUrl && !shouldClearImage) {
+    payload.imageUrl = draft.imageUrl;
+  }
+
+  if (shouldClearImage) {
+    payload.clearImage = true;
+  }
+
+  return payload;
+};
+
+const AdminOfferLightboxPage = () => {
+  const dispatch = useAppDispatch();
+  const { user } = useAuth();
+  const { data, status, error, saving, validationErrors, lastSavedAt } =
+    useAppSelector((state) => state.adminOfferLightbox);
+
+  const [draft, setDraft] = useState(defaultDraft);
+  const [shouldClearImage, setShouldClearImage] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  const savedState = useMemo(() => {
+    return {
+      ...defaultDraft,
+      ...(data || {}),
+      stickyTimeoutHours:
+        data?.stickyTimeoutHours ?? defaultDraft.stickyTimeoutHours,
+      imageUrl: data?.imageUrl || "",
+      buttonLinkType: data?.buttonLinkType || defaultDraft.buttonLinkType,
+      buttonLinkValue: data?.buttonLinkValue || "",
+      couponCode: data?.couponCode || "",
+      couponDescription: data?.couponDescription || "",
+      isActive:
+        typeof data?.isActive === "boolean"
+          ? data.isActive
+          : defaultDraft.isActive,
+    };
+  }, [data]);
+
+  const normalizedDraft = useMemo(() => {
+    return {
+      ...draft,
+      stickyTimeoutHours: sanitizeNumber(draft.stickyTimeoutHours),
+      imageUrl: shouldClearImage ? "" : draft.imageUrl || "",
+      buttonLinkType: draft.buttonLinkType || "none",
+      buttonLinkValue:
+        draft.buttonLinkType && draft.buttonLinkType !== "none"
+          ? draft.buttonLinkValue || ""
+          : "",
+      couponCode: draft.couponCode || "",
+      couponDescription: draft.couponDescription || "",
+      isActive: Boolean(draft.isActive),
+    };
+  }, [draft, shouldClearImage]);
+
+  const normalizedSaved = useMemo(() => {
+    return {
+      ...savedState,
+      stickyTimeoutHours: sanitizeNumber(savedState.stickyTimeoutHours),
+      imageUrl: savedState.imageUrl || "",
+      buttonLinkType: savedState.buttonLinkType || defaultDraft.buttonLinkType,
+      buttonLinkValue:
+        savedState.buttonLinkType && savedState.buttonLinkType !== "none"
+          ? savedState.buttonLinkValue || ""
+          : "",
+      couponCode: savedState.couponCode || "",
+      couponDescription: savedState.couponDescription || "",
+      isActive: Boolean(savedState.isActive),
+    };
+  }, [savedState]);
+
+  const isDirty = useMemo(() => {
+    return (
+      JSON.stringify({ ...normalizedDraft, __clear: shouldClearImage }) !==
+      JSON.stringify({ ...normalizedSaved, __clear: false })
+    );
+  }, [normalizedDraft, normalizedSaved, shouldClearImage]);
+
+  useEffect(() => {
+    if (status === "idle") {
+      dispatch(fetchAdminOfferLightboxThunk());
+    }
+  }, [status, dispatch]);
+
+  useEffect(() => {
+    if (status === "succeeded") {
+      setDraft(savedState);
+      setShouldClearImage(false);
+    }
+  }, [status, savedState]);
+
+  useEffect(() => {
+    if (error && status === "failed") {
+      toast.error(error);
+    }
+  }, [error, status]);
+
+  useEffect(() => {
+    if (lastSavedAt) {
+      toast.success("Offer lightbox saved");
+    }
+  }, [lastSavedAt]);
+
+  useEffect(() => {
+    return () => {
+      dispatch(resetAdminOfferLightboxState());
+    };
+  }, [dispatch]);
+
+  const handleFieldChange = useCallback(
+    (field) => (event) => {
+      const { value } = event.target;
+      setDraft((prev) => ({ ...prev, [field]: value }));
+    },
+    []
+  );
+
+  const handleCheckboxChange = useCallback((event) => {
+    const { checked } = event.target;
+    setDraft((prev) => ({ ...prev, isActive: checked }));
+  }, []);
+
+  const handleImageUpload = useCallback((event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please upload a valid image file");
+      return;
+    }
+
+    if (file.size > MAX_IMAGE_BYTES) {
+      toast.error("Image must be smaller than 3MB");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result || "";
+      setDraft((prev) => ({ ...prev, imageUrl: result }));
+      setShouldClearImage(false);
+      toast.success("Image ready to upload");
+    };
+    reader.onerror = () => {
+      toast.error("Failed to process image");
+    };
+    reader.readAsDataURL(file);
+  }, []);
+
+  const handleClearImage = useCallback(() => {
+    setDraft((prev) => ({ ...prev, imageUrl: "" }));
+    setShouldClearImage(true);
+  }, []);
+
+  const handleReset = useCallback(() => {
+    setDraft(savedState);
+    setShouldClearImage(false);
+  }, [savedState]);
+
+  const handleSubmit = useCallback(
+    (event) => {
+      event.preventDefault();
+      if (!isDirty && !shouldClearImage) {
+        toast("No changes to save", { icon: "ℹ️" });
+        return;
+      }
+
+      const payload = buildPayload(draft, shouldClearImage);
+      dispatch(upsertAdminOfferLightboxThunk(payload));
+    },
+    [dispatch, draft, shouldClearImage, isDirty]
+  );
+
+  const handleDelete = useCallback(async () => {
+    if (!window.confirm("Delete the current offers lightbox?")) {
+      return;
+    }
+
+    try {
+      await dispatch(deleteAdminOfferLightboxThunk()).unwrap();
+      setDraft(defaultDraft);
+      setShouldClearImage(false);
+      toast.success("Offer lightbox removed");
+    } catch (deleteError) {
+      toast.error(deleteError?.message || "Failed to delete offer lightbox");
+    }
+  }, [dispatch]);
+
+  const renderValidationErrors = () => {
+    if (!Array.isArray(validationErrors) || !validationErrors.length) {
+      return null;
+    }
+
+    return (
+      <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+        <p className="font-semibold">Please review the following issues:</p>
+        <ul className="mt-2 list-disc space-y-1 pl-5">
+          {validationErrors.map((item, index) => (
+            <li key={`${item?.param || "error"}-${index}`}>
+              {item?.msg || "Invalid input"}
+              {item?.param ? ` (${item.param})` : ""}
+            </li>
+          ))}
+        </ul>
+      </div>
+    );
+  };
+
+  const isInitialLoading = status === "loading" && !data;
+
+  return (
+    <div className="min-h-screen md:h-screen bg-slate-50 text-slate-900 overflow-x-hidden">
+      <div className="flex md:h-screen">
+        <Sidebar
+          active="Offers Lightbox"
+          className="hidden md:flex md:w-64 md:flex-none"
+          onNavigate={() => setIsSidebarOpen(false)}
+        />
+
+        <AnimatePresence>
+          {isSidebarOpen && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-40 flex md:hidden"
+            >
+              <motion.div
+                initial={{ x: "-100%" }}
+                animate={{ x: 0 }}
+                exit={{ x: "-100%" }}
+                transition={{ type: "spring", stiffness: 220, damping: 24 }}
+                className="bg-white w-72 max-w-sm h-full shadow-xl"
+              >
+                <Sidebar
+                  active="Offers Lightbox"
+                  className="flex w-full"
+                  onNavigate={() => setIsSidebarOpen(false)}
+                />
+              </motion.div>
+              <button
+                type="button"
+                onClick={() => setIsSidebarOpen(false)}
+                className="flex-1 bg-black/30"
+                aria-label="Close sidebar"
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <Navbar
+            onToggleSidebar={() => setIsSidebarOpen((prev) => !prev)}
+            activeRange="All Date"
+            onSelectRange={() => {}}
+            adminName={user?.name || user?.username || "Admin"}
+            adminRole={user?.role === "admin" ? "Administrator" : user?.role}
+            notifications={{
+              pendingOrders: 0,
+              shippedOrders: 0,
+              deliveredOrders: 0,
+            }}
+            showRangeSelector={false}
+            showNotifications={false}
+          />
+
+          <main className="flex-1 overflow-y-auto bg-slate-50">
+            <div className="mx-auto w-full max-w-6xl px-4 py-8 md:px-8 md:py-10">
+              <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+                <div>
+                  <div className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-blue-600">
+                    <Sparkles size={14} /> Offers Lightbox
+                  </div>
+                  <h1 className="mt-3 text-2xl font-bold text-slate-900 md:text-3xl">
+                    Capture visitors with a bold one-click offer
+                  </h1>
+                  <p className="mt-2 max-w-2xl text-sm text-slate-500 md:text-base">
+                    Configure the marketing lightbox that appears on the
+                    storefront home page. You can edit copy, colors, CTA labels,
+                    and imagery in one place—no deploys required.
+                  </p>
+                </div>
+                <div className="flex items-center gap-3 self-start lg:self-center">
+                  {saving ? (
+                    <span className="inline-flex items-center gap-2 rounded-full bg-blue-50 px-3 py-1 text-sm font-medium text-blue-600">
+                      <Loader2 size={16} className="animate-spin" /> Saving…
+                    </span>
+                  ) : lastSavedAt ? (
+                    <span className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-sm font-medium text-emerald-600">
+                      <CheckCircle2 size={16} /> Saved{" "}
+                      {new Date(lastSavedAt).toLocaleTimeString()}
+                    </span>
+                  ) : null}
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={handleReset}
+                      className="inline-flex items-center gap-2 rounded-full border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:border-slate-300 hover:text-slate-800"
+                      disabled={saving || (!isDirty && !shouldClearImage)}
+                    >
+                      <X size={16} /> Reset
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleDelete}
+                      className="inline-flex items-center gap-2 rounded-full border border-rose-200 px-3 py-1.5 text-sm font-semibold text-rose-600 transition hover:border-rose-300 hover:text-rose-700"
+                      disabled={saving || !data}
+                    >
+                      <X size={16} /> Delete
+                    </button>
+                  </div>
+                  <button
+                    type="submit"
+                    form="offer-lightbox-form"
+                    className="inline-flex items-center gap-2 rounded-full bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300"
+                    disabled={saving || (!isDirty && !shouldClearImage)}
+                  >
+                    <Send size={16} /> Save changes
+                  </button>
+                </div>
+              </div>
+
+              {renderValidationErrors()}
+
+              <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1.2fr)]">
+                <motion.section
+                  layout
+                  className="space-y-6 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm"
+                >
+                  <form
+                    id="offer-lightbox-form"
+                    onSubmit={handleSubmit}
+                    className="space-y-6"
+                  >
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <label className="space-y-1 text-sm">
+                        <span className="font-medium text-slate-700">
+                          Headline
+                        </span>
+                        <input
+                          type="text"
+                          maxLength={120}
+                          value={draft.title}
+                          onChange={handleFieldChange("title")}
+                          className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                          placeholder="E.g. Ooh, ₹150 Off"
+                        />
+                      </label>
+                      <label className="space-y-1 text-sm">
+                        <span className="font-medium text-slate-700">
+                          Subheadline
+                        </span>
+                        <input
+                          type="text"
+                          maxLength={200}
+                          value={draft.subtitle}
+                          onChange={handleFieldChange("subtitle")}
+                          className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                          placeholder="Your first order of ₹999 or more"
+                        />
+                      </label>
+                      <label className="md:col-span-2 space-y-1 text-sm">
+                        <span className="font-medium text-slate-700">
+                          Supporting message
+                        </span>
+                        <textarea
+                          rows={3}
+                          maxLength={400}
+                          value={draft.description}
+                          onChange={handleFieldChange("description")}
+                          className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                          placeholder="Share why this offer is irresistible."
+                        />
+                      </label>
+                    </div>
+
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <label className="space-y-1 text-sm">
+                        <span className="font-medium text-slate-700">
+                          Primary button label
+                        </span>
+                        <input
+                          type="text"
+                          maxLength={60}
+                          value={draft.buttonLabel}
+                          onChange={handleFieldChange("buttonLabel")}
+                          className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                          placeholder="Take ₹150 Off"
+                        />
+                      </label>
+                      <label className="space-y-1 text-sm">
+                        <span className="font-medium text-slate-700">
+                          Primary button destination
+                        </span>
+                        <select
+                          value={draft.buttonLinkType}
+                          onChange={handleFieldChange("buttonLinkType")}
+                          className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                        >
+                          <option value="none">No link action</option>
+                          <option value="product">Specific product</option>
+                          <option value="category">Product category</option>
+                          <option value="custom">Custom URL</option>
+                        </select>
+                        <p className="text-xs text-slate-500">
+                          Choose what happens when shoppers click the CTA.
+                        </p>
+                      </label>
+                      <label className="space-y-1 text-sm">
+                        <span className="font-medium text-slate-700">
+                          Destination value
+                        </span>
+                        <input
+                          type="text"
+                          maxLength={200}
+                          value={draft.buttonLinkValue}
+                          onChange={handleFieldChange("buttonLinkValue")}
+                          disabled={draft.buttonLinkType === "none"}
+                          className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100"
+                          placeholder={
+                            draft.buttonLinkType === "product"
+                              ? "Enter product slug or ID"
+                              : draft.buttonLinkType === "category"
+                              ? "Enter category slug"
+                              : "https://example.com/path"
+                          }
+                        />
+                        <p className="text-xs text-slate-500">
+                          {
+                            {
+                              product:
+                                "Paste the product slug or Mongo ID (links to /product/<value>).",
+                              category:
+                                "Paste the category slug (links to /category/<value>).",
+                              custom:
+                                "Must start with http:// or https://. Opens in the same tab.",
+                              none: "",
+                            }[draft.buttonLinkType]
+                          }
+                        </p>
+                      </label>
+                      <label className="space-y-1 text-sm">
+                        <span className="font-medium text-slate-700">
+                          Secondary link label
+                        </span>
+                        <input
+                          type="text"
+                          maxLength={120}
+                          value={draft.secondaryLabel}
+                          onChange={handleFieldChange("secondaryLabel")}
+                          className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                          placeholder="No thanks, I’ll pay full price"
+                        />
+                      </label>
+                      <label className="space-y-1 text-sm">
+                        <span className="font-medium text-slate-700">
+                          Secondary link URL
+                        </span>
+                        <input
+                          type="text"
+                          maxLength={200}
+                          value={draft.secondaryHref}
+                          onChange={handleFieldChange("secondaryHref")}
+                          className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                          placeholder="https://"
+                        />
+                      </label>
+                      <label className="space-y-1 text-sm">
+                        <span className="font-medium text-slate-700">
+                          Coupon code
+                        </span>
+                        <input
+                          type="text"
+                          maxLength={60}
+                          value={draft.couponCode}
+                          onChange={handleFieldChange("couponCode")}
+                          className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm uppercase tracking-[0.15em] focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                          placeholder="SUMMER25"
+                        />
+                      </label>
+                    </div>
+
+                    <label className="space-y-1 text-sm">
+                      <span className="font-medium text-slate-700">
+                        Coupon description
+                      </span>
+                      <textarea
+                        rows={2}
+                        maxLength={160}
+                        value={draft.couponDescription}
+                        onChange={handleFieldChange("couponDescription")}
+                        className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                        placeholder="Automatically applied at checkout"
+                      />
+                    </label>
+
+                    <div className="grid gap-4 md:grid-cols-3">
+                      <label className="space-y-1 text-sm">
+                        <span className="inline-flex items-center gap-2 font-medium text-slate-700">
+                          <Palette size={16} /> Background
+                        </span>
+                        <input
+                          type="color"
+                          value={draft.backgroundColor || "#ffffff"}
+                          onChange={handleFieldChange("backgroundColor")}
+                          className="h-12 w-full cursor-pointer rounded-xl border border-slate-200"
+                        />
+                      </label>
+                      <label className="space-y-1 text-sm">
+                        <span className="inline-flex items-center gap-2 font-medium text-slate-700">
+                          <Palette size={16} /> Text color
+                        </span>
+                        <input
+                          type="color"
+                          value={draft.textColor || "#0f172a"}
+                          onChange={handleFieldChange("textColor")}
+                          className="h-12 w-full cursor-pointer rounded-xl border border-slate-200"
+                        />
+                      </label>
+                      <label className="space-y-1 text-sm">
+                        <span className="inline-flex items-center gap-2 font-medium text-slate-700">
+                          <Palette size={16} /> Accent color
+                        </span>
+                        <input
+                          type="color"
+                          value={draft.accentColor || "#008ecc"}
+                          onChange={handleFieldChange("accentColor")}
+                          className="h-12 w-full cursor-pointer rounded-xl border border-slate-200"
+                        />
+                      </label>
+                    </div>
+
+                    <div className="grid gap-4 md:grid-cols-3">
+                      <label className="space-y-1 text-sm">
+                        <span className="inline-flex items-center gap-2 font-medium text-slate-700">
+                          <Clock size={16} /> Sticky timeout (hours)
+                        </span>
+                        <input
+                          type="number"
+                          min={1}
+                          max={168}
+                          value={draft.stickyTimeoutHours}
+                          onChange={handleFieldChange("stickyTimeoutHours")}
+                          className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                        />
+                      </label>
+                      <label className="flex items-center gap-3 rounded-2xl border border-slate-200 px-4 py-3 text-sm font-medium text-slate-700">
+                        <input
+                          type="checkbox"
+                          checked={draft.isActive}
+                          onChange={handleCheckboxChange}
+                          className="h-5 w-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        Show this lightbox on the storefront
+                      </label>
+                    </div>
+
+                    <div className="space-y-4">
+                      <div className="flex items-start justify-between gap-4">
+                        <div>
+                          <p className="font-medium text-slate-700">
+                            Creative asset
+                          </p>
+                          <p className="text-sm text-slate-500">
+                            Upload a PNG, JPG, or WebP up to 3MB. We recommend a
+                            portrait composition.
+                          </p>
+                        </div>
+                        {draft.imageUrl && !shouldClearImage ? (
+                          <button
+                            type="button"
+                            onClick={handleClearImage}
+                            className="inline-flex items-center gap-2 rounded-full border border-rose-200 px-3 py-1.5 text-sm font-medium text-rose-600 transition hover:border-rose-300 hover:text-rose-700"
+                          >
+                            <X size={16} /> Remove
+                          </button>
+                        ) : null}
+                      </div>
+                      <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-slate-300 bg-slate-50/60 p-6 text-center">
+                        <ImageIcon className="h-10 w-10 text-slate-400" />
+                        <div className="flex flex-wrap justify-center gap-3">
+                          <label className="inline-flex cursor-pointer items-center gap-2 rounded-full bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700">
+                            <Upload size={16} /> Upload image
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={handleImageUpload}
+                              className="hidden"
+                            />
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setDraft((prev) => ({ ...prev, imageUrl: "" }));
+                              setShouldClearImage(true);
+                            }}
+                            className="inline-flex items-center gap-2 rounded-full border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 transition hover:border-slate-300 hover:text-slate-800"
+                          >
+                            <X size={16} /> Use no image
+                          </button>
+                        </div>
+                        <p className="text-xs text-slate-400">
+                          PNG, JPG, or WebP &ndash; up to 3000KB
+                        </p>
+                      </div>
+                      {draft.imageUrl && !shouldClearImage ? (
+                        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+                          <img
+                            src={draft.imageUrl}
+                            alt="Offer visual"
+                            className="h-80 w-full object-cover"
+                          />
+                        </div>
+                      ) : null}
+                    </div>
+                  </form>
+                </motion.section>
+
+                <motion.aside
+                  layout
+                  className="space-y-4 rounded-3xl border border-blue-100 bg-gradient-to-br from-sky-50 to-blue-50/60 p-6 shadow-sm"
+                >
+                  <p className="text-sm font-semibold uppercase tracking-[0.25em] text-blue-500">
+                    Live Preview
+                  </p>
+                  <div
+                    className="relative overflow-hidden rounded-3xl border border-white/60 shadow-lg"
+                    style={{
+                      backgroundColor:
+                        normalizedDraft.backgroundColor || "#ffffff",
+                      color: normalizedDraft.textColor || "#0f172a",
+                    }}
+                  >
+                    <div className="absolute inset-0 bg-white/10 backdrop-blur-[2px]" />
+                    <div className="relative grid gap-0 md:grid-cols-[1.2fr_1fr]">
+                      <div className="space-y-4 p-6 md:p-8">
+                        <span
+                          className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em]"
+                          style={{ color: normalizedDraft.accentColor }}
+                        >
+                          Limited Time
+                        </span>
+                        <h2
+                          className="text-2xl font-bold md:text-3xl"
+                          style={{ color: normalizedDraft.textColor }}
+                        >
+                          {normalizedDraft.title || "Ooh, ₹150 Off"}
+                        </h2>
+                        <p
+                          className="text-base text-slate-600"
+                          style={{ color: normalizedDraft.textColor }}
+                        >
+                          {normalizedDraft.subtitle ||
+                            "Unlock your first order offer when you subscribe."}
+                        </p>
+                        {normalizedDraft.description ? (
+                          <p
+                            className="text-sm text-slate-500"
+                            style={{ color: normalizedDraft.textColor }}
+                          >
+                            {normalizedDraft.description}
+                          </p>
+                        ) : null}
+                        <div className="space-y-3">
+                          {normalizedDraft.couponCode ? (
+                            <div className="flex items-center justify-between rounded-xl border border-white/60 bg-white/80 px-4 py-3 text-sm font-semibold text-slate-700 backdrop-blur">
+                              <span className="tracking-[0.3em] uppercase">
+                                {normalizedDraft.couponCode}
+                              </span>
+                              <Copy size={16} className="text-slate-500" />
+                            </div>
+                          ) : null}
+                          {normalizedDraft.couponDescription ? (
+                            <p className="text-xs text-slate-500">
+                              {normalizedDraft.couponDescription}
+                            </p>
+                          ) : null}
+                          <button
+                            type="button"
+                            className="w-full rounded-xl px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-500/25 transition"
+                            style={{
+                              backgroundColor:
+                                normalizedDraft.accentColor || "#008ecc",
+                            }}
+                          >
+                            {normalizedDraft.buttonLabel || "Take the offer"}
+                          </button>
+                          <button
+                            type="button"
+                            className="w-full text-xs font-medium text-slate-500 underline"
+                          >
+                            {normalizedDraft.secondaryLabel ||
+                              "Nvm, I’ll pay full price"}
+                          </button>
+                        </div>
+                      </div>
+                      <div className="relative hidden h-full md:block">
+                        {normalizedDraft.imageUrl ? (
+                          <img
+                            src={normalizedDraft.imageUrl}
+                            alt="Offer creative"
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <div className="flex h-full flex-col items-center justify-center gap-4 bg-white/30">
+                            <div className="flex h-36 w-36 items-center justify-center rounded-full bg-white/40">
+                              <ImageIcon className="h-16 w-16 text-white/70" />
+                            </div>
+                            <p className="px-6 text-center text-sm font-medium text-white/80">
+                              Drop a visual here to make the lightbox pop.
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    {!normalizedDraft.isActive ? (
+                      <div className="absolute inset-0 flex items-center justify-center bg-white/80 text-center">
+                        <div className="rounded-full border border-orange-300 bg-white px-4 py-2 text-sm font-semibold text-orange-600 shadow">
+                          Lightbox hidden &mdash; toggle it back on to publish
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+                  <div className="space-y-2 rounded-2xl bg-white/70 p-4 text-sm text-slate-600">
+                    <p>
+                      <strong>Sticky behaviour.</strong> Once closed, the
+                      lightbox stays hidden for the configured hours using local
+                      storage on the storefront.
+                    </p>
+                    <p>
+                      <strong>Image hosting.</strong> Uploads are saved to your
+                      S3 bucket and automatically cleaned up when you replace or
+                      remove them.
+                    </p>
+                  </div>
+                </motion.aside>
+              </div>
+
+              {isInitialLoading ? (
+                <div className="mt-10 flex justify-center">
+                  <span className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-medium text-slate-500 shadow">
+                    <Loader2 className="h-4 w-4 animate-spin" /> Loading offer
+                    lightbox…
+                  </span>
+                </div>
+              ) : null}
+            </div>
+          </main>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default AdminOfferLightboxPage;

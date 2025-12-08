@@ -95,9 +95,39 @@ const ensureS3Url = (value) => {
   return `${S3_PUBLIC_URL}/${sanitized}`;
 };
 
-// Create Axios instance with base URL from environment
+const resolveBaseUrl = (value) => {
+  if (value && /^https?:\/\//i.test(value)) {
+    return value;
+  }
+
+  if (typeof window !== "undefined") {
+    const { protocol, hostname } = window.location;
+    if (!value || !value.trim()) {
+      return `${protocol}//${hostname}:5000/api`;
+    }
+
+    const trimmed = value.trim();
+
+    if (trimmed.startsWith("//")) {
+      return `${protocol}${trimmed}`;
+    }
+
+    if (trimmed.startsWith(":")) {
+      return `${protocol}//${hostname}${trimmed}`;
+    }
+
+    if (trimmed.startsWith("/")) {
+      return `${protocol}//${hostname}${trimmed}`;
+    }
+
+    return `${protocol}//${hostname}/${trimmed.replace(/^\/+/, "")}`;
+  }
+
+  return value || "http://localhost:5000/api";
+};
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL,
+  baseURL: resolveBaseUrl(import.meta.env.VITE_API_URL),
   withCredentials: true,
 });
 

@@ -6,6 +6,7 @@ import adminProductsReducer from "../store/slices/adminProductsSlice";
 import adminOrdersReducer from "../store/slices/adminOrdersSlice";
 import adminHeroCarouselReducer from "../store/slices/adminHeroCarouselSlice";
 import adminCouponsReducer from "../store/slices/adminCouponsSlice";
+import adminOfferLightboxReducer from "../store/slices/adminOfferLightboxSlice";
 import couponReducer from "../store/slices/couponSlice";
 
 const loadCheckoutState = () => {
@@ -68,6 +69,7 @@ const store = configureStore({
     adminOrders: adminOrdersReducer,
     adminHeroCarousel: adminHeroCarouselReducer,
     adminCoupons: adminCouponsReducer,
+    adminOfferLightbox: adminOfferLightboxReducer,
     coupon: couponReducer,
   },
   middleware: (getDefaultMiddleware) =>

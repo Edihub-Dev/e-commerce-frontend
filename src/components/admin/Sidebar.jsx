@@ -16,6 +16,11 @@ import { useEffect, useState } from "react";
 const navItems = [
   { label: "Dashboard", icon: LayoutDashboard, to: "/admin" },
   { label: "Hero Carousel", icon: Home, to: "/admin/hero-carousel" },
+  {
+    label: "Offers Lightbox",
+    icon: TicketPercent,
+    to: "/admin/offer-lightbox",
+  },
   { label: "Products", icon: Package, to: "/admin/products" },
   { label: "Orders", icon: ShoppingBag, to: "/admin/orders" },
   { label: "Customers", icon: Users, to: "/admin/customers" },

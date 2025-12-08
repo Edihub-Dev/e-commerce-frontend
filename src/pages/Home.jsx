@@ -2,6 +2,7 @@ import React from "react";
 import { motion } from "framer-motion";
 import HeroCarousel from "../components/home/HeroCarousel";
 import DealsSection from "../components/home/DealsSection";
+import OfferLightboxModal from "../components/home/OfferLightboxModal";
 // import CategoriesSection from '../components/home/CategoriesSection';
 // import BrandsSection from '../components/home/BrandsSection';
 // import DailyEssentialsSection from '../components/home/DailyEssentialsSection';
@@ -16,6 +17,7 @@ const Home = () => {
       animate="animate"
       exit="exit"
     >
+      <OfferLightboxModal />
       <HeroCarousel />
       <div className="container mx-auto px-4 space-y-8 md:space-y-12">
         <DealsSection />

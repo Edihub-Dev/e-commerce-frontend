@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   Loader2,
@@ -11,6 +17,7 @@ import {
   X,
   CheckCircle2,
   Copy,
+  ChevronDown,
 } from "lucide-react";
 import Sidebar from "../components/admin/Sidebar";
 import Navbar from "../components/admin/Navbar";
@@ -23,6 +30,8 @@ import {
 } from "../store/thunks/adminOfferLightboxThunks";
 import { resetAdminOfferLightboxState } from "../store/slices/adminOfferLightboxSlice";
 import { toast } from "react-hot-toast";
+import { fetchAdminProducts } from "../services/adminProductsApi";
+import { fetchAvailableFooterCategories } from "../services/footerCategoryApi";
 
 const MAX_IMAGE_BYTES = 3 * 1024 * 1024; // 3MB
 
@@ -48,6 +57,180 @@ const defaultDraft = {
 const sanitizeNumber = (value, fallback = 24) => {
   const parsed = Number(value);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+};
+
+const CTA_LINK_TYPE_OPTIONS = [
+  {
+    value: "none",
+    label: "No link action",
+  },
+  {
+    value: "product",
+    label: "Specific product",
+  },
+  {
+    value: "category",
+    label: "Product category",
+  },
+  {
+    value: "custom",
+    label: "Custom URL",
+  },
+];
+
+const DropdownField = ({
+  placeholder,
+  options,
+  value,
+  onSelect,
+  disabled,
+  loading,
+  loadingLabel,
+  emptyLabel,
+  error,
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef(null);
+  const selectedOption = useMemo(() => {
+    const match = options.find((option) => option.value === value);
+    if (match) {
+      return match;
+    }
+    if (options.length && !value) {
+      return null;
+    }
+    return null;
+  }, [options, value]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    const handleClickOutside = (event) => {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(event.target)
+      ) {
+        setIsOpen(false);
+      }
+    };
+
+    const handleEscape = (event) => {
+      if (event.key === "Escape") {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleEscape);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (disabled) {
+      setIsOpen(false);
+    }
+  }, [disabled]);
+
+  const toggleOpen = useCallback(() => {
+    if (disabled) return;
+    setIsOpen((prev) => !prev);
+  }, [disabled]);
+
+  const handleSelect = useCallback(
+    (optionValue) => {
+      onSelect(optionValue);
+      setIsOpen(false);
+    },
+    [onSelect]
+  );
+
+  return (
+    <div className="relative" ref={containerRef}>
+      <button
+        type="button"
+        onClick={toggleOpen}
+        disabled={disabled}
+        className={`flex w-full items-center justify-between rounded-xl border px-3 py-2 text-left text-sm transition focus:outline-none focus:ring-2 focus:ring-blue-100 ${
+          disabled
+            ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400"
+            : "border-slate-200 bg-white text-slate-700 hover:border-slate-300"
+        }`}
+      >
+        <span className="flex min-h-[36px] flex-col justify-center">
+          <span
+            className={`font-medium ${
+              selectedOption ? "text-slate-900" : "text-slate-400"
+            }`}
+          >
+            {selectedOption ? selectedOption.label : placeholder}
+          </span>
+          {selectedOption?.meta ? (
+            <span className="text-xs text-slate-500">
+              {selectedOption.meta}
+            </span>
+          ) : null}
+        </span>
+        <ChevronDown
+          size={16}
+          className={`ml-2 shrink-0 text-slate-500 transition-transform ${
+            isOpen ? "rotate-180" : ""
+          }`}
+        />
+      </button>
+      <AnimatePresence>
+        {isOpen && (
+          <motion.ul
+            initial={{ opacity: 0, y: -6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.18 }}
+            className="absolute z-50 mt-2 w-full overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl"
+          >
+            {loading ? (
+              <li className="px-3 py-2 text-sm text-slate-500">
+                {loadingLabel}
+              </li>
+            ) : options.length ? (
+              <div className="max-h-60 overflow-y-auto py-1">
+                {options.map((option) => {
+                  const isSelected = option.value === value;
+                  return (
+                    <li key={option.value}>
+                      <button
+                        type="button"
+                        onClick={() => handleSelect(option.value)}
+                        className={`flex w-full flex-col items-start gap-0.5 px-3 py-2 text-left text-sm transition ${
+                          isSelected
+                            ? "bg-blue-50 text-blue-700"
+                            : "text-slate-700 hover:bg-blue-50 hover:text-blue-700"
+                        }`}
+                      >
+                        <span className="font-medium">{option.label}</span>
+                        {option.meta ? (
+                          <span className="text-xs text-slate-500">
+                            {option.meta}
+                          </span>
+                        ) : null}
+                      </button>
+                    </li>
+                  );
+                })}
+              </div>
+            ) : (
+              <li className="px-3 py-2 text-sm text-slate-500">{emptyLabel}</li>
+            )}
+          </motion.ul>
+        )}
+      </AnimatePresence>
+      {error ? <p className="mt-1 text-xs text-rose-500">{error}</p> : null}
+    </div>
+  );
 };
 
 const buildPayload = (draft, shouldClearImage) => {
@@ -92,6 +275,21 @@ const AdminOfferLightboxPage = () => {
   const [draft, setDraft] = useState(defaultDraft);
   const [shouldClearImage, setShouldClearImage] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [productOptions, setProductOptions] = useState([]);
+  const [categoryOptions, setCategoryOptions] = useState([]);
+  const [optionsLoading, setOptionsLoading] = useState({
+    products: false,
+    categories: false,
+  });
+  const [optionsError, setOptionsError] = useState({
+    products: null,
+    categories: null,
+  });
+  const isMountedRef = useRef(true);
+  const productSelectionRef = useRef("");
+  const categorySelectionRef = useRef("");
+  const currentLinkType = draft.buttonLinkType;
+  const currentLinkValue = draft.buttonLinkValue;
 
   const savedState = useMemo(() => {
     return {
@@ -151,10 +349,92 @@ const AdminOfferLightboxPage = () => {
   }, [normalizedDraft, normalizedSaved, shouldClearImage]);
 
   useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
     if (status === "idle") {
       dispatch(fetchAdminOfferLightboxThunk());
     }
   }, [status, dispatch]);
+
+  useEffect(() => {
+    const loadProducts = async () => {
+      setOptionsLoading((prev) => ({ ...prev, products: true }));
+      setOptionsError((prev) => ({ ...prev, products: null }));
+      try {
+        const response = await fetchAdminProducts({
+          limit: 200,
+          sortBy: "name",
+          sortOrder: "asc",
+          status: "published",
+        });
+        if (!isMountedRef.current) return;
+        const items = Array.isArray(response?.data) ? response.data : [];
+        const mapped = items.map((product, index) => {
+          const value = product?.slug || product?._id || "";
+          const label = product?.name?.trim() || `Product ${index + 1}`;
+          const metaParts = [];
+          if (product?.sku) {
+            metaParts.push(`SKU ${product.sku}`);
+          }
+          if (product?.slug) {
+            metaParts.push(`Slug ${product.slug}`);
+          }
+          return {
+            value,
+            label,
+            meta: metaParts.join(" • ") || null,
+            id: product?._id,
+            slug: product?.slug,
+          };
+        });
+        setProductOptions(mapped);
+      } catch (productError) {
+        if (!isMountedRef.current) return;
+        const message = productError?.message || "Failed to load products";
+        setOptionsError((prev) => ({ ...prev, products: message }));
+        setProductOptions([]);
+      } finally {
+        if (isMountedRef.current) {
+          setOptionsLoading((prev) => ({ ...prev, products: false }));
+        }
+      }
+    };
+
+    const loadCategories = async () => {
+      setOptionsLoading((prev) => ({ ...prev, categories: true }));
+      setOptionsError((prev) => ({ ...prev, categories: null }));
+      try {
+        const response = await fetchAvailableFooterCategories();
+        if (!isMountedRef.current) return;
+        const categories = Array.isArray(response?.data) ? response.data : [];
+        const mapped = categories.map((category, index) => ({
+          value: category?.slug || "",
+          label: category?.name?.trim() || `Category ${index + 1}`,
+          meta: category?.slug ? `Slug ${category.slug}` : null,
+          slug: category?.slug || "",
+        }));
+        setCategoryOptions(mapped);
+      } catch (categoryError) {
+        if (!isMountedRef.current) return;
+        const message =
+          categoryError?.message || "Failed to load product categories";
+        setOptionsError((prev) => ({ ...prev, categories: message }));
+        setCategoryOptions([]);
+      } finally {
+        if (isMountedRef.current) {
+          setOptionsLoading((prev) => ({ ...prev, categories: false }));
+        }
+      }
+    };
+
+    loadProducts();
+    loadCategories();
+  }, []);
 
   useEffect(() => {
     if (status === "succeeded") {
@@ -162,6 +442,14 @@ const AdminOfferLightboxPage = () => {
       setShouldClearImage(false);
     }
   }, [status, savedState]);
+
+  useEffect(() => {
+    if (currentLinkType === "product" && currentLinkValue) {
+      productSelectionRef.current = currentLinkValue;
+    } else if (currentLinkType === "category" && currentLinkValue) {
+      categorySelectionRef.current = currentLinkValue;
+    }
+  }, [currentLinkType, currentLinkValue]);
 
   useEffect(() => {
     if (error && status === "failed") {
@@ -192,6 +480,56 @@ const AdminOfferLightboxPage = () => {
   const handleCheckboxChange = useCallback((event) => {
     const { checked } = event.target;
     setDraft((prev) => ({ ...prev, isActive: checked }));
+  }, []);
+
+  const handleLinkTypeChange = useCallback(
+    (nextType) => {
+      setDraft((prev) => {
+        if (prev.buttonLinkType === nextType) {
+          return prev;
+        }
+
+        let nextValue = prev.buttonLinkValue;
+
+        if (nextType === "product") {
+          let preferred = productSelectionRef.current;
+          if (!productOptions.some((option) => option.value === preferred)) {
+            preferred = productOptions[0]?.value || "";
+          }
+          productSelectionRef.current = preferred;
+          nextValue = preferred;
+        } else if (nextType === "category") {
+          let preferred = categorySelectionRef.current;
+          if (!categoryOptions.some((option) => option.value === preferred)) {
+            preferred = categoryOptions[0]?.value || "";
+          }
+          categorySelectionRef.current = preferred;
+          nextValue = preferred;
+        } else if (nextType === "custom") {
+          nextValue =
+            prev.buttonLinkType === "custom" ? prev.buttonLinkValue : "";
+        } else {
+          nextValue = "";
+        }
+
+        return {
+          ...prev,
+          buttonLinkType: nextType,
+          buttonLinkValue: nextValue,
+        };
+      });
+    },
+    [productOptions, categoryOptions]
+  );
+
+  const handleProductOptionChange = useCallback((value) => {
+    productSelectionRef.current = value;
+    setDraft((prev) => ({ ...prev, buttonLinkValue: value }));
+  }, []);
+
+  const handleCategoryOptionChange = useCallback((value) => {
+    categorySelectionRef.current = value;
+    setDraft((prev) => ({ ...prev, buttonLinkValue: value }));
   }, []);
 
   const handleImageUpload = useCallback((event) => {
@@ -466,16 +804,16 @@ const AdminOfferLightboxPage = () => {
                         <span className="font-medium text-slate-700">
                           Primary button destination
                         </span>
-                        <select
+                        <DropdownField
+                          placeholder="Pick a destination type"
+                          options={CTA_LINK_TYPE_OPTIONS}
                           value={draft.buttonLinkType}
-                          onChange={handleFieldChange("buttonLinkType")}
-                          className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
-                        >
-                          <option value="none">No link action</option>
-                          <option value="product">Specific product</option>
-                          <option value="category">Product category</option>
-                          <option value="custom">Custom URL</option>
-                        </select>
+                          onSelect={handleLinkTypeChange}
+                          disabled={false}
+                          loading={false}
+                          loadingLabel=""
+                          emptyLabel="No destination types found"
+                        />
                         <p className="text-xs text-slate-500">
                           Choose what happens when shoppers click the CTA.
                         </p>
@@ -484,34 +822,80 @@ const AdminOfferLightboxPage = () => {
                         <span className="font-medium text-slate-700">
                           Destination value
                         </span>
-                        <input
-                          type="text"
-                          maxLength={200}
-                          value={draft.buttonLinkValue}
-                          onChange={handleFieldChange("buttonLinkValue")}
-                          disabled={draft.buttonLinkType === "none"}
-                          className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100"
-                          placeholder={
-                            draft.buttonLinkType === "product"
-                              ? "Enter product slug or ID"
-                              : draft.buttonLinkType === "category"
-                              ? "Enter category slug"
-                              : "https://example.com/path"
-                          }
-                        />
-                        <p className="text-xs text-slate-500">
-                          {
-                            {
-                              product:
-                                "Paste the product slug or Mongo ID (links to /product/<value>).",
-                              category:
-                                "Paste the category slug (links to /category/<value>).",
-                              custom:
-                                "Must start with http:// or https://. Opens in the same tab.",
-                              none: "",
-                            }[draft.buttonLinkType]
-                          }
-                        </p>
+                        {draft.buttonLinkType === "product" ? (
+                          <div className="space-y-1">
+                            <DropdownField
+                              placeholder="Select a product"
+                              options={productOptions}
+                              value={draft.buttonLinkValue || ""}
+                              onSelect={handleProductOptionChange}
+                              disabled={
+                                optionsLoading.products ||
+                                !productOptions.length
+                              }
+                              loading={optionsLoading.products}
+                              loadingLabel="Loading products..."
+                              emptyLabel="No published products found"
+                              error={optionsError.products}
+                            />
+                            <p className="text-xs text-slate-500">
+                              {draft.buttonLinkValue
+                                ? `Button will link to /product/${draft.buttonLinkValue}`
+                                : "Create and publish a product to enable this option."}
+                            </p>
+                          </div>
+                        ) : draft.buttonLinkType === "category" ? (
+                          <div className="space-y-1">
+                            <DropdownField
+                              placeholder="Select a category"
+                              options={categoryOptions}
+                              value={draft.buttonLinkValue || ""}
+                              onSelect={handleCategoryOptionChange}
+                              disabled={
+                                optionsLoading.categories ||
+                                !categoryOptions.length
+                              }
+                              loading={optionsLoading.categories}
+                              loadingLabel="Loading categories..."
+                              emptyLabel="No categories available"
+                              error={optionsError.categories}
+                            />
+                            <p className="text-xs text-slate-500">
+                              {draft.buttonLinkValue
+                                ? `Button will link to /category/${draft.buttonLinkValue}`
+                                : "Manage footer categories to populate this list."}
+                            </p>
+                          </div>
+                        ) : draft.buttonLinkType === "custom" ? (
+                          <>
+                            <input
+                              type="text"
+                              maxLength={200}
+                              value={draft.buttonLinkValue}
+                              onChange={handleFieldChange("buttonLinkValue")}
+                              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                              placeholder="https://example.com/path"
+                            />
+                            <p className="text-xs text-slate-500">
+                              Must start with http:// or https://. Opens in the
+                              same tab.
+                            </p>
+                          </>
+                        ) : (
+                          <>
+                            <input
+                              type="text"
+                              maxLength={200}
+                              value=""
+                              disabled
+                              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm disabled:cursor-not-allowed disabled:bg-slate-100"
+                              placeholder="No action configured"
+                            />
+                            <p className="text-xs text-slate-500">
+                              Choose a destination type to enable this field.
+                            </p>
+                          </>
+                        )}
                       </label>
                       <label className="space-y-1 text-sm">
                         <span className="font-medium text-slate-700">

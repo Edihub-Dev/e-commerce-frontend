@@ -47,6 +47,41 @@ const MAX_FORMATTED_ADDRESS_LENGTH = 255;
 const ADDRESS_DRAFT_STORAGE_KEY = "p2pdeal:checkout:address_draft";
 const MOBILE_REGEX = /^[6-9]\d{9}$/;
 const TOAST_DURATION = 5500;
+const COMMON_NO_VOWEL_ABBREVIATIONS = new Set([
+  "bldg",
+  "nr",
+  "blk",
+  "stn",
+  "rd",
+  "flr",
+  "apt",
+  "opp",
+  "sec",
+  "sct",
+  "gn",
+  "ind",
+]);
+const DEVANAGARI_RANGE = /[\u0900-\u097F]/;
+
+const isSuspiciousWord = (word) => {
+  const cleaned = word
+    .toLowerCase()
+    .replace(/^[^a-z\u0900-\u097f]+|[^a-z\u0900-\u097f]+$/gu, "");
+
+  if (!cleaned || cleaned.length <= 2) {
+    return false;
+  }
+
+  if (COMMON_NO_VOWEL_ABBREVIATIONS.has(cleaned)) {
+    return false;
+  }
+
+  if (DEVANAGARI_RANGE.test(cleaned)) {
+    return false;
+  }
+
+  return !/[aeiou]/.test(cleaned);
+};
 
 const fetchGeoCoordinates = async ({ city, state, pincode }) => {
   try {
@@ -102,6 +137,21 @@ const validateAddressForm = (formState) => {
 
   if (!city) {
     errors.push("Enter your city.");
+  }
+
+  if (addressLine) {
+    const suspiciousWords = addressLine
+      .split(/[^A-Za-z\u0900-\u097F0-9]+/)
+      .filter((token) => token.length >= 3 && !/\d/.test(token))
+      .filter(isSuspiciousWord);
+
+    if (suspiciousWords.length) {
+      errors.push(
+        `Replace unclear words so the address is readable: ${suspiciousWords
+          .slice(0, 3)
+          .join(", ")}.`
+      );
+    }
   }
 
   if (mobile && !MOBILE_REGEX.test(mobile)) {
@@ -249,7 +299,7 @@ const CheckoutAddress = () => {
       .replace(/\s+/g, " ")
       .trim();
 
-  const resolveStateName = (candidate = "") => {
+  const resolveStateName = useCallback((candidate = "") => {
     if (!candidate) {
       return "";
     }
@@ -258,7 +308,7 @@ const CheckoutAddress = () => {
       (option) => normalizeForMatch(option) === normalizedCandidate
     );
     return matched || candidate;
-  };
+  }, []);
 
   useEffect(() => {
     dispatch(setCheckoutStep("address"));
@@ -332,8 +382,66 @@ const CheckoutAddress = () => {
   }, [addresses, selectedId, user?.email]);
 
   useEffect(() => {
-    lastResolvedPincodeRef.current = String(formState.pincode || "").trim();
-  }, [formState.pincode]);
+    const trimmedPincode = String(formState.pincode || "").trim();
+
+    if (!trimmedPincode || !/^\d{6}$/.test(trimmedPincode)) {
+      lastResolvedPincodeRef.current = "";
+      return;
+    }
+
+    if (trimmedPincode === lastResolvedPincodeRef.current) {
+      return;
+    }
+
+    let isActive = true;
+
+    const resolveLocation = async () => {
+      const lookup = await fetchLocationByPincode(trimmedPincode);
+
+      if (!isActive) {
+        return;
+      }
+
+      if (!lookup.success) {
+        lastResolvedPincodeRef.current = "";
+        toast.error(
+          lookup.message || "Could not validate this PIN code with India Post.",
+          { duration: TOAST_DURATION }
+        );
+        return;
+      }
+
+      lastResolvedPincodeRef.current = trimmedPincode;
+
+      const resolvedStateName = resolveStateName(lookup.data?.state || "");
+      const resolvedCityName = lookup.data?.city || "";
+
+      setFormState((prev) => {
+        if (prev.pincode !== trimmedPincode) {
+          return prev;
+        }
+
+        const nextState = resolvedStateName || prev.state;
+        const nextCity = resolvedCityName || prev.city;
+
+        if (nextState === prev.state && nextCity === prev.city) {
+          return prev;
+        }
+
+        return {
+          ...prev,
+          state: nextState,
+          city: nextCity,
+        };
+      });
+    };
+
+    resolveLocation();
+
+    return () => {
+      isActive = false;
+    };
+  }, [formState.pincode, resolveStateName]);
 
   const selectedAddress = useMemo(
     () => addresses.find((address) => address._id === selectedId) || null,

@@ -86,6 +86,7 @@ const OfferLightboxModal = () => {
 
   const couponCode = offer?.couponCode?.trim();
   const couponDescription = offer?.couponDescription?.trim();
+  const hasImage = Boolean(offer?.imageUrl && offer.imageUrl.trim());
 
   const showCopyFeedback = () => {
     setCopyFeedbackVisible(true);
@@ -211,7 +212,7 @@ const OfferLightboxModal = () => {
                 color: palette.text,
               }}
             >
-              {offer?.imageUrl ? (
+              {hasImage ? (
                 <div
                   className="relative h-44 w-full overflow-hidden bg-white md:hidden"
                   style={{
@@ -227,7 +228,11 @@ const OfferLightboxModal = () => {
                   />
                 </div>
               ) : null}
-              <div className="relative grid gap-0 md:grid-cols-[1.1fr_0.9fr]">
+              <div
+                className={`relative grid gap-0 ${
+                  hasImage ? "md:grid-cols-[1.1fr_0.9fr]" : "md:grid-cols-1"
+                }`}
+              >
                 <div className="space-y-5 px-5 py-6 sm:px-10 sm:py-10">
                   <div className="inline-flex items-center gap-2 rounded-full bg-black px-3 py-1 text-xs font-semibold uppercase tracking-[0.3em] text-white shadow-sm">
                     <Sparkles size={14} /> Special Offer
@@ -313,34 +318,28 @@ const OfferLightboxModal = () => {
                     </button>
                   </div>
                 </div>
-                <div
-                  className="relative hidden min-h-[360px] overflow-hidden bg-white md:block"
-                  style={{
-                    borderTopRightRadius: "28px",
-                    borderBottomRightRadius: "28px",
-                  }}
-                >
-                  {status === "loading" ? (
-                    <div className="flex h-full items-center justify-center bg-black/10">
-                      <Loader2 className="h-8 w-8 animate-spin text-white/80" />
-                    </div>
-                  ) : offer?.imageUrl ? (
-                    <img
-                      src={offer.imageUrl}
-                      alt={offer?.title || "Offer artwork"}
-                      className="h-full w-full object-contain"
-                      style={{ objectPosition: "center" }}
-                    />
-                  ) : (
-                    <div className="flex h-full flex-col items-center justify-center gap-4 bg-black/10 text-white/70">
-                      <Sparkles className="h-10 w-10" />
-                      <p className="max-w-[220px] text-center text-sm font-medium">
-                        Add a striking visual from the admin to make this pop-up
-                        unforgettable.
-                      </p>
-                    </div>
-                  )}
-                </div>
+                {hasImage ? (
+                  <div
+                    className="relative hidden min-h-[360px] overflow-hidden bg-white md:block"
+                    style={{
+                      borderTopRightRadius: "28px",
+                      borderBottomRightRadius: "28px",
+                    }}
+                  >
+                    {status === "loading" ? (
+                      <div className="flex h-full items-center justify-center bg-black/10">
+                        <Loader2 className="h-8 w-8 animate-spin text-white/80" />
+                      </div>
+                    ) : (
+                      <img
+                        src={offer.imageUrl}
+                        alt={offer?.title || "Offer artwork"}
+                        className="h-full w-full object-contain"
+                        style={{ objectPosition: "center" }}
+                      />
+                    )}
+                  </div>
+                ) : null}
               </div>
             </div>
           </motion.div>

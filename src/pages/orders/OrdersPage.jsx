@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useCallback, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
@@ -25,6 +25,14 @@ const OrdersPage = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { list: orders, loading, error } = useSelector((state) => state.orders);
+
+  const handleOpenOrder = useCallback(
+    (orderId) => {
+      if (!orderId) return;
+      navigate(`/orders/${orderId}`);
+    },
+    [navigate]
+  );
 
   useEffect(() => {
     let isMounted = true;
@@ -84,7 +92,17 @@ const OrdersPage = () => {
       key={order._id}
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
-      className="border border-slate-200 rounded-3xl p-6 space-y-4 bg-white"
+      className="border border-slate-200 rounded-3xl p-6 space-y-4 bg-white transition-shadow cursor-pointer hover:shadow-md focus:outline-none focus:ring-2 focus:ring-primary/30"
+      role="button"
+      tabIndex={0}
+      onClick={() => handleOpenOrder(order._id)}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          handleOpenOrder(order._id);
+        }
+      }}
+      aria-label={`View details for order ${order._id}`}
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
@@ -141,13 +159,10 @@ const OrdersPage = () => {
         </ul>
       </div>
 
-      <div className="flex justify-end">
-        <button
-          onClick={() => navigate(`/orders/${order._id}`)}
-          className="px-4 py-2 rounded-xl bg-primary text-white text-sm font-medium hover:bg-primary-dark transition"
-        >
-          View Order Details
-        </button>
+      <div className="flex justify-end text-sm font-semibold text-primary">
+        <span className="inline-flex items-center gap-1">
+          View order details
+        </span>
       </div>
     </motion.div>
   );

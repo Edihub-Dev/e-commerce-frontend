@@ -24,12 +24,7 @@ import {
   STATE_OPTIONS,
   getCitiesForState,
 } from "../../constants/indiaLocations";
-import {
-  fetchLocationByPincode,
-  verifyAddressWithPostalApi,
-  doesAddressMatchLocation,
-  validateMeaningfulAddressLine,
-} from "../../utils/postalLookup";
+import { fetchLocationByPincode } from "../../utils/postalLookup";
 
 const createInitialFormState = (email = "", fullName = "") => ({
   fullName: fullName || "",
@@ -47,12 +42,10 @@ const createInitialFormState = (email = "", fullName = "") => ({
   isGeoVerified: false,
 });
 
-const MOBILE_REGEX = /^[6-9]\d{9}$/;
-const PINCODE_REGEX = /^[1-9]\d{5}$/;
-const LOCATION_REGEX = /^[A-Za-z\s.'-]{2,}$/;
 const MAX_ADDRESS_LINE_LENGTH = 255;
 const MAX_FORMATTED_ADDRESS_LENGTH = 255;
 const ADDRESS_DRAFT_STORAGE_KEY = "p2pdeal:checkout:address_draft";
+const MOBILE_REGEX = /^[6-9]\d{9}$/;
 
 const fetchGeoCoordinates = async ({ city, state, pincode }) => {
   try {
@@ -98,37 +91,20 @@ const fetchGeoCoordinates = async ({ city, state, pincode }) => {
 const validateAddressForm = (formState) => {
   const errors = [];
 
-  const addressValidation = validateMeaningfulAddressLine(
-    formState.addressLine,
-    {
-      minimumWords: 0,
-      minimumSegments: 6,
-      minSegmentLength: 5,
-    }
-  );
-
-  if (!addressValidation.isValid) {
-    errors.push(...addressValidation.errors);
-  }
-
-  const mobile = String(formState.mobile || "").trim();
-  if (!MOBILE_REGEX.test(mobile)) {
-    errors.push("Enter a valid 10-digit mobile number starting with 6-9.");
-  }
-
-  const pincode = String(formState.pincode || "").trim();
-  if (!PINCODE_REGEX.test(pincode)) {
-    errors.push("Enter a valid 6-digit pincode.");
-  }
-
-  const state = String(formState.state || "").trim();
-  if (!LOCATION_REGEX.test(state)) {
-    errors.push("Enter a valid state name using only letters.");
-  }
-
   const city = String(formState.city || "").trim();
-  if (!LOCATION_REGEX.test(city)) {
-    errors.push("Enter a valid city name using only letters.");
+  const addressLine = String(formState.addressLine || "").trim();
+  const mobile = String(formState.mobile || "").trim();
+
+  if (!addressLine) {
+    errors.push("Enter your address line.");
+  }
+
+  if (!city) {
+    errors.push("Enter your city.");
+  }
+
+  if (mobile && !MOBILE_REGEX.test(mobile)) {
+    errors.push("Enter a valid 10-digit mobile number starting with 6-9.");
   }
 
   return {
@@ -351,78 +327,7 @@ const CheckoutAddress = () => {
   }, [addresses, selectedId, user?.email]);
 
   useEffect(() => {
-    const trimmedPincode = String(formState.pincode || "").trim();
-
-    if (
-      !PINCODE_REGEX.test(trimmedPincode) ||
-      trimmedPincode === lastResolvedPincodeRef.current
-    ) {
-      return;
-    }
-
-    let isActive = true;
-    lastResolvedPincodeRef.current = trimmedPincode;
-
-    const resolveLocation = async () => {
-      const lookup = await fetchLocationByPincode(trimmedPincode);
-
-      if (!isActive) {
-        return;
-      }
-
-      if (!lookup.success) {
-        toast.error(lookup.message);
-        return;
-      }
-
-      const resolvedState = resolveStateName(lookup.data.state);
-      const resolvedCity = (lookup.data.city || "").trim();
-      const suggestedAddressLine =
-        lookup.data.addressLineSuggestion
-          ?.trim()
-          .slice(0, MAX_ADDRESS_LINE_LENGTH) || "";
-
-      if (!resolvedState && !resolvedCity) {
-        return;
-      }
-
-      setFormState((previous) => {
-        const nextState = resolvedState || previous.state;
-        const nextCity = resolvedCity || previous.city;
-        const shouldUpdateAddressLine =
-          suggestedAddressLine &&
-          (!previous.addressLine ||
-            !doesAddressMatchLocation(previous.addressLine, {
-              city: nextCity,
-              state: nextState,
-            }));
-
-        if (previous.state === nextState && previous.city === nextCity) {
-          if (!shouldUpdateAddressLine) {
-            return previous;
-          }
-        }
-
-        return {
-          ...previous,
-          state: nextState,
-          city: nextCity,
-          ...(shouldUpdateAddressLine
-            ? { addressLine: suggestedAddressLine }
-            : {}),
-          isGeoVerified: false,
-          latitude: null,
-          longitude: null,
-          formattedAddress: "",
-        };
-      });
-    };
-
-    resolveLocation();
-
-    return () => {
-      isActive = false;
-    };
+    lastResolvedPincodeRef.current = String(formState.pincode || "").trim();
   }, [formState.pincode]);
 
   const selectedAddress = useMemo(
@@ -471,54 +376,11 @@ const CheckoutAddress = () => {
         return;
       }
 
-      const mapValidation = await verifyAddressWithPostalApi(formState);
-      if (!mapValidation.success) {
-        toast.error(mapValidation.message);
-        setSubmitting(false);
-        return;
-      }
-
-      payload.state = mapValidation.data.state;
-      payload.city = mapValidation.data.city;
-
-      const suggestedAddressLine =
-        mapValidation.data.addressLineSuggestion
-          ?.trim()
-          .slice(0, MAX_ADDRESS_LINE_LENGTH) || "";
-
-      if (suggestedAddressLine) {
-        const normalizedMatch = doesAddressMatchLocation(payload.addressLine, {
-          city: payload.city,
-          state: payload.state,
-        });
-
-        if (!normalizedMatch) {
-          payload.addressLine = suggestedAddressLine;
-          setFormState((previous) => ({
-            ...previous,
-            addressLine: suggestedAddressLine,
-          }));
-        }
-      }
-
       if (payload.addressLine.length > MAX_ADDRESS_LINE_LENGTH) {
         payload.addressLine = payload.addressLine.slice(
           0,
           MAX_ADDRESS_LINE_LENGTH
         );
-      }
-
-      if (
-        !doesAddressMatchLocation(payload.addressLine, {
-          city: payload.city,
-          state: payload.state,
-        })
-      ) {
-        toast.error(
-          "Provide an address line that includes the resolved city and state for this PIN."
-        );
-        setSubmitting(false);
-        return;
       }
 
       const geoCoordinates = await fetchGeoCoordinates({

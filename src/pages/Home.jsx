@@ -47,7 +47,7 @@ const Home = () => {
 
   return (
     <motion.div
-      className="space-y-8 md:space-y-12 mb-8"
+      className="space-y-6 md:space-y-8 mb-6"
       variants={pageVariants}
       initial="initial"
       animate="animate"

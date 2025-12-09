@@ -33,7 +33,7 @@ const Home = () => {
 
       setSearchQuery(trimmed);
       searchProducts(trimmed);
-      navigate("/shop");
+      navigate(`/search?q=${encodeURIComponent(trimmed)}`);
     },
     [mobileQuery, setSearchQuery, searchProducts, navigate]
   );

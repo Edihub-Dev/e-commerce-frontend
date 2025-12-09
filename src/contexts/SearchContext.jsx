@@ -1,4 +1,10 @@
-import React, { createContext, useContext, useState, useCallback } from "react";
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useCallback,
+  useRef,
+} from "react";
 import { fetchProducts } from "../utils/api";
 
 const SearchContext = createContext();
@@ -166,6 +172,7 @@ const KEYWORD_PRIORITY = Object.freeze({
 const KEYWORD_MATCH_THRESHOLD = 0.65;
 const CATEGORY_FILTER_THRESHOLD = 0.55;
 const MAX_CATEGORY_FILTERS = 2;
+const SEARCH_REQUEST_TIMEOUT_MS = 12000;
 
 const escapeRegExp = (value = "") =>
   value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -494,6 +501,9 @@ export const SearchProvider = ({ children }) => {
   const [isSearching, setIsSearching] = useState(false);
   const [lastSearchQuery, setLastSearchQuery] = useState("");
   const [keywordMatches, setKeywordMatches] = useState([]);
+  const activeRequestRef = useRef(null);
+  const searchResultsRef = useRef([]);
+  const keywordMatchesRef = useRef([]);
 
   // Memoize the search function to prevent unnecessary re-renders
   const searchProducts = useCallback(
@@ -502,9 +512,16 @@ export const SearchProvider = ({ children }) => {
 
       // If the query is empty, clear results
       if (!trimmedQuery) {
+        if (activeRequestRef.current) {
+          activeRequestRef.current.abort();
+          activeRequestRef.current = null;
+        }
         setSearchResults([]);
+        searchResultsRef.current = [];
         setLastSearchQuery("");
+        setIsSearching(false);
         setKeywordMatches([]);
+        keywordMatchesRef.current = [];
         return [];
       }
 
@@ -556,12 +573,23 @@ export const SearchProvider = ({ children }) => {
 
       // If this is the same as the last search, return cached results
       if (searchKey === lastSearchQuery && searchResults.length > 0) {
+        if (activeRequestRef.current) {
+          activeRequestRef.current.abort();
+          activeRequestRef.current = null;
+        }
+        setIsSearching(false);
         return {
-          products: searchResults,
-          keywordMatches,
+          products: searchResultsRef.current,
+          keywordMatches: keywordMatchesRef.current,
         };
       }
 
+      if (activeRequestRef.current) {
+        activeRequestRef.current.abort();
+      }
+
+      const abortController = new AbortController();
+      activeRequestRef.current = abortController;
       setIsSearching(true);
 
       try {
@@ -579,33 +607,58 @@ export const SearchProvider = ({ children }) => {
           params.category = categoryFilters.join(",");
         }
 
-        const { data } = await fetchProducts(params);
+        const { data } = await fetchProducts(params, {
+          signal: abortController.signal,
+          timeout: SEARCH_REQUEST_TIMEOUT_MS,
+        });
 
         setSearchQuery(trimmedQuery);
         setSearchResults(data || []);
+        searchResultsRef.current = data || [];
         setKeywordMatches(matches);
+        keywordMatchesRef.current = matches;
         setLastSearchQuery(searchKey);
         return {
           products: data || [],
           keywordMatches: matches,
         };
       } catch (error) {
-        console.error("Search error:", error);
-        setSearchResults([]);
-        setKeywordMatches([]);
+        const isCanceled =
+          error?.name === "CanceledError" ||
+          error?.code === "ERR_CANCELED" ||
+          abortController.signal.aborted;
+
+        if (!isCanceled) {
+          console.error("Search error:", error);
+          setSearchResults([]);
+          searchResultsRef.current = [];
+          setKeywordMatches([]);
+          keywordMatchesRef.current = [];
+        }
+
         return [];
       } finally {
-        setIsSearching(false);
+        if (activeRequestRef.current === abortController) {
+          activeRequestRef.current = null;
+          setIsSearching(false);
+        }
       }
     },
-    [lastSearchQuery, searchResults, keywordMatches]
+    [lastSearchQuery]
   );
 
   const clearSearch = useCallback(() => {
+    if (activeRequestRef.current) {
+      activeRequestRef.current.abort();
+      activeRequestRef.current = null;
+    }
     setSearchQuery("");
     setSearchResults([]);
+    searchResultsRef.current = [];
     setLastSearchQuery("");
     setKeywordMatches([]);
+    keywordMatchesRef.current = [];
+    setIsSearching(false);
   }, []);
 
   return (

@@ -152,11 +152,19 @@ const extractPayload = (response, fallbackMessage) => {
   return payload;
 };
 
+const isRequestCanceled = (error) =>
+  error?.name === "CanceledError" ||
+  error?.code === "ERR_CANCELED" ||
+  error?.message === "canceled";
+
 const withApiHandling = async (requestFn, fallbackMessage) => {
   try {
     const response = await requestFn();
     return extractPayload(response, fallbackMessage);
   } catch (error) {
+    if (isRequestCanceled(error)) {
+      throw error;
+    }
     const message =
       error?.response?.data?.message || error?.message || fallbackMessage;
     throw new Error(message);
@@ -295,9 +303,21 @@ const mapProductDetail = (product = {}) => {
 const decodeSlug = (value = "") =>
   String(value).replace(/-/g, " ").replace(/_/g, " ").trim();
 
-export const fetchProducts = async (params = {}) => {
+export const fetchProducts = async (params = {}, options = {}) => {
+  const requestConfig = {
+    params,
+  };
+
+  if (options?.signal) {
+    requestConfig.signal = options.signal;
+  }
+
+  if (typeof options?.timeout === "number") {
+    requestConfig.timeout = options.timeout;
+  }
+
   const payload = await withApiHandling(
-    () => api.get("/products", { params }),
+    () => api.get("/products", requestConfig),
     "Failed to fetch products"
   );
 

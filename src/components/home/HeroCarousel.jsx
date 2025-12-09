@@ -366,7 +366,7 @@ const HeroCarousel = () => {
               event.preventDefault();
             }
           }}
-          className="hero-slider h-full min-h-[40vh] md:min-h-[82vh]"
+          className="hero-slider h-full min-h-[55vh] md:min-h-[90vh]"
           style={{ width: "100%" }}
         >
           {slidesToRender.map((slide) => {
@@ -383,10 +383,10 @@ const HeroCarousel = () => {
             return (
               <SwiperSlide
                 key={slide.id}
-                className="relative flex w-full min-h-[40vh] md:min-h-[82vh]"
+                className="relative flex w-full min-h-[55vh] md:min-h-[90vh]"
                 style={{ width: "100%" }}
               >
-                <div className="relative flex h-full w-full items-center justify-center overflow-hidden min-h-[40vh] md:min-h-[82vh]">
+                <div className="relative flex h-full w-full items-center justify-center overflow-hidden min-h-[55vh] md:min-h-[90vh]">
                   <div
                     className="absolute inset-0 bg-cover bg-center md:bg-[center_20%]"
                     style={{
@@ -398,7 +398,7 @@ const HeroCarousel = () => {
                   <div className="absolute inset-0 bg-slate-950/55" />
                   <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(148,163,184,0.18),transparent_70%)]" />
 
-                  <div className="relative z-10 mx-auto flex max-w-3xl flex-col items-center gap-4 px-4 pt-6 text-center text-white sm:gap-6 sm:px-6 sm:pt-10 md:pt-14">
+                  <div className="relative z-10 mx-auto flex max-w-3xl flex-col items-center gap-6 px-4 pt-10 pb-14 text-center text-white sm:gap-8 sm:px-6 sm:pt-12 sm:pb-16 md:gap-10 md:pt-16 md:pb-20">
                     {slide.showOverline !== false && slide.overline && (
                       <p
                         className="text-[11px] font-semibold uppercase tracking-[0.35em] text-slate-200/80 sm:text-xs"

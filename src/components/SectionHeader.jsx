@@ -4,7 +4,7 @@ import { ChevronRight } from "lucide-react";
 
 const SectionHeader = ({ title, linkTo, linkText = "View All" }) => {
   return (
-    <div className="flex justify-between items-center mb-4">
+    <div className="flex justify-between items-center mb-4 mt-6">
       <div>
         <h2 className="text-2xl font-bold text-dark-text">{title}</h2>
         <div

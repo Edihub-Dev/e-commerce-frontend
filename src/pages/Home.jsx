@@ -47,14 +47,14 @@ const Home = () => {
 
   return (
     <motion.div
-      className="space-y-6 md:space-y-8 mb-6"
+      className="space-y-0 md:space-y-0 mb-0"
       variants={pageVariants}
       initial="initial"
       animate="animate"
       exit="exit"
     >
       <OfferLightboxModal />
-      <div className="md:hidden">
+      <div className="md:hidden mt-3 mb-4">
         <form
           onSubmit={handleSubmit}
           className={`mx-4 flex items-center rounded-full border bg-white px-4 py-2 shadow-sm transition focus-within:ring-2 focus-within:ring-blue-100 ${
@@ -84,7 +84,9 @@ const Home = () => {
           ) : null}
         </form>
       </div>
-      <HeroCarousel />
+      <div className="mt-4 md:mt-0">
+        <HeroCarousel />
+      </div>
       <div className="container mx-auto px-4 space-y-8 md:space-y-12">
         <DealsSection />
         {/* Commented out sections as per request

@@ -80,7 +80,7 @@ const Header = () => {
 
       setSearchQuery(trimmed);
       searchProducts(trimmed);
-      navigate("/shop");
+      navigate(`/search?q=${encodeURIComponent(trimmed)}`);
     },
     [localSearchQuery, setSearchQuery, searchProducts, navigate]
   );

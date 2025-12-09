@@ -1,47 +1,50 @@
-import React, { useEffect, useMemo } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import ProductCard from '../components/ProductCard';
-import { useSearch } from '../contexts/SearchContext';
+import React, { useEffect, useMemo } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
+import ProductCard from "../components/ProductCard";
+import { useSearch } from "../contexts/SearchContext";
 
 const SearchResults = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { searchResults, isSearching, searchProducts } = useSearch();
-  
+
   // Memoize the query to prevent unnecessary re-renders
   const query = useMemo(() => {
-    return new URLSearchParams(location.search).get('q') || '';
+    return new URLSearchParams(location.search).get("q") || "";
   }, [location.search]);
 
   // Only trigger search when query changes
   useEffect(() => {
     let isMounted = true;
-    
+
     const performSearch = async () => {
       if (query) {
         await searchProducts(query);
       }
     };
-    
+
     if (isMounted) {
       performSearch();
     }
-    
+
     return () => {
       isMounted = false;
     };
   }, [query, searchProducts]);
 
   // Memoize the loading state to prevent unnecessary re-renders
-  const loadingContent = useMemo(() => (
-    <div className="container mx-auto px-4 py-12 flex justify-center">
-      <div className="text-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#008ECC] mx-auto mb-4"></div>
-        <p className="text-gray-600">Searching for "{query}"...</p>
+  const loadingContent = useMemo(
+    () => (
+      <div className="container mx-auto px-4 py-12 flex justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#008ECC] mx-auto mb-4"></div>
+          <p className="text-gray-600">Searching for "{query}"...</p>
+        </div>
       </div>
-    </div>
-  ), [query]);
+    ),
+    [query]
+  );
 
   // Memoize the results content
   const resultsContent = useMemo(() => {
@@ -61,13 +64,15 @@ const SearchResults = () => {
         </div>
       );
     }
-    
+
     if (query && !isSearching) {
       return (
         <div className="text-center py-12">
-          <p className="text-gray-600 mb-4">We couldn't find any products matching "{query}"</p>
+          <p className="text-gray-600 mb-4">
+            We couldn't find any products matching "{query}"
+          </p>
           <button
-            onClick={() => navigate('/')}
+            onClick={() => navigate("/")}
             className="bg-[#008ECC] text-white px-6 py-2 rounded-md hover:bg-[#0078b5] transition-colors"
           >
             Continue Shopping
@@ -75,7 +80,7 @@ const SearchResults = () => {
         </div>
       );
     }
-    
+
     return null;
   }, [searchResults, query, isSearching, navigate]);
 
@@ -101,7 +106,7 @@ const SearchResults = () => {
           >
             {query && (
               <h1 className="text-2xl font-bold mb-6">
-                {searchResults.length > 0 
+                {searchResults.length > 0
                   ? `Search Results for "${query}"`
                   : `No results found for "${query}"`}
               </h1>

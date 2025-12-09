@@ -24,11 +24,15 @@ import Navbar from "../components/admin/Navbar";
 import { useAuth } from "../contexts/AuthContext";
 import { useAppDispatch, useAppSelector } from "../store/hooks";
 import {
-  fetchAdminOfferLightboxThunk,
-  upsertAdminOfferLightboxThunk,
+  fetchAdminOfferLightboxesThunk,
+  createAdminOfferLightboxThunk,
+  updateAdminOfferLightboxThunk,
   deleteAdminOfferLightboxThunk,
 } from "../store/thunks/adminOfferLightboxThunks";
-import { resetAdminOfferLightboxState } from "../store/slices/adminOfferLightboxSlice";
+import {
+  resetAdminOfferLightboxState,
+  selectOfferLightbox,
+} from "../store/slices/adminOfferLightboxSlice";
 import { toast } from "react-hot-toast";
 import { fetchAdminProducts } from "../services/adminProductsApi";
 import { fetchAvailableFooterCategories } from "../services/footerCategoryApi";
@@ -52,6 +56,7 @@ const defaultDraft = {
   couponDescription: "",
   stickyTimeoutHours: 24,
   isActive: true,
+  showOnOffersPage: true,
 };
 
 const sanitizeNumber = (value, fallback = 24) => {
@@ -253,6 +258,7 @@ const buildPayload = (draft, shouldClearImage) => {
     couponDescription: draft.couponDescription,
     stickyTimeoutHours: sanitizeNumber(draft.stickyTimeoutHours),
     isActive: Boolean(draft.isActive),
+    showOnOffersPage: Boolean(draft.showOnOffersPage),
   };
 
   if (draft.imageUrl && !shouldClearImage) {
@@ -269,11 +275,19 @@ const buildPayload = (draft, shouldClearImage) => {
 const AdminOfferLightboxPage = () => {
   const dispatch = useAppDispatch();
   const { user } = useAuth();
-  const { data, status, error, saving, validationErrors, lastSavedAt } =
-    useAppSelector((state) => state.adminOfferLightbox);
+  const {
+    list,
+    status,
+    error,
+    saving,
+    validationErrors,
+    lastSavedAt,
+    selectedId,
+  } = useAppSelector((state) => state.adminOfferLightbox);
 
   const [draft, setDraft] = useState(defaultDraft);
   const [shouldClearImage, setShouldClearImage] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [productOptions, setProductOptions] = useState([]);
   const [categoryOptions, setCategoryOptions] = useState([]);
@@ -291,26 +305,42 @@ const AdminOfferLightboxPage = () => {
   const currentLinkType = draft.buttonLinkType;
   const currentLinkValue = draft.buttonLinkValue;
 
+  const selectedOffer = useMemo(() => {
+    if (!selectedId) {
+      return null;
+    }
+    return list.find((offer) => offer?._id === selectedId) || null;
+  }, [list, selectedId]);
+
   const savedState = useMemo(() => {
+    if (!selectedOffer) {
+      return { ...defaultDraft };
+    }
+
     return {
       ...defaultDraft,
-      ...(data || {}),
+      ...selectedOffer,
       stickyTimeoutHours:
-        data?.stickyTimeoutHours ?? defaultDraft.stickyTimeoutHours,
-      imageUrl: data?.imageUrl || "",
-      buttonLinkType: data?.buttonLinkType || defaultDraft.buttonLinkType,
-      buttonLinkValue: data?.buttonLinkValue || "",
-      couponCode: data?.couponCode || "",
-      couponDescription: data?.couponDescription || "",
+        selectedOffer.stickyTimeoutHours ?? defaultDraft.stickyTimeoutHours,
+      imageUrl: selectedOffer.imageUrl || "",
+      buttonLinkType:
+        selectedOffer.buttonLinkType || defaultDraft.buttonLinkType,
+      buttonLinkValue: selectedOffer.buttonLinkValue || "",
+      couponCode: selectedOffer.couponCode || "",
+      couponDescription: selectedOffer.couponDescription || "",
       isActive:
-        typeof data?.isActive === "boolean"
-          ? data.isActive
+        typeof selectedOffer.isActive === "boolean"
+          ? selectedOffer.isActive
           : defaultDraft.isActive,
+      showOnOffersPage:
+        typeof selectedOffer.showOnOffersPage === "boolean"
+          ? selectedOffer.showOnOffersPage
+          : defaultDraft.showOnOffersPage,
     };
-  }, [data]);
+  }, [selectedOffer]);
 
-  const normalizedDraft = useMemo(() => {
-    return {
+  const normalizedDraft = useMemo(
+    () => ({
       ...draft,
       stickyTimeoutHours: sanitizeNumber(draft.stickyTimeoutHours),
       imageUrl: shouldClearImage ? "" : draft.imageUrl || "",
@@ -322,11 +352,13 @@ const AdminOfferLightboxPage = () => {
       couponCode: draft.couponCode || "",
       couponDescription: draft.couponDescription || "",
       isActive: Boolean(draft.isActive),
-    };
-  }, [draft, shouldClearImage]);
+      showOnOffersPage: Boolean(draft.showOnOffersPage),
+    }),
+    [draft, shouldClearImage]
+  );
 
-  const normalizedSaved = useMemo(() => {
-    return {
+  const normalizedSaved = useMemo(
+    () => ({
       ...savedState,
       stickyTimeoutHours: sanitizeNumber(savedState.stickyTimeoutHours),
       imageUrl: savedState.imageUrl || "",
@@ -338,8 +370,30 @@ const AdminOfferLightboxPage = () => {
       couponCode: savedState.couponCode || "",
       couponDescription: savedState.couponDescription || "",
       isActive: Boolean(savedState.isActive),
-    };
-  }, [savedState]);
+      showOnOffersPage: Boolean(savedState.showOnOffersPage),
+    }),
+    [savedState]
+  );
+
+  const isExistingOffer = Boolean(selectedOffer?._id);
+  const hasOffers = list.length > 0;
+
+  const handleSelectOffer = useCallback(
+    (offerId) => {
+      dispatch(selectOfferLightbox(offerId));
+      setDraft(defaultDraft);
+      setShouldClearImage(false);
+      setIsCreating(false);
+    },
+    [dispatch]
+  );
+
+  const handleStartCreate = useCallback(() => {
+    setIsCreating(true);
+    dispatch(selectOfferLightbox(null));
+    setDraft({ ...defaultDraft, isActive: false });
+    setShouldClearImage(false);
+  }, [dispatch]);
 
   const isDirty = useMemo(() => {
     return (
@@ -357,7 +411,7 @@ const AdminOfferLightboxPage = () => {
 
   useEffect(() => {
     if (status === "idle") {
-      dispatch(fetchAdminOfferLightboxThunk());
+      dispatch(fetchAdminOfferLightboxesThunk());
     }
   }, [status, dispatch]);
 
@@ -437,11 +491,11 @@ const AdminOfferLightboxPage = () => {
   }, []);
 
   useEffect(() => {
-    if (status === "succeeded") {
+    if (status === "succeeded" && selectedOffer && !isCreating) {
       setDraft(savedState);
       setShouldClearImage(false);
     }
-  }, [status, savedState]);
+  }, [status, savedState, selectedOffer, isCreating]);
 
   useEffect(() => {
     if (currentLinkType === "product" && currentLinkValue) {
@@ -477,10 +531,13 @@ const AdminOfferLightboxPage = () => {
     []
   );
 
-  const handleCheckboxChange = useCallback((event) => {
-    const { checked } = event.target;
-    setDraft((prev) => ({ ...prev, isActive: checked }));
-  }, []);
+  const handleCheckboxChange = useCallback(
+    (field) => (event) => {
+      const { checked } = event.target;
+      setDraft((prev) => ({ ...prev, [field]: checked }));
+    },
+    []
+  );
 
   const handleLinkTypeChange = useCallback(
     (nextType) => {
@@ -578,25 +635,63 @@ const AdminOfferLightboxPage = () => {
       }
 
       const payload = buildPayload(draft, shouldClearImage);
-      dispatch(upsertAdminOfferLightboxThunk(payload));
+      const shouldCreate = isCreating || !selectedOffer?._id;
+
+      if (shouldCreate) {
+        dispatch(createAdminOfferLightboxThunk(payload))
+          .unwrap()
+          .then(() => {
+            setShouldClearImage(false);
+            setIsCreating(false);
+          })
+          .catch((error) => {
+            if (typeof error === "string") {
+              toast.error(error);
+            }
+          });
+      } else if (selectedOffer?._id) {
+        dispatch(
+          updateAdminOfferLightboxThunk({
+            id: selectedOffer._id,
+            data: payload,
+          })
+        )
+          .unwrap()
+          .then(() => {
+            setShouldClearImage(false);
+          })
+          .catch((error) => {
+            if (typeof error === "string") {
+              toast.error(error);
+            }
+          });
+      }
     },
-    [dispatch, draft, shouldClearImage, isDirty]
+    [dispatch, draft, shouldClearImage, isDirty, isCreating, selectedOffer]
   );
 
   const handleDelete = useCallback(async () => {
-    if (!window.confirm("Delete the current offers lightbox?")) {
+    if (!selectedOffer?._id) {
+      return;
+    }
+
+    if (!window.confirm("Delete this offer lightbox?")) {
       return;
     }
 
     try {
-      await dispatch(deleteAdminOfferLightboxThunk()).unwrap();
+      await dispatch(deleteAdminOfferLightboxThunk(selectedOffer._id)).unwrap();
       setDraft(defaultDraft);
       setShouldClearImage(false);
       toast.success("Offer lightbox removed");
     } catch (deleteError) {
-      toast.error(deleteError?.message || "Failed to delete offer lightbox");
+      const message =
+        deleteError?.message ||
+        (typeof deleteError === "string" ? deleteError : null) ||
+        "Failed to delete offer lightbox";
+      toast.error(message);
     }
-  }, [dispatch]);
+  }, [dispatch, selectedOffer]);
 
   const renderValidationErrors = () => {
     if (!Array.isArray(validationErrors) || !validationErrors.length) {
@@ -618,7 +713,7 @@ const AdminOfferLightboxPage = () => {
     );
   };
 
-  const isInitialLoading = status === "loading" && !data;
+  const isInitialLoading = status === "loading" && !hasOffers && !isCreating;
 
   return (
     <div className="min-h-screen md:h-screen bg-slate-50 text-slate-900 overflow-x-hidden">
@@ -681,18 +776,26 @@ const AdminOfferLightboxPage = () => {
               <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
                 <div>
                   <div className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-blue-600">
-                    <Sparkles size={14} /> Offers Lightbox
+                    <Sparkles size={14} /> Offers Lightboxes
                   </div>
                   <h1 className="mt-3 text-2xl font-bold text-slate-900 md:text-3xl">
-                    Capture visitors with a bold one-click offer
+                    Curate multiple promos without redeploys
                   </h1>
                   <p className="mt-2 max-w-2xl text-sm text-slate-500 md:text-base">
-                    Configure the marketing lightbox that appears on the
-                    storefront home page. You can edit copy, colors, CTA labels,
-                    and imagery in one place—no deploys required.
+                    Manage a collection of marketing lightboxes, toggle them on
+                    or off, and fine-tune each offer’s copy, colors, and CTA in
+                    one place.
                   </p>
                 </div>
-                <div className="flex items-center gap-3 self-start lg:self-center">
+                <div className="flex flex-wrap items-center gap-3 self-start lg:self-center">
+                  <button
+                    type="button"
+                    onClick={handleStartCreate}
+                    className="inline-flex items-center gap-2 rounded-full border border-blue-200 px-3 py-1.5 text-sm font-semibold text-blue-600 transition hover:border-blue-300 hover:text-blue-700"
+                    disabled={saving && isCreating}
+                  >
+                    <Sparkles size={16} /> Add offer lightbox
+                  </button>
                   {saving ? (
                     <span className="inline-flex items-center gap-2 rounded-full bg-blue-50 px-3 py-1 text-sm font-medium text-blue-600">
                       <Loader2 size={16} className="animate-spin" /> Saving…
@@ -716,7 +819,7 @@ const AdminOfferLightboxPage = () => {
                       type="button"
                       onClick={handleDelete}
                       className="inline-flex items-center gap-2 rounded-full border border-rose-200 px-3 py-1.5 text-sm font-semibold text-rose-600 transition hover:border-rose-300 hover:text-rose-700"
-                      disabled={saving || !data}
+                      disabled={saving || !isExistingOffer}
                     >
                       <X size={16} /> Delete
                     </button>
@@ -734,7 +837,79 @@ const AdminOfferLightboxPage = () => {
 
               {renderValidationErrors()}
 
-              <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1.2fr)]">
+              <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,2fr)]">
+                <motion.aside
+                  layout
+                  className="space-y-4 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm"
+                >
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-lg font-semibold text-slate-900">
+                      All offers
+                    </h2>
+                    <span className="text-xs font-medium text-slate-500">
+                      {list.length} total
+                    </span>
+                  </div>
+
+                  {status === "loading" && !list.length ? (
+                    <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                      <Loader2 size={16} className="animate-spin" /> Loading
+                      offers…
+                    </div>
+                  ) : null}
+
+                  <div className="space-y-3 max-h-[420px] overflow-y-auto pr-1">
+                    {list.map((offer) => {
+                      const isSelected = selectedId === offer._id;
+                      return (
+                        <button
+                          key={offer._id}
+                          type="button"
+                          onClick={() => handleSelectOffer(offer._id)}
+                          className={`w-full rounded-2xl border px-4 py-3 text-left transition focus:outline-none focus:ring-2 focus:ring-blue-200 ${
+                            isSelected
+                              ? "border-blue-400 bg-blue-50"
+                              : "border-slate-200 bg-white hover:border-blue-300"
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <p className="text-sm font-semibold text-slate-900">
+                                {offer.title?.trim() || "Untitled offer"}
+                              </p>
+                              <p className="text-xs text-slate-500 mt-1">
+                                Updated{" "}
+                                {new Date(offer.updatedAt).toLocaleString()}
+                              </p>
+                            </div>
+                            <span
+                              className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold ${
+                                offer.isActive
+                                  ? "bg-emerald-100 text-emerald-700"
+                                  : "bg-slate-100 text-slate-500"
+                              }`}
+                            >
+                              {offer.isActive ? "Active" : "Hidden"}
+                            </span>
+                          </div>
+                          {offer.subtitle ? (
+                            <p className="mt-2 text-xs text-slate-600 line-clamp-2">
+                              {offer.subtitle}
+                            </p>
+                          ) : null}
+                        </button>
+                      );
+                    })}
+
+                    {!list.length && !isCreating ? (
+                      <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
+                        No offers yet. Click “Add offer lightbox” to create your
+                        first promo.
+                      </div>
+                    ) : null}
+                  </div>
+                </motion.aside>
+
                 <motion.section
                   layout
                   className="space-y-6 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm"
@@ -1002,15 +1177,26 @@ const AdminOfferLightboxPage = () => {
                           className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
                         />
                       </label>
-                      <label className="flex items-center gap-3 rounded-2xl border border-slate-200 px-4 py-3 text-sm font-medium text-slate-700">
-                        <input
-                          type="checkbox"
-                          checked={draft.isActive}
-                          onChange={handleCheckboxChange}
-                          className="h-5 w-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                        />
-                        Show this lightbox on the storefront
-                      </label>
+                      <div className="flex flex-col gap-3">
+                        <label className="flex items-center gap-3 rounded-2xl border border-slate-200 px-4 py-3 text-sm font-medium text-slate-700">
+                          <input
+                            type="checkbox"
+                            checked={draft.isActive}
+                            onChange={handleCheckboxChange("isActive")}
+                            className="h-5 w-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                          />
+                          Show this lightbox on the homepage modal
+                        </label>
+                        <label className="flex items-center gap-3 rounded-2xl border border-slate-200 px-4 py-3 text-sm font-medium text-slate-700">
+                          <input
+                            type="checkbox"
+                            checked={draft.showOnOffersPage}
+                            onChange={handleCheckboxChange("showOnOffersPage")}
+                            className="h-5 w-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                          />
+                          Show this lightbox on the Offers page
+                        </label>
+                      </div>
                     </div>
 
                     <div className="space-y-4">
@@ -1172,10 +1358,16 @@ const AdminOfferLightboxPage = () => {
                       </div>
                     </div>
                     {!normalizedDraft.isActive ? (
-                      <div className="absolute inset-0 flex items-center justify-center bg-white/80 text-center">
+                      <div className="absolute inset-0 flex items-center justify-center bg-white/85 text-center">
                         <div className="rounded-full border border-orange-300 bg-white px-4 py-2 text-sm font-semibold text-orange-600 shadow">
-                          Lightbox hidden &mdash; toggle it back on to publish
+                          Hidden from homepage modal
                         </div>
+                      </div>
+                    ) : null}
+                    {normalizedDraft.isActive &&
+                    !normalizedDraft.showOnOffersPage ? (
+                      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full border border-slate-300 bg-white/90 px-4 py-2 text-xs font-semibold text-slate-600 shadow">
+                        Hidden from Offers listing
                       </div>
                     ) : null}
                   </div>

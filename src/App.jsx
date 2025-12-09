@@ -23,6 +23,7 @@ import VerifyEmail from "./pages/VerifyEmail";
 import Profile from "./pages/Profile";
 import About from "./pages/About";
 import Contact from "./pages/Contact";
+import OffersPage from "./pages/OffersPage";
 import HelpSupport from "./pages/HelpSupport";
 import PrivacyPolicy from "./pages/legal/PrivacyPolicy";
 import TermsAndConditions from "./pages/legal/TermsAndConditions";
@@ -65,6 +66,7 @@ function App() {
           <Route path="category/:slug" element={<CategoryPage />} />
           <Route path="brand/:slug" element={<BrandPage />} />
           <Route path="cart" element={<Cart />} />
+          <Route path="offers" element={<OffersPage />} />
           <Route path="login" element={<Login />} />
           <Route path="signup" element={<Signup />} />
           <Route path="forgot-password" element={<ForgotPassword />} />

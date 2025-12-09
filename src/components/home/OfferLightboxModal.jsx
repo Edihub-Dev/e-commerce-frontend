@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { X, Loader2, Sparkles, Copy } from "lucide-react";
-import { fetchOfferLightbox } from "../../services/offerLightboxApi";
+import { fetchOfferLightboxes } from "../../services/offerLightboxApi";
 import { useNavigate } from "react-router-dom";
 
 const OfferLightboxModal = () => {
@@ -17,12 +17,20 @@ const OfferLightboxModal = () => {
     const loadOffer = async () => {
       setStatus("loading");
       try {
-        const response = await fetchOfferLightbox();
-        const payload = response?.data || null;
+        const response = await fetchOfferLightboxes({ offersOnly: false });
+        const payloadArray = Array.isArray(response) ? response : [];
+        const activeOffer =
+          payloadArray.find((item) => item?.isActive !== false) || null;
         if (!isMounted) return;
-        setOffer(payload);
-        setStatus("success");
-        setIsVisible(Boolean(payload?.isActive !== false && payload));
+        if (activeOffer) {
+          setOffer(activeOffer);
+          setIsVisible(true);
+          setStatus("success");
+        } else {
+          setOffer(null);
+          setIsVisible(false);
+          setStatus("empty");
+        }
       } catch (error) {
         console.error("Failed to load offer lightbox", error);
         if (!isMounted) return;
@@ -216,8 +224,8 @@ const OfferLightboxModal = () => {
                 <div
                   className="relative h-44 w-full overflow-hidden bg-white md:hidden"
                   style={{
-                    borderBottomLeftRadius: "28px",
-                    borderBottomRightRadius: "28px",
+                    borderBottomLeftRadius: 0,
+                    borderBottomRightRadius: 0,
                   }}
                 >
                   <img
@@ -322,8 +330,8 @@ const OfferLightboxModal = () => {
                   <div
                     className="relative hidden min-h-[360px] overflow-hidden bg-white md:block"
                     style={{
-                      borderTopRightRadius: "28px",
-                      borderBottomRightRadius: "28px",
+                      borderTopRightRadius: 0,
+                      borderBottomRightRadius: 0,
                     }}
                   >
                     {status === "loading" ? (

@@ -17,6 +17,7 @@ import {
   ArrowRight,
   Tag,
   Gift,
+  Sparkles,
   Percent,
   LogOut,
   MapPin,
@@ -24,7 +25,6 @@ import {
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { useCart } from "../contexts/CartContext";
-import { useSearch } from "../contexts/SearchContext";
 import {
   setAddresses,
   setAddressLoading,
@@ -43,14 +43,10 @@ const Header = () => {
   const [lastScrollY, setLastScrollY] = useState(0);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [isProfilePinned, setIsProfilePinned] = useState(false);
-  const [isSearchFocused, setIsSearchFocused] = useState(false);
-  const [localSearchQuery, setLocalSearchQuery] = useState("");
   const [locationLabel, setLocationLabel] = useState(DEFAULT_LOCATION_LABEL);
   const [navCategories, setNavCategories] = useState([]);
-  const searchInputRef = useRef(null);
   const { isAuthenticated, user, logout, isAdmin } = useAuth();
   const { cartCount } = useCart();
-  const { searchQuery, setSearchQuery, searchProducts } = useSearch();
   const profileMenuRef = useRef(null);
   const navigate = useNavigate();
   const dispatch = useDispatch();
@@ -307,20 +303,6 @@ const Header = () => {
     };
   }, [isMenuOpen]);
 
-  useEffect(() => {
-    if (!isMenuOpen) return;
-
-    const handleKeyDown = (event) => {
-      if (event.key === "Escape") {
-        setIsMenuOpen(false);
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isMenuOpen]);
-
   const handleLogout = () => {
     setIsProfileMenuOpen(false);
     setIsProfilePinned(false);
@@ -355,28 +337,6 @@ const Header = () => {
     }
   };
 
-  const handleSearch = async (e) => {
-    e.preventDefault();
-    if (localSearchQuery.trim()) {
-      setSearchQuery(localSearchQuery);
-      navigate(`/search?q=${encodeURIComponent(localSearchQuery)}`);
-      setLocalSearchQuery("");
-    }
-  };
-
-  const handleKeyDown = (e) => {
-    if (e.key === "Enter") {
-      handleSearch(e);
-    }
-  };
-
-  const clearSearch = () => {
-    setLocalSearchQuery("");
-    if (searchInputRef.current) {
-      searchInputRef.current.focus();
-    }
-  };
-
   const renderedCategories = navCategories.length
     ? navCategories
     : [{ name: "All Products", slug: "" }];
@@ -408,20 +368,13 @@ const Header = () => {
               <span>Track your order</span>
             </Link>
             <div className="h-4 border-l border-gray-300"></div>
-            <button
-              type="button"
-              onClick={() => {
-                window.dispatchEvent(
-                  new CustomEvent("open-offer-lightbox", {
-                    detail: { source: "header" },
-                  })
-                );
-              }}
-              className="flex items-center space-x-2 text-left outline-none"
+            <Link
+              to="/offers"
+              className="flex items-center space-x-2 text-left outline-none hover:text-[#008ECC] transition-colors"
             >
               <Percent size={16} style={{ color: "#008ECC" }} />
-              <span className="font-medium text-secondary">All Offers</span>
-            </button>
+              <span className="font-medium">All Offers</span>
+            </Link>
           </div>
         </div>
       </div>
@@ -453,39 +406,6 @@ const Header = () => {
             >
               p2pdeal
             </Link>
-          </div>
-
-          {/* Search Bar */}
-          <div
-            className={`flex-1 max-w-xl hidden md:flex items-center bg-white border rounded-md transition-all duration-200 ${
-              isSearchFocused
-                ? "ring-2 ring-[#008ECC] border-[#008ECC]"
-                : "border-gray-200"
-            }`}
-          >
-            <SearchIcon size={20} className="ml-3 text-gray-400" />
-            <input
-              ref={searchInputRef}
-              type="text"
-              value={localSearchQuery}
-              onChange={(e) => setLocalSearchQuery(e.target.value)}
-              onKeyDown={handleKeyDown}
-              onFocus={() => setIsSearchFocused(true)}
-              onBlur={() => setTimeout(() => setIsSearchFocused(false), 200)}
-              placeholder="Search T-SHIRTS, Office Essentials, Accessories and more..."
-              className="bg-transparent py-2 px-3 w-full focus:outline-none text-sm text-gray-800 placeholder-gray-400 rounded-r-md"
-              aria-label="Search products"
-            />
-            {localSearchQuery && (
-              <button
-                type="button"
-                onClick={clearSearch}
-                className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
-                aria-label="Clear search"
-              >
-                <XIcon size={18} />
-              </button>
-            )}
           </div>
 
           {/* Right: Sign In, Cart */}
@@ -560,7 +480,13 @@ const Header = () => {
             ) : (
               <div className="hidden md:flex items-center text-sm">
                 <User size={20} style={{ color: "#008ECC" }} />
-                <div className="ml-2 flex items-center gap-2">
+                <div className="hidden lg:flex items-center space-x-6 text-sm font-medium text-secondary">
+                  <Link
+                    to="/"
+                    className="hover:text-[#008ECC] transition-colors"
+                  >
+                    Home
+                  </Link>
                   <Link
                     to="/signup"
                     className="hover:text-[#008ECC] transition-colors"
@@ -636,25 +562,13 @@ const Header = () => {
                 </button>
               </div>
             </div>
-            <div className="px-4 pt-2">
-              <div className="flex items-center bg-light-bg border border-gray-200 rounded-md">
-                <input
-                  type="text"
-                  placeholder="Search..."
-                  className="bg-transparent py-2 px-4 w-full focus:outline-none"
-                />
-                <button className="p-2 text-medium-text">
-                  <SearchIcon size={20} />
-                </button>
-              </div>
-            </div>
             <div className="flex-1 overflow-y-auto px-4 pb-8">
               <nav>
                 <ul>
                   {renderedCategories.map((cat, index) => (
                     <li key={cat.slug || index} className="border-b">
                       <Link
-                        to={cat.slug ? `/category/${cat.slug}` : "/shop"}
+                        to={cat.slug ? `/category/${cat.slug}` : "/"}
                         className="flex justify-between items-center py-3 text-secondary transition-colors hover:bg-slate-100 hover:text-primary px-3 -mx-3 rounded-xl"
                         onClick={() => setIsMenuOpen(false)}
                       >
@@ -662,6 +576,16 @@ const Header = () => {
                       </Link>
                     </li>
                   ))}
+                  <li className="border-b">
+                    <Link
+                      to="/offers"
+                      className="flex justify-between items-center py-3 text-secondary transition-colors hover:bg-slate-100 hover:text-primary px-3 -mx-3 rounded-xl"
+                      onClick={() => setIsMenuOpen(false)}
+                    >
+                      <span>Offers</span>
+                      <Sparkles size={16} />
+                    </Link>
+                  </li>
                 </ul>
               </nav>
               <div className="mt-6 border-t pt-6 space-y-4">
@@ -745,43 +669,6 @@ const Header = () => {
           </motion.div>
         )}
       </AnimatePresence>
-
-      {/* Mobile Search Bar - Only visible on small screens */}
-      <div
-        className={`md:hidden border-t border-gray-100 px-4 py-3 bg-white ${
-          isMenuOpen ? "hidden" : ""
-        }`}
-      >
-        <div className="relative">
-          <SearchIcon
-            size={18}
-            className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-          />
-          <form onSubmit={handleSearch} className="w-full">
-            <input
-              type="text"
-              value={localSearchQuery}
-              onChange={(e) => setLocalSearchQuery(e.target.value)}
-              onKeyDown={handleKeyDown}
-              onFocus={() => setIsSearchFocused(true)}
-              onBlur={() => setIsSearchFocused(false)}
-              placeholder="Search products..."
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-[#008ECC] focus:border-transparent text-sm"
-              aria-label="Search products"
-            />
-          </form>
-          {localSearchQuery && (
-            <button
-              type="button"
-              onClick={clearSearch}
-              className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-              aria-label="Clear search"
-            >
-              <X size={18} />
-            </button>
-          )}
-        </div>
-      </div>
     </header>
   );
 };

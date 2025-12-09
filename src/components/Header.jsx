@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { useCart } from "../contexts/CartContext";
+import { useSearch } from "../contexts/SearchContext";
 import {
   setAddresses,
   setAddressLoading,
@@ -45,15 +46,44 @@ const Header = () => {
   const [isProfilePinned, setIsProfilePinned] = useState(false);
   const [locationLabel, setLocationLabel] = useState(DEFAULT_LOCATION_LABEL);
   const [navCategories, setNavCategories] = useState([]);
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const [localSearchQuery, setLocalSearchQuery] = useState("");
   const { isAuthenticated, user, logout, isAdmin } = useAuth();
   const { cartCount } = useCart();
   const profileMenuRef = useRef(null);
+  const searchInputRef = useRef(null);
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { addresses, loading: addressesLoading } = useSelector(
     (state) => state.address
   );
   const { shippingAddress } = useSelector((state) => state.checkout);
+  const { searchQuery, setSearchQuery, searchProducts } = useSearch();
+
+  useEffect(() => {
+    setLocalSearchQuery(searchQuery || "");
+  }, [searchQuery]);
+
+  const handleSearchChange = useCallback((event) => {
+    setLocalSearchQuery(event.target.value);
+  }, []);
+
+  const handleSearchSubmit = useCallback(
+    (event) => {
+      event.preventDefault();
+      const trimmed = localSearchQuery.trim();
+      if (!trimmed) {
+        setSearchQuery("");
+        searchProducts("");
+        return;
+      }
+
+      setSearchQuery(trimmed);
+      searchProducts(trimmed);
+      navigate("/shop");
+    },
+    [localSearchQuery, setSearchQuery, searchProducts, navigate]
+  );
 
   const persistLocationLabel = useCallback(
     (nextLabel) => {
@@ -406,6 +436,45 @@ const Header = () => {
             >
               p2pdeal
             </Link>
+          </div>
+
+          <div className="hidden md:flex flex-1 justify-center px-4">
+            <form
+              onSubmit={handleSearchSubmit}
+              className={`relative flex w-full max-w-xl items-center rounded-full border bg-white px-4 py-2 transition focus-within:ring-2 focus-within:ring-blue-100 ${
+                isSearchFocused
+                  ? "border-blue-400 shadow-sm"
+                  : "border-slate-200"
+              }`}
+            >
+              <SearchIcon className="h-5 w-5 text-slate-400" />
+              <input
+                ref={searchInputRef}
+                type="text"
+                value={localSearchQuery}
+                onChange={handleSearchChange}
+                onFocus={() => setIsSearchFocused(true)}
+                onBlur={() => setIsSearchFocused(false)}
+                placeholder="Search products, categories…"
+                className="ml-3 flex-1 border-0 bg-transparent text-sm text-slate-600 placeholder:text-slate-400 focus:outline-none"
+              />
+              {localSearchQuery ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLocalSearchQuery("");
+                    setSearchQuery("");
+                    searchProducts("");
+                    navigate("/");
+                    searchInputRef.current?.focus();
+                  }}
+                  className="ml-2 inline-flex h-7 w-7 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition hover:bg-slate-200 hover:text-slate-700"
+                  aria-label="Clear search"
+                >
+                  <X size={16} />
+                </button>
+              ) : null}
+            </form>
           </div>
 
           {/* Right: Sign In, Cart */}

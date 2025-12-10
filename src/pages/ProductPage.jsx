@@ -29,7 +29,6 @@ import {
   setOrderId,
   calculateTotals,
 } from "../store/slices/checkoutSlice";
-import SeoHead from "../components/seo/SeoHead";
 
 const ProductPage = () => {
   const { id } = useParams();
@@ -109,136 +108,6 @@ const ProductPage = () => {
     const rawStock = Number(product?.stock ?? 0);
     return Number.isFinite(rawStock) ? Math.max(rawStock, 0) : 0;
   }, [product]);
-
-  const canonicalPath = useMemo(() => {
-    const slugOrId =
-      product?.slug || product?.id || product?._id || product?.productId || id;
-    return slugOrId ? `/product/${encodeURIComponent(slugOrId)}` : undefined;
-  }, [product, id]);
-
-  const productSeo = useMemo(() => {
-    if (!product) {
-      return {
-        title: "Product Details | p2pdeal",
-        description:
-          "Discover customizable merchandise at p2pdeal. Explore apparel, drinkware, stationery, and corporate gifts with premium printing.",
-        keywords: [
-          "custom merchandise",
-          "corporate gifts",
-          "p2pdeal",
-          "product details",
-        ],
-        schema: undefined,
-      };
-    }
-
-    const name = product?.name?.toString().trim() || "Custom Merchandise";
-    const categoryName = product?.category?.toString().trim();
-    const brandName = product?.brand?.toString().trim();
-    const description =
-      product?.description?.toString().trim() ||
-      `Order ${name} with premium customization from p2pdeal. Perfect for brand promotions, events, and corporate gifting.`;
-    const price =
-      Number(product?.price ?? product?.finalPrice ?? 0) || undefined;
-    const currency = product?.currency || "INR";
-    const imageUrl =
-      product?.thumbnail ||
-      product?.image ||
-      product?.gallery?.[0] ||
-      undefined;
-    const availabilityMap = {
-      in_stock: "https://schema.org/InStock",
-      low_stock: "https://schema.org/LimitedAvailability",
-      preorder: "https://schema.org/PreOrder",
-      out_of_stock: "https://schema.org/OutOfStock",
-    };
-    const availability = product?.availabilityStatus
-      ? availabilityMap[product.availabilityStatus] || availabilityMap.in_stock
-      : availabilityMap.in_stock;
-
-    const keywords = [
-      name,
-      `${name} custom printing`,
-      categoryName ? `${categoryName} online` : null,
-      brandName ? `${brandName} merchandise` : null,
-      "p2pdeal",
-      "corporate gifts",
-    ].filter(Boolean);
-
-    const productSchema = {
-      "@context": "https://schema.org",
-      "@type": "Product",
-      name,
-      description,
-      sku: product?.sku || product?.productId || undefined,
-      brand: brandName
-        ? {
-            "@type": "Brand",
-            name: brandName,
-          }
-        : undefined,
-      category: categoryName,
-      image: imageUrl ? [imageUrl] : undefined,
-      offers:
-        price && canonicalPath
-          ? {
-              "@type": "Offer",
-              price: price.toFixed(2),
-              priceCurrency: currency,
-              availability,
-              url: `https://shop.p2pdeal.net${canonicalPath}`,
-            }
-          : undefined,
-      aggregateRating:
-        Number(product?.rating ?? 0) > 0
-          ? {
-              "@type": "AggregateRating",
-              ratingValue: Number(product.rating).toFixed(1),
-              reviewCount:
-                Number(product?.reviews ?? 0) || reviewsList.length || 1,
-            }
-          : undefined,
-    };
-
-    const breadcrumbSchema = {
-      "@context": "https://schema.org",
-      "@type": "BreadcrumbList",
-      itemListElement: [
-        {
-          "@type": "ListItem",
-          position: 1,
-          name: "Home",
-          item: "https://shop.p2pdeal.net/",
-        },
-        categoryName
-          ? {
-              "@type": "ListItem",
-              position: 2,
-              name: categoryName,
-              item: `https://shop.p2pdeal.net/category/${encodeURIComponent(
-                categoryName.toLowerCase().replace(/\s+/g, "-")
-              )}`,
-            }
-          : null,
-        canonicalPath
-          ? {
-              "@type": "ListItem",
-              position: categoryName ? 3 : 2,
-              name,
-              item: `https://shop.p2pdeal.net${canonicalPath}`,
-            }
-          : null,
-      ].filter(Boolean),
-    };
-
-    return {
-      title: `${name} | Custom ${categoryName || "Merchandise"} | p2pdeal`,
-      description,
-      keywords,
-      schema: [productSchema, breadcrumbSchema],
-      imageUrl,
-    };
-  }, [product, canonicalPath, reviewsList]);
 
   useEffect(() => {
     if (fromCartSeedRef.current) {
@@ -672,448 +541,433 @@ const ProductPage = () => {
   }
 
   return (
-    <>
-      <SeoHead
-        title={productSeo.title}
-        description={productSeo.description}
-        keywords={productSeo.keywords}
-        canonicalPath={canonicalPath}
-        openGraph={{
-          title: productSeo.title,
-          description: productSeo.description,
-          image: productSeo.imageUrl,
-        }}
-        schema={productSeo.schema}
-      />
-      <motion.div
-        className="container mx-auto px-4 py-8 min-h-[80vh] flex flex-col items-center bg-slate-50"
-        variants={pageVariants}
-        initial="initial"
-        animate="animate"
-        exit="exit"
-      >
-        <div className="w-full max-w-7xl mx-auto space-y-8">
-          <div className="bg-white rounded-xl shadow-lg overflow-hidden">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 p-6">
-              {/* Image Gallery */}
-              <motion.div variants={fadeInLeft} className="relative">
-                <div className="relative overflow-hidden rounded-lg bg-gray-50">
-                  <Swiper
-                    style={{
-                      "--swiper-pagination-color": "#008ECC",
-                      "--swiper-pagination-bullet-size": "10px",
-                      "--swiper-pagination-bullet-horizontal-gap": "6px",
-                    }}
-                    spaceBetween={10}
-                    pagination={{
-                      clickable: true,
-                      dynamicBullets: true,
-                    }}
-                    zoom={true}
-                    autoplay={{
-                      delay: 2000, // Reduced from 3000 to 2000ms
-                      disableOnInteraction: false,
-                      pauseOnMouseEnter: true,
-                    }}
-                    loop={true}
-                    speed={500} // Faster transition (reduced from 800ms)
-                    modules={[Pagination, Zoom, Autoplay]}
-                    className="w-full h-[400px] md:h-[500px] relative"
-                  >
-                    {productImages.map((img, index) => (
-                      <SwiperSlide key={index}>
-                        <div className="swiper-zoom-container w-full h-full flex items-center justify-center p-4">
-                          <img
-                            src={img}
-                            alt={`${product.name} ${index + 1}`}
-                            className="w-full h-full object-contain"
-                          />
-                        </div>
-                      </SwiperSlide>
-                    ))}
-                  </Swiper>
+    <motion.div
+      className="container mx-auto px-4 py-8 min-h-[80vh] flex flex-col items-center"
+      variants={pageVariants}
+      initial="initial"
+      animate="animate"
+      exit="exit"
+    >
+      <div className="w-full max-w-7xl mx-auto">
+        <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 p-6">
+            {/* Image Gallery */}
+            <motion.div variants={fadeInLeft} className="relative">
+              <div className="relative overflow-hidden rounded-lg bg-gray-50">
+                <Swiper
+                  style={{
+                    "--swiper-pagination-color": "#008ECC",
+                    "--swiper-pagination-bullet-size": "10px",
+                    "--swiper-pagination-bullet-horizontal-gap": "6px",
+                  }}
+                  spaceBetween={10}
+                  pagination={{
+                    clickable: true,
+                    dynamicBullets: true,
+                  }}
+                  zoom={true}
+                  autoplay={{
+                    delay: 2000, // Reduced from 3000 to 2000ms
+                    disableOnInteraction: false,
+                    pauseOnMouseEnter: true,
+                  }}
+                  loop={true}
+                  speed={500} // Faster transition (reduced from 800ms)
+                  modules={[Pagination, Zoom, Autoplay]}
+                  className="w-full h-[400px] md:h-[500px] relative"
+                >
+                  {productImages.map((img, index) => (
+                    <SwiperSlide key={index}>
+                      <div className="swiper-zoom-container w-full h-full flex items-center justify-center p-4">
+                        <img
+                          src={img}
+                          alt={`${product.name} ${index + 1}`}
+                          className="w-full h-full object-contain"
+                        />
+                      </div>
+                    </SwiperSlide>
+                  ))}
+                </Swiper>
 
-                  {/* Zoom is now handled by double-click on the image */}
+                {/* Zoom is now handled by double-click on the image */}
+              </div>
+
+              {/* Pagination dots are now part of the main Swiper component */}
+            </motion.div>
+            {/* Product Details */}
+            <motion.div variants={fadeInRight} className="flex flex-col h-full">
+              <div className="flex-grow">
+                <h1 className="text-3xl font-bold text-gray-900 mb-3">
+                  {product.name}
+                </h1>
+
+                {/* Rating */}
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="flex items-center">
+                    {renderStarIcons(averageRating, {
+                      size: 20,
+                      prefix: "average-rating",
+                    })}
+                  </div>
+                  <span className="text-gray-600 text-sm">
+                    ({formattedTotalReviews})
+                  </span>
                 </div>
 
-                {/* Pagination dots are now part of the main Swiper component */}
-              </motion.div>
-              {/* Product Details */}
-              <motion.div
-                variants={fadeInRight}
-                className="flex flex-col h-full"
-              >
-                <div className="flex-grow">
-                  <h1 className="text-3xl font-bold text-gray-900 mb-3">
-                    {product.name}
-                  </h1>
-
-                  {/* Rating */}
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="flex items-center">
-                      {renderStarIcons(averageRating, {
-                        size: 20,
-                        prefix: "average-rating",
-                      })}
-                    </div>
-                    <span className="text-gray-600 text-sm">
-                      ({formattedTotalReviews})
-                    </span>
-                  </div>
-
-                  {/* Price */}
-                  <div className="mb-6">
-                    <div className="flex items-baseline space-x-3 mb-1">
-                      <p className="text-3xl font-bold text-primary">
-                        ₹{product.price.toLocaleString()}
+                {/* Price */}
+                <div className="mb-6">
+                  <div className="flex items-baseline space-x-3 mb-1">
+                    <p className="text-3xl font-bold text-primary">
+                      ₹{product.price.toLocaleString()}
+                    </p>
+                    {product.originalPrice > product.price && (
+                      <p className="text-lg text-gray-500 line-through">
+                        ₹{product.originalPrice.toLocaleString()}
                       </p>
-                      {product.originalPrice > product.price && (
-                        <p className="text-lg text-gray-500 line-through">
-                          ₹{product.originalPrice.toLocaleString()}
-                        </p>
-                      )}
-                    </div>
-                    {product.discount > 0 && (
-                      <div className="flex flex-col items-start gap-1">
-                        <span className="inline-block bg-green-100 text-green-800 text-sm font-medium px-2.5 py-0.5 rounded">
-                          Save ₹{product.saveAmount.toLocaleString()} (
-                          {product.discount}% OFF)
-                        </span>
-                        <p className="text-xs text-slate-600">
-                          Price excludes GST (added at checkout)
-                        </p>
-                      </div>
                     )}
                   </div>
-
-                  {/* Description */}
-                  <div className="prose max-w-none mb-6 text-gray-600">
-                    <p>{product.description}</p>
-                  </div>
-
-                  {/* Features */}
-                  <div className="mb-6">
-                    <h3 className="text-lg font-semibold mb-3">Key Features</h3>
-                    <ul className="space-y-2">
-                      {product.features.map((feature, index) => (
-                        <li key={index} className="flex items-start">
-                          <svg
-                            className="h-5 w-5 text-green-500 mr-2 mt-0.5 flex-shrink-0"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M5 13l4 4L19 7"
-                            />
-                          </svg>
-                          <span>{feature}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
-                {/* Quantity and Add to Cart */}
-                <div className="mt-auto pt-6 border-t border-gray-100">
-                  <div className="flex flex-col gap-4">
-                    <div className="flex flex-col sm:flex-row flex-wrap items-start sm:items-center gap-4">
-                      <div className="flex items-center gap-3">
-                        <span className="text-sm font-medium text-slate-600">
-                          Qty
-                        </span>
-                        <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() =>
-                              !isPurchaseDisabled &&
-                              handleQuantityChange(quantity - 1)
-                            }
-                            disabled={isPurchaseDisabled || quantity <= 1}
-                            className={`h-9 w-9 rounded-full border text-lg font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 ${
-                              isPurchaseDisabled || quantity <= 1
-                                ? "cursor-not-allowed border-slate-200 text-slate-300"
-                                : "border-slate-300 text-slate-700 hover:border-blue-500 hover:text-blue-600"
-                            }`}
-                            aria-label="Decrease quantity"
-                          >
-                            −
-                          </button>
-                          <div className="flex h-10 w-16 items-center justify-center rounded-md border border-slate-300 bg-white shadow-sm focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-200">
-                            <input
-                              type="tel"
-                              min="1"
-                              value={quantity}
-                              onFocus={(event) => {
-                                event.target.select();
-                              }}
-                              onChange={(event) => {
-                                if (isPurchaseDisabled) {
-                                  return;
-                                }
-
-                                const digitsOnly = event.target.value.replace(
-                                  /[^0-9]/g,
-                                  ""
-                                );
-                                if (!digitsOnly.length) {
-                                  setQuantity("");
-                                  return;
-                                }
-
-                                const raw = Number(digitsOnly);
-                                if (Number.isNaN(raw)) {
-                                  return;
-                                }
-
-                                handleQuantityChange(raw);
-                              }}
-                              className="w-full bg-transparent text-center text-lg font-semibold text-slate-700 focus:outline-none"
-                              inputMode="numeric"
-                              pattern="[0-9]*"
-                            />
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              !isPurchaseDisabled &&
-                              handleQuantityChange(quantity + 1)
-                            }
-                            disabled={isPurchaseDisabled}
-                            className={`h-9 w-9 rounded-full border text-lg font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 ${
-                              isPurchaseDisabled
-                                ? "cursor-not-allowed border-slate-200 text-slate-300"
-                                : "border-slate-300 text-slate-700 hover:border-blue-500 hover:text-blue-600"
-                            }`}
-                            aria-label="Increase quantity"
-                          >
-                            +
-                          </button>
-                        </div>
-                      </div>
-
-                      {normalizedSizes.length > 0 && (
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="text-sm font-medium text-slate-600">
-                            Sizes Available:
-                          </span>
-                          {normalizedSizes.map((size) => {
-                            const isActive = selectedSize === size.label;
-                            const isDisabled =
-                              !size.isAvailable || isPurchaseDisabled;
-                            return (
-                              <button
-                                key={size.label}
-                                type="button"
-                                onClick={() => {
-                                  if (isDisabled) {
-                                    return;
-                                  }
-                                  setSelectedSize(size.label);
-                                  setQuantity((current) => {
-                                    const safeQuantity = Math.max(1, current);
-                                    if (
-                                      size.stock > 0 &&
-                                      safeQuantity > size.stock
-                                    ) {
-                                      setSizeError(
-                                        `Only ${size.stock} unit${
-                                          size.stock === 1 ? "" : "s"
-                                        } available for size ${size.label}.`
-                                      );
-                                      return size.stock;
-                                    }
-                                    setSizeError("");
-                                    return safeQuantity;
-                                  });
-                                }}
-                                disabled={isDisabled}
-                                title={
-                                  !size.isAvailable
-                                    ? "Currently unavailable"
-                                    : undefined
-                                }
-                                className={`inline-flex items-center justify-center rounded-full border px-4 py-1.5 text-sm font-semibold transition ${
-                                  isActive
-                                    ? "border-blue-600 bg-blue-50 text-blue-600"
-                                    : "border-slate-200 bg-white text-slate-600 hover:border-blue-200 hover:text-blue-600"
-                                } ${
-                                  !size.isAvailable
-                                    ? "cursor-not-allowed opacity-50"
-                                    : ""
-                                }`}
-                              >
-                                {size.label}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      )}
-
-                      {sizeError && (
-                        <div className="w-full rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-700">
-                          {sizeError}
-                        </div>
-                      )}
-
-                      <motion.button
-                        type="button"
-                        className={`flex-1 px-6 py-3 rounded-lg font-medium transition-colors text-center whitespace-nowrap ${
-                          isPurchaseDisabled || isQuantityExceeded
-                            ? "bg-slate-200 text-slate-500 cursor-not-allowed"
-                            : "bg-primary text-white hover:bg-primary/90"
-                        }`}
-                        whileHover={
-                          isPurchaseDisabled || isQuantityExceeded
-                            ? undefined
-                            : buttonHover.whileHover
-                        }
-                        whileTap={
-                          isPurchaseDisabled || isQuantityExceeded
-                            ? undefined
-                            : buttonHover.whileTap
-                        }
-                        disabled={isPurchaseDisabled || isQuantityExceeded}
-                        onClick={handleAddToCart}
-                      >
-                        {isNotReadyToShip ? "Unavailable" : "Add to Cart"}
-                      </motion.button>
-                      <motion.button
-                        type="button"
-                        className={`flex-1 px-6 py-3 rounded-lg font-medium transition-colors text-center whitespace-nowrap ${
-                          isPurchaseDisabled || isQuantityExceeded
-                            ? "bg-slate-200 text-slate-500 cursor-not-allowed"
-                            : "bg-blue-500 text-white hover:bg-blue-600"
-                        }`}
-                        whileHover={
-                          isPurchaseDisabled || isQuantityExceeded
-                            ? undefined
-                            : buttonHover.whileHover
-                        }
-                        whileTap={
-                          isPurchaseDisabled || isQuantityExceeded
-                            ? undefined
-                            : buttonHover.whileTap
-                        }
-                        disabled={isPurchaseDisabled || isQuantityExceeded}
-                        onClick={goToCheckout}
-                      >
-                        {isNotReadyToShip ? "Notify Me" : "Buy Now"}
-                      </motion.button>
-                    </div>
-                  </div>
-
-                  {isNotReadyToShip && (
-                    <div className="mt-3 rounded-lg border border-rose-100 bg-rose-50 px-3 py-2 text-sm text-rose-600">
-                      This item is currently unavailable for purchase. Please
-                      check back soon.
-                    </div>
-                  )}
-
-                  <div className="mt-4 text-sm text-gray-500 flex items-center">
-                    <svg
-                      className={`h-5 w-5 mr-2 ${availabilityIconClass}`}
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d={
-                          availabilityStatus === "out_of_stock"
-                            ? "M6 18L18 6M6 6l12 12"
-                            : "M5 13l4 4L19 7"
-                        }
-                      />
-                    </svg>
-                    {availabilityMessage}
-                  </div>
-                </div>
-              </motion.div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-xl shadow-lg overflow-hidden p-6">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <h2 className="text-2xl font-semibold text-gray-900">
-                  Customer Reviews
-                </h2>
-                <p className="text-sm text-gray-500">
-                  Hear from shoppers who bought this product.
-                </p>
-              </div>
-              <div className="rounded-lg bg-slate-50 px-4 py-2 text-xs text-gray-500 font-medium">
-                {totalCommentReviews > 0
-                  ? `${totalCommentReviews} customer review${
-                      totalCommentReviews > 1 ? "s" : ""
-                    }`
-                  : "No customer reviews yet"}
-              </div>
-            </div>
-
-            <div className="mt-6 space-y-4">
-              {totalCommentReviews > 0 && displayedReviews.length > 0 ? (
-                displayedReviews.map((review, index) => (
-                  <div
-                    key={`${review.reviewerName || "reviewer"}-${index}`}
-                    className="border border-slate-100 rounded-xl p-4 bg-slate-50"
-                  >
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <div className="font-semibold text-secondary text-sm">
-                        {review.reviewerName || "Verified Buyer"}
-                      </div>
-                      <div className="flex items-center">
-                        {renderStarIcons(review.rating, {
-                          size: 16,
-                          prefix: `review-${index}`,
-                        })}
-                        <span className="ml-2 text-xs text-gray-500">
-                          {review.ratedAt
-                            ? new Date(review.ratedAt).toLocaleDateString()
-                            : ""}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="mt-3 flex items-start gap-3 text-sm text-medium-text">
-                      <MessageCircle className="h-4 w-4 text-secondary mt-0.5" />
-                      <p className="whitespace-pre-line break-words">
-                        {review.review?.trim()
-                          ? review.review
-                          : "No additional comments provided."}
+                  {product.discount > 0 && (
+                    <div className="flex flex-col items-start gap-1">
+                      <span className="inline-block bg-green-100 text-green-800 text-sm font-medium px-2.5 py-0.5 rounded">
+                        Save ₹{product.saveAmount.toLocaleString()} (
+                        {product.discount}% OFF)
+                      </span>
+                      <p className="text-xs text-slate-600">
+                        Price excludes GST (added at checkout)
                       </p>
                     </div>
-                  </div>
-                ))
-              ) : (
-                <p className="text-sm text-gray-500">
-                  No reviews yet. Be the first to share your experience after
-                  purchasing!
-                </p>
-              )}
-            </div>
+                  )}
+                </div>
 
-            {totalCommentReviews > 3 && (
-              <div className="mt-6 flex justify-center">
-                <button
-                  type="button"
-                  onClick={() => setShowAllReviews((prev) => !prev)}
-                  className="px-4 py-2 text-sm font-medium text-primary border border-primary rounded-lg hover:bg-primary/10 transition"
-                >
-                  {showAllReviews
-                    ? "Show Less"
-                    : `Show All Reviews (${totalCommentReviews})`}
-                </button>
+                {/* Description */}
+                <div className="prose max-w-none mb-6 text-gray-600">
+                  <p>{product.description}</p>
+                </div>
+
+                {/* Features */}
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold mb-3">Key Features</h3>
+                  <ul className="space-y-2">
+                    {product.features.map((feature, index) => (
+                      <li key={index} className="flex items-start">
+                        <svg
+                          className="h-5 w-5 text-green-500 mr-2 mt-0.5 flex-shrink-0"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M5 13l4 4L19 7"
+                          />
+                        </svg>
+                        <span>{feature}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               </div>
-            )}
+              {/* Quantity and Add to Cart */}
+              <div className="mt-auto pt-6 border-t border-gray-100">
+                <div className="flex flex-col gap-4">
+                  <div className="flex flex-col sm:flex-row flex-wrap items-start sm:items-center gap-4">
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm font-medium text-slate-600">
+                        Qty
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            !isPurchaseDisabled &&
+                            handleQuantityChange(quantity - 1)
+                          }
+                          disabled={isPurchaseDisabled || quantity <= 1}
+                          className={`h-9 w-9 rounded-full border text-lg font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 ${
+                            isPurchaseDisabled || quantity <= 1
+                              ? "cursor-not-allowed border-slate-200 text-slate-300"
+                              : "border-slate-300 text-slate-700 hover:border-blue-500 hover:text-blue-600"
+                          }`}
+                          aria-label="Decrease quantity"
+                        >
+                          −
+                        </button>
+                        <div className="flex h-10 w-16 items-center justify-center rounded-md border border-slate-300 bg-white shadow-sm focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-200">
+                          <input
+                            type="tel"
+                            min="1"
+                            value={quantity}
+                            onFocus={(event) => {
+                              event.target.select();
+                            }}
+                            onChange={(event) => {
+                              if (isPurchaseDisabled) {
+                                return;
+                              }
+
+                              const digitsOnly = event.target.value.replace(
+                                /[^0-9]/g,
+                                ""
+                              );
+                              if (!digitsOnly.length) {
+                                setQuantity("");
+                                return;
+                              }
+
+                              const raw = Number(digitsOnly);
+                              if (Number.isNaN(raw)) {
+                                return;
+                              }
+
+                              handleQuantityChange(raw);
+                            }}
+                            className="w-full bg-transparent text-center text-lg font-semibold text-slate-700 focus:outline-none"
+                            inputMode="numeric"
+                            pattern="[0-9]*"
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            !isPurchaseDisabled &&
+                            handleQuantityChange(quantity + 1)
+                          }
+                          disabled={isPurchaseDisabled}
+                          className={`h-9 w-9 rounded-full border text-lg font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 ${
+                            isPurchaseDisabled
+                              ? "cursor-not-allowed border-slate-200 text-slate-300"
+                              : "border-slate-300 text-slate-700 hover:border-blue-500 hover:text-blue-600"
+                          }`}
+                          aria-label="Increase quantity"
+                        >
+                          +
+                        </button>
+                      </div>
+                    </div>
+
+                    {normalizedSizes.length > 0 && (
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-sm font-medium text-slate-600">
+                          Sizes Available:
+                        </span>
+                        {normalizedSizes.map((size) => {
+                          const isActive = selectedSize === size.label;
+                          const isDisabled =
+                            !size.isAvailable || isPurchaseDisabled;
+                          return (
+                            <button
+                              key={size.label}
+                              type="button"
+                              onClick={() => {
+                                if (isDisabled) {
+                                  return;
+                                }
+                                setSelectedSize(size.label);
+                                setQuantity((current) => {
+                                  const safeQuantity = Math.max(1, current);
+                                  if (
+                                    size.stock > 0 &&
+                                    safeQuantity > size.stock
+                                  ) {
+                                    setSizeError(
+                                      `Only ${size.stock} unit${
+                                        size.stock === 1 ? "" : "s"
+                                      } available for size ${size.label}.`
+                                    );
+                                    return size.stock;
+                                  }
+                                  setSizeError("");
+                                  return safeQuantity;
+                                });
+                              }}
+                              disabled={isDisabled}
+                              title={
+                                !size.isAvailable
+                                  ? "Currently unavailable"
+                                  : undefined
+                              }
+                              className={`inline-flex items-center justify-center rounded-full border px-4 py-1.5 text-sm font-semibold transition ${
+                                isActive
+                                  ? "border-blue-600 bg-blue-50 text-blue-600"
+                                  : "border-slate-200 bg-white text-slate-600 hover:border-blue-200 hover:text-blue-600"
+                              } ${
+                                !size.isAvailable
+                                  ? "cursor-not-allowed opacity-50"
+                                  : ""
+                              }`}
+                            >
+                              {size.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    {sizeError && (
+                      <div className="w-full rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-700">
+                        {sizeError}
+                      </div>
+                    )}
+
+                    <motion.button
+                      type="button"
+                      className={`flex-1 px-6 py-3 rounded-lg font-medium transition-colors text-center whitespace-nowrap ${
+                        isPurchaseDisabled || isQuantityExceeded
+                          ? "bg-slate-200 text-slate-500 cursor-not-allowed"
+                          : "bg-primary text-white hover:bg-primary/90"
+                      }`}
+                      whileHover={
+                        isPurchaseDisabled || isQuantityExceeded
+                          ? undefined
+                          : buttonHover.whileHover
+                      }
+                      whileTap={
+                        isPurchaseDisabled || isQuantityExceeded
+                          ? undefined
+                          : buttonHover.whileTap
+                      }
+                      disabled={isPurchaseDisabled || isQuantityExceeded}
+                      onClick={handleAddToCart}
+                    >
+                      {isNotReadyToShip ? "Unavailable" : "Add to Cart"}
+                    </motion.button>
+                    <motion.button
+                      type="button"
+                      className={`flex-1 px-6 py-3 rounded-lg font-medium transition-colors text-center whitespace-nowrap ${
+                        isPurchaseDisabled || isQuantityExceeded
+                          ? "bg-slate-200 text-slate-500 cursor-not-allowed"
+                          : "bg-blue-500 text-white hover:bg-blue-600"
+                      }`}
+                      whileHover={
+                        isPurchaseDisabled || isQuantityExceeded
+                          ? undefined
+                          : buttonHover.whileHover
+                      }
+                      whileTap={
+                        isPurchaseDisabled || isQuantityExceeded
+                          ? undefined
+                          : buttonHover.whileTap
+                      }
+                      disabled={isPurchaseDisabled || isQuantityExceeded}
+                      onClick={goToCheckout}
+                    >
+                      {isNotReadyToShip ? "Notify Me" : "Buy Now"}
+                    </motion.button>
+                  </div>
+                </div>
+
+                {isNotReadyToShip && (
+                  <div className="mt-3 rounded-lg border border-rose-100 bg-rose-50 px-3 py-2 text-sm text-rose-600">
+                    This item is currently unavailable for purchase. Please
+                    check back soon.
+                  </div>
+                )}
+
+                <div className="mt-4 text-sm text-gray-500 flex items-center">
+                  <svg
+                    className={`h-5 w-5 mr-2 ${availabilityIconClass}`}
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d={
+                        availabilityStatus === "out_of_stock"
+                          ? "M6 18L18 6M6 6l12 12"
+                          : "M5 13l4 4L19 7"
+                      }
+                    />
+                  </svg>
+                  {availabilityMessage}
+                </div>
+              </div>
+            </motion.div>
           </div>
         </div>
-      </motion.div>
-    </>
+      </div>
+
+      <div className="w-full max-w-7xl mx-auto mt-8">
+        <div className="bg-white rounded-xl shadow-lg overflow-hidden p-6">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="text-2xl font-semibold text-gray-900">
+                Customer Reviews
+              </h2>
+              <p className="text-sm text-gray-500">
+                Hear from shoppers who bought this product.
+              </p>
+            </div>
+            <div className="rounded-lg bg-slate-50 px-4 py-2 text-xs text-gray-500 font-medium">
+              {totalCommentReviews > 0
+                ? `${totalCommentReviews} customer review${
+                    totalCommentReviews > 1 ? "s" : ""
+                  }`
+                : "No customer reviews yet"}
+            </div>
+          </div>
+
+          <div className="mt-6 space-y-4">
+            {totalCommentReviews > 0 && displayedReviews.length > 0 ? (
+              displayedReviews.map((review, index) => (
+                <div
+                  key={`${review.reviewerName || "reviewer"}-${index}`}
+                  className="border border-slate-100 rounded-xl p-4 bg-slate-50"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="font-semibold text-secondary text-sm">
+                      {review.reviewerName || "Verified Buyer"}
+                    </div>
+                    <div className="flex items-center">
+                      {renderStarIcons(review.rating, {
+                        size: 16,
+                        prefix: `review-${index}`,
+                      })}
+                      <span className="ml-2 text-xs text-gray-500">
+                        {review.ratedAt
+                          ? new Date(review.ratedAt).toLocaleDateString()
+                          : ""}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="mt-3 flex items-start gap-3 text-sm text-medium-text">
+                    <MessageCircle className="h-4 w-4 text-secondary mt-0.5" />
+                    <p className="whitespace-pre-line break-words">
+                      {review.review?.trim()
+                        ? review.review
+                        : "No additional comments provided."}
+                    </p>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p className="text-sm text-gray-500">
+                No reviews yet. Be the first to share your experience after
+                purchasing!
+              </p>
+            )}
+          </div>
+
+          {totalCommentReviews > 3 && (
+            <div className="mt-6 flex justify-center">
+              <button
+                type="button"
+                onClick={() => setShowAllReviews((prev) => !prev)}
+                className="px-4 py-2 text-sm font-medium text-primary border border-primary rounded-lg hover:bg-primary/10 transition"
+              >
+                {showAllReviews
+                  ? "Show Less"
+                  : `Show All Reviews (${totalCommentReviews})`}
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </motion.div>
   );
 };
 

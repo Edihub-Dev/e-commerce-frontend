@@ -1,9 +1,8 @@
-import React, { useMemo } from "react";
+import React from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useCart } from "../contexts/CartContext";
 import { cardHover, buttonHover } from "../utils/animations";
-import { buildProductImageAlt } from "../utils/seo";
 
 const ProductCard = ({ product }) => {
   const { addItem } = useCart();
@@ -33,11 +32,6 @@ const ProductCard = ({ product }) => {
   const displayImage =
     product?.thumbnail || product?.image || product?.gallery?.[0];
 
-  const imageAlt = useMemo(() => {
-    if (!product) return "p2pdeal custom merchandise product image";
-    return buildProductImageAlt(product, { context: "product card" });
-  }, [product]);
-
   return (
     <motion.div
       className="bg-white border border-gray-200 rounded-lg overflow-hidden group flex flex-col h-full hover:shadow-xl transition-all duration-300 hover:border-primary/20 w-full"
@@ -60,7 +54,7 @@ const ProductCard = ({ product }) => {
           <div className="absolute inset-0 flex items-center justify-center p-2 sm:p-3 md:p-4">
             <img
               src={displayImage}
-              alt={imageAlt}
+              alt={product.name}
               className="w-full h-full object-contain transition-transform duration-500 group-hover:scale-110"
               loading="lazy"
               onError={(e) => {

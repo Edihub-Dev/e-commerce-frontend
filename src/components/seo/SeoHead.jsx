@@ -1,6 +1,5 @@
-import React from "react";
+import React, { useEffect } from "react";
 import PropTypes from "prop-types";
-import { Helmet } from "react-helmet-async";
 
 const ORIGIN = "https://shop.p2pdeal.net";
 
@@ -43,62 +42,157 @@ const SeoHead = ({
   twitter = {},
   schema,
   noindex = false,
-  children,
 }) => {
-  const resolvedKeywords =
-    Array.isArray(keywords) && keywords.length > 0
-      ? keywords
-      : DEFAULT.keywords;
+  useEffect(() => {
+    if (typeof document === "undefined") {
+      return undefined;
+    }
 
-  const pageUrl = buildAbsoluteUrl(canonicalPath);
-  const ogImage = buildAbsoluteUrl(openGraph.image || DEFAULT.image);
-  const twitterImage = buildAbsoluteUrl(
-    twitter.image || openGraph.image || DEFAULT.image
-  );
+    const cleanupTasks = [];
 
-  return (
-    <Helmet prioritizeSeoTags>
-      <title>{title}</title>
-      <meta name="description" content={description} />
-      <meta name="keywords" content={resolvedKeywords.join(", ")} />
-      {canonicalPath && <link rel="canonical" href={pageUrl} />}
+    const previousTitle = document.title;
+    document.title = title;
+    cleanupTasks.push(() => {
+      document.title = previousTitle;
+    });
 
-      <meta property="og:type" content={openGraph.type || "website"} />
-      <meta property="og:title" content={openGraph.title || title} />
-      <meta
-        property="og:description"
-        content={openGraph.description || description}
-      />
-      {ogImage && <meta property="og:image" content={ogImage} />}
-      {pageUrl && <meta property="og:url" content={pageUrl} />}
-      <meta property="og:site_name" content="p2pdeal" />
+    const resolvedKeywords =
+      Array.isArray(keywords) && keywords.length > 0
+        ? keywords
+        : DEFAULT.keywords;
 
-      <meta
-        name="twitter:card"
-        content={twitter.card || "summary_large_image"}
-      />
-      <meta name="twitter:title" content={twitter.title || title} />
-      <meta
-        name="twitter:description"
-        content={twitter.description || description}
-      />
-      {twitterImage && <meta name="twitter:image" content={twitterImage} />}
+    const updateMeta = ({ name, property, content }) => {
+      if (!content) return;
+      const selector = name
+        ? `meta[name="${name}"]`
+        : `meta[property="${property}"]`;
+      const existing = document.head.querySelector(selector);
+      if (existing) {
+        const previousContent = existing.getAttribute("content");
+        existing.setAttribute("content", content);
+        cleanupTasks.push(() => {
+          if (previousContent === null) {
+            existing.removeAttribute("content");
+          } else {
+            existing.setAttribute("content", previousContent);
+          }
+        });
+        return;
+      }
 
-      {noindex && <meta name="robots" content="noindex,nofollow" />}
+      const meta = document.createElement("meta");
+      if (name) meta.setAttribute("name", name);
+      if (property) meta.setAttribute("property", property);
+      meta.setAttribute("content", content);
+      document.head.appendChild(meta);
+      cleanupTasks.push(() => {
+        document.head.removeChild(meta);
+      });
+    };
 
-      {Array.isArray(schema)
-        ? schema.map((entry, index) => (
-            <script key={index} type="application/ld+json">
-              {JSON.stringify(entry)}
-            </script>
-          ))
-        : schema && (
-            <script type="application/ld+json">{JSON.stringify(schema)}</script>
-          )}
+    updateMeta({ name: "description", content: description });
+    updateMeta({ name: "keywords", content: resolvedKeywords.join(", ") });
 
-      {children}
-    </Helmet>
-  );
+    const canonicalUrl = buildAbsoluteUrl(canonicalPath);
+    if (canonicalPath) {
+      let link = document.head.querySelector('link[rel="canonical"]');
+      if (!link) {
+        link = document.createElement("link");
+        link.setAttribute("rel", "canonical");
+        document.head.appendChild(link);
+        cleanupTasks.push(() => {
+          document.head.removeChild(link);
+        });
+      } else {
+        const previousHref = link.getAttribute("href");
+        cleanupTasks.push(() => {
+          if (previousHref === null) {
+            link.removeAttribute("href");
+          } else {
+            link.setAttribute("href", previousHref);
+          }
+        });
+      }
+      link.setAttribute("href", canonicalUrl);
+    }
+
+    const ogImage = buildAbsoluteUrl(openGraph.image || DEFAULT.image);
+    updateMeta({ property: "og:type", content: openGraph.type || "website" });
+    updateMeta({ property: "og:title", content: openGraph.title || title });
+    updateMeta({
+      property: "og:description",
+      content: openGraph.description || description,
+    });
+    updateMeta({ property: "og:image", content: ogImage });
+    if (canonicalUrl) {
+      updateMeta({ property: "og:url", content: canonicalUrl });
+    }
+    updateMeta({ property: "og:site_name", content: "p2pdeal" });
+
+    const twitterImage = buildAbsoluteUrl(
+      twitter.image || openGraph.image || DEFAULT.image
+    );
+    updateMeta({
+      name: "twitter:card",
+      content: twitter.card || "summary_large_image",
+    });
+    updateMeta({ name: "twitter:title", content: twitter.title || title });
+    updateMeta({
+      name: "twitter:description",
+      content: twitter.description || description,
+    });
+    updateMeta({ name: "twitter:image", content: twitterImage });
+
+    if (noindex) {
+      updateMeta({ name: "robots", content: "noindex,nofollow" });
+    }
+
+    const schemaEntries = Array.isArray(schema)
+      ? schema
+      : schema
+      ? [schema]
+      : [];
+    const scriptNodes = schemaEntries.map((entry) => {
+      const script = document.createElement("script");
+      script.type = "application/ld+json";
+      script.text = JSON.stringify(entry);
+      document.head.appendChild(script);
+      cleanupTasks.push(() => {
+        document.head.removeChild(script);
+      });
+      return script;
+    });
+
+    return () => {
+      while (cleanupTasks.length) {
+        const task = cleanupTasks.pop();
+        try {
+          task();
+        } catch (error) {
+          console.warn("SeoHead cleanup failed", error);
+        }
+      }
+      // ensure script nodes removed (already handled) but to be safe
+      scriptNodes.length = 0;
+    };
+  }, [
+    title,
+    description,
+    canonicalPath,
+    openGraph.type,
+    openGraph.title,
+    openGraph.description,
+    openGraph.image,
+    twitter.card,
+    twitter.title,
+    twitter.description,
+    twitter.image,
+    JSON.stringify(keywords),
+    JSON.stringify(schema),
+    noindex,
+  ]);
+
+  return null;
 };
 
 SeoHead.propTypes = {

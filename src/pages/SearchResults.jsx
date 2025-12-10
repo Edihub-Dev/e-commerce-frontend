@@ -62,6 +62,12 @@ const SearchResults = () => {
     navigate("/");
   }, [clearSearch, navigate]);
 
+  const handleContinueShopping = useCallback(() => {
+    setMobileQuery("");
+    clearSearch();
+    navigate("/");
+  }, [clearSearch, navigate]);
+
   // Only trigger search when query changes
   useEffect(() => {
     if (!query) {
@@ -110,7 +116,7 @@ const SearchResults = () => {
             We couldn't find any products matching "{query}"
           </p>
           <button
-            onClick={() => navigate("/")}
+            onClick={handleContinueShopping}
             className="bg-[#008ECC] text-white px-6 py-2 rounded-md hover:bg-[#0078b5] transition-colors"
           >
             Continue Shopping
@@ -120,7 +126,7 @@ const SearchResults = () => {
     }
 
     return null;
-  }, [searchResults, query, isSearching, navigate]);
+  }, [searchResults, query, isSearching, handleContinueShopping]);
 
   return (
     <div className="container mx-auto px-4 py-8">

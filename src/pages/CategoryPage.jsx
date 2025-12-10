@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import ProductCard from "../components/ProductCard";
 import { getProductsByCategory, getProductsByBrand } from "../utils/api";
 import { pageVariants } from "../utils/animations";
+import SeoHead from "../components/seo/SeoHead";
 
 const CategoryPage = () => {
   const { slug } = useParams();
@@ -90,6 +91,21 @@ const CategoryPage = () => {
       animate="animate"
       exit="exit"
     >
+      <SeoHead
+        title={`Category: ${categoryTitle} | MST Blockchain Merchandise | Crypto Merchandise & Blockchain Merch India`}
+        description={`Shop ${categoryTitle} from MST Blockchain official merchandise including blockchain official polo t-shirt (white edition, yellow edition, blue edition), blockchain ceramic coffee mug, blockchain executive diary, blockchain executive pen, blockchain executive diary + pen set, blockchain white logo cap and blockchain premium metal keychain.`}
+        keywords="crypto merchandise, blockchain merch india, mst merch india, blockchain official polo t-shirt (white edition), blockchain official polo t-shirt (yellow edition), blockchain official polo t-shirt (blue edition), blockchain ceramic coffee mug, blockchain executive diary, blockchain executive pen, blockchain executive diary + pen set, blockchain white logo cap, blockchain premium metal keychain, blockchain premium metal avenger keychain, blockchain premium metal spider keychain, blockchain premium metal spartan keychain, blockchain premium metal legend keychain, blockchain premium metal warrior keychain, best price blockchain official polo t-shirt (white edition) india, blockchain official polo t-shirt (white edition) under budget, affordable blockchain official polo t-shirt (white edition) online, best price blockchain ceramic coffee mug india, blockchain ceramic coffee mug under budget, affordable blockchain ceramic coffee mug online"
+        canonicalPath={`/category/${slug}`}
+        openGraph={{
+          title: `Category: ${categoryTitle} | MST Blockchain Merchandise`,
+          description: `Browse ${categoryTitle} in MST Blockchain crypto merchandise and blockchain merch india, including blockchain official polo t-shirt (white edition, yellow edition, blue edition), blockchain ceramic coffee mug, blockchain executive diary, blockchain executive pen, blockchain executive diary + pen set, blockchain white logo cap and blockchain premium metal keychain.`,
+          type: "website",
+        }}
+        twitter={{
+          title: `Category: ${categoryTitle} | MST Blockchain Merchandise`,
+          description: `Shop ${categoryTitle} from mst merch india featuring blockchain official polo t-shirt (white edition), blockchain ceramic coffee mug, blockchain executive diary, blockchain executive pen, blockchain white logo cap and blockchain premium metal keychain at the best price in India.`,
+        }}
+      />
       <motion.h1
         className="text-3xl font-bold mb-8"
         initial={{ opacity: 0, y: -20 }}

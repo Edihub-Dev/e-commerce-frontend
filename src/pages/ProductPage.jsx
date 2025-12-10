@@ -29,6 +29,8 @@ import {
   setOrderId,
   calculateTotals,
 } from "../store/slices/checkoutSlice";
+import SeoHead from "../components/seo/SeoHead";
+import { findMstSeoConfigForName } from "../seo/mstSeoConfig";
 
 const ProductPage = () => {
   const { id } = useParams();
@@ -108,6 +110,11 @@ const ProductPage = () => {
     const rawStock = Number(product?.stock ?? 0);
     return Number.isFinite(rawStock) ? Math.max(rawStock, 0) : 0;
   }, [product]);
+
+  const mstSeoEntry = useMemo(() => {
+    if (!product?.name) return null;
+    return findMstSeoConfigForName(product.name);
+  }, [product?.name]);
 
   useEffect(() => {
     if (fromCartSeedRef.current) {
@@ -219,6 +226,20 @@ const ProductPage = () => {
     .filter((src) => !galleryImages.includes(src));
   const productImages = product ? [...galleryImages, ...fallbackImages] : [];
   const primaryImage = product?.thumbnail || product?.image || productImages[0];
+
+  const buildImageAlt = (index = 0) => {
+    const baseName = product?.name || "MST Blockchain merchandise";
+
+    if (mstSeoEntry) {
+      return `${mstSeoEntry.productName} image ${index + 1} - ${
+        mstSeoEntry.primaryKeywords
+      }`;
+    }
+
+    return `${baseName} image ${
+      index + 1
+    } - mst blockchain merch india, crypto merchandise, blockchain merch india`;
+  };
 
   const availabilityMessage = (() => {
     switch (availabilityStatus) {
@@ -540,6 +561,109 @@ const ProductPage = () => {
     );
   }
 
+  const canonicalPath = `/product/${id}`;
+  const seoTitle =
+    mstSeoEntry?.seoTitle ||
+    `${product.name} | MST Blockchain Merchandise | Crypto Merchandise & Blockchain Merch India`;
+  const seoDescription =
+    mstSeoEntry?.seoDescription ||
+    `Buy ${product.name} at the best price. Premium MST Blockchain merchandise with fast delivery across India. Crypto merchandise and blockchain merch india.`;
+
+  const keywordParts = [];
+  if (mstSeoEntry?.primaryKeywords)
+    keywordParts.push(mstSeoEntry.primaryKeywords);
+  if (mstSeoEntry?.secondaryKeywords)
+    keywordParts.push(mstSeoEntry.secondaryKeywords);
+  if (mstSeoEntry?.longTailKeywords)
+    keywordParts.push(mstSeoEntry.longTailKeywords);
+  if (mstSeoEntry?.tags) keywordParts.push(mstSeoEntry.tags);
+
+  const fallbackKeywords = [
+    product.name,
+    product.category,
+    product.brand,
+    "mst",
+    "blockchain",
+    "merch",
+    "crypto merchandise",
+    "blockchain merch india",
+  ]
+    .filter(Boolean)
+    .join(", ");
+
+  const seoKeywords = keywordParts.length
+    ? keywordParts.join(", ")
+    : fallbackKeywords;
+
+  const productUrl = `https://shop.p2pdeal.net${canonicalPath}`;
+  const availabilityMap = {
+    preorder: "https://schema.org/PreOrder",
+    out_of_stock: "https://schema.org/OutOfStock",
+    low_stock: "https://schema.org/LimitedAvailability",
+    in_stock: "https://schema.org/InStock",
+  };
+  const offerAvailability =
+    availabilityMap[availabilityStatus] || "https://schema.org/InStock";
+
+  const productSchema = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: product.name,
+    image:
+      (productImages && productImages.length > 0
+        ? productImages
+        : primaryImage
+        ? [primaryImage]
+        : undefined) || undefined,
+    description: seoDescription,
+    brand: {
+      "@type": "Brand",
+      name: "MST Blockchain",
+    },
+    sku: product.sku || product.id,
+    offers: {
+      "@type": "Offer",
+      url: productUrl,
+      priceCurrency: "INR",
+      price: Number(product.price || 0) || undefined,
+      availability: offerAvailability,
+      itemCondition: "https://schema.org/NewCondition",
+    },
+    aggregateRating:
+      totalReviews > 0
+        ? {
+            "@type": "AggregateRating",
+            ratingValue: averageRating || 0,
+            reviewCount: totalReviews,
+          }
+        : undefined,
+  };
+
+  const breadcrumbSchema = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      {
+        "@type": "ListItem",
+        position: 1,
+        name: "Home",
+        item: "https://shop.p2pdeal.net/",
+      },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: "Shop",
+        item: "https://shop.p2pdeal.net/shop",
+      },
+      {
+        "@type": "ListItem",
+        position: 3,
+        name: product.name,
+        item: productUrl,
+      },
+    ],
+  };
+
   return (
     <motion.div
       className="container mx-auto px-4 py-8 min-h-[80vh] flex flex-col items-center"
@@ -548,6 +672,25 @@ const ProductPage = () => {
       animate="animate"
       exit="exit"
     >
+      <SeoHead
+        title={seoTitle}
+        description={seoDescription}
+        keywords={seoKeywords}
+        canonicalPath={canonicalPath}
+        openGraph={{
+          title: seoTitle,
+          description: seoDescription,
+          image: primaryImage,
+          type: "product",
+        }}
+        twitter={{
+          title: seoTitle,
+          description: seoDescription,
+          image: primaryImage,
+          card: "summary_large_image",
+        }}
+        schema={[productSchema, breadcrumbSchema]}
+      />
       <div className="w-full max-w-7xl mx-auto">
         <div className="bg-white rounded-xl shadow-lg overflow-hidden">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 p-6">
@@ -581,7 +724,7 @@ const ProductPage = () => {
                       <div className="swiper-zoom-container w-full h-full flex items-center justify-center p-4">
                         <img
                           src={img}
-                          alt={`${product.name} ${index + 1}`}
+                          alt={buildImageAlt(index)}
                           className="w-full h-full object-contain"
                         />
                       </div>

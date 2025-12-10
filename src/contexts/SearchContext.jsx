@@ -6,6 +6,7 @@ import React, {
   useRef,
 } from "react";
 import { fetchProducts } from "../utils/api";
+import { MST_SEO_CONFIG } from "../seo/mstSeoConfig";
 
 const SearchContext = createContext();
 
@@ -15,6 +16,14 @@ const normalizeSearchTerm = (term = "") =>
     .replace(/[^a-z0-9\-_\/.@#&+]+/g, " ")
     .replace(/\s+/g, " ")
     .trim();
+
+const explodeCsvKeywords = (value) =>
+  !value
+    ? []
+    : String(value)
+        .split(",")
+        .map((item) => item.trim())
+        .filter(Boolean);
 
 const CATEGORY_KEYWORDS = Object.freeze({
   "Office Essentials": [
@@ -772,6 +781,27 @@ const buildSearchIndex = () => {
       type: "product",
       canonical,
       canonicalNormalized: normalizeSearchTerm(canonical),
+      synonyms,
+    });
+  });
+
+  (MST_SEO_CONFIG || []).forEach((entry) => {
+    if (!entry?.productName) return;
+
+    const synonyms = [
+      entry.productName,
+      ...explodeCsvKeywords(entry.primaryKeywords),
+      ...explodeCsvKeywords(entry.secondaryKeywords),
+      ...explodeCsvKeywords(entry.longTailKeywords),
+      ...explodeCsvKeywords(entry.tags),
+    ].filter(Boolean);
+
+    if (!synonyms.length) return;
+
+    entries.push({
+      type: "product",
+      canonical: entry.productName,
+      canonicalNormalized: normalizeSearchTerm(entry.productName),
       synonyms,
     });
   });

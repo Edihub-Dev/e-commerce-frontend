@@ -32,6 +32,37 @@ const ProductCard = ({ product }) => {
   const displayImage =
     product?.thumbnail || product?.image || product?.gallery?.[0];
 
+  const buildAltText = () => {
+    const name = product?.name || "";
+    const normalized = name.toLowerCase();
+
+    if (normalized.includes("polo t-shirt") || normalized.includes("t-shirt")) {
+      return `${name} - mst blockchain official polo t-shirt, crypto merchandise, blockchain merch india`;
+    }
+
+    if (normalized.includes("mug")) {
+      return `${name} - blockchain ceramic coffee mug, crypto merchandise, blockchain merch india`;
+    }
+
+    if (normalized.includes("diary") || normalized.includes("notebook")) {
+      return `${name} - blockchain executive diary, premium office essentials, mst merch india`;
+    }
+
+    if (normalized.includes("pen")) {
+      return `${name} - blockchain executive pen, premium writing pen, mst merch india`;
+    }
+
+    if (normalized.includes("cap")) {
+      return `${name} - blockchain white logo cap, crypto merchandise, blockchain merch india`;
+    }
+
+    if (normalized.includes("keychain")) {
+      return `${name} - blockchain premium metal keychain, crypto merchandise, blockchain merch india`;
+    }
+
+    return `${name} - mst blockchain merch india product image`;
+  };
+
   return (
     <motion.div
       className="bg-white border border-gray-200 rounded-lg overflow-hidden group flex flex-col h-full hover:shadow-xl transition-all duration-300 hover:border-primary/20 w-full"
@@ -54,7 +85,7 @@ const ProductCard = ({ product }) => {
           <div className="absolute inset-0 flex items-center justify-center p-2 sm:p-3 md:p-4">
             <img
               src={displayImage}
-              alt={product.name}
+              alt={buildAltText()}
               className="w-full h-full object-contain transition-transform duration-500 group-hover:scale-110"
               loading="lazy"
               onError={(e) => {

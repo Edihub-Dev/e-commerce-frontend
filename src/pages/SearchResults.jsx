@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import ProductCard from "../components/ProductCard";
@@ -7,12 +7,46 @@ import { useSearch } from "../contexts/SearchContext";
 const SearchResults = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { searchResults, isSearching, searchProducts } = useSearch();
+  const { searchResults, isSearching, searchProducts, setSearchQuery } =
+    useSearch();
+  const [mobileQuery, setMobileQuery] = useState("");
+  const [isMobileFocused, setIsMobileFocused] = useState(false);
 
   // Memoize the query to prevent unnecessary re-renders
   const query = useMemo(() => {
     return new URLSearchParams(location.search).get("q") || "";
   }, [location.search]);
+
+  useEffect(() => {
+    setMobileQuery(query);
+  }, [query]);
+
+  const handleMobileSubmit = useCallback(
+    async (event) => {
+      event.preventDefault();
+      const trimmed = mobileQuery.trim();
+
+      if (!trimmed) {
+        setMobileQuery("");
+        setSearchQuery("");
+        await searchProducts("");
+        navigate("/");
+        return;
+      }
+
+      setSearchQuery(trimmed);
+      await searchProducts(trimmed);
+      navigate(`/search?q=${encodeURIComponent(trimmed)}`);
+    },
+    [mobileQuery, navigate, searchProducts, setSearchQuery]
+  );
+
+  const handleMobileClear = useCallback(() => {
+    setMobileQuery("");
+    setSearchQuery("");
+    searchProducts("");
+    navigate("/");
+  }, [navigate, searchProducts, setSearchQuery]);
 
   // Only trigger search when query changes
   useEffect(() => {
@@ -86,6 +120,62 @@ const SearchResults = () => {
 
   return (
     <div className="container mx-auto px-4 py-8">
+      <div className="md:hidden mb-6">
+        <form
+          onSubmit={handleMobileSubmit}
+          className={`flex items-center rounded-full border bg-white px-4 py-2 shadow-sm transition focus-within:ring-2 focus-within:ring-blue-100 ${
+            isMobileFocused ? "border-blue-400" : "border-slate-200"
+          }`}
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-5 w-5 text-slate-400"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth="1.5"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M21 21l-4.35-4.35m0 0A7.5 7.5 0 1010.5 18a7.5 7.5 0 006.15-3.35z"
+            />
+          </svg>
+          <input
+            type="text"
+            value={mobileQuery}
+            onChange={(event) => setMobileQuery(event.target.value)}
+            onFocus={() => setIsMobileFocused(true)}
+            onBlur={() => setIsMobileFocused(false)}
+            placeholder="Search products, categories…"
+            className="ml-3 flex-1 border-0 bg-transparent text-sm text-slate-600 placeholder:text-slate-400 focus:outline-none"
+            aria-label="Search products"
+          />
+          {mobileQuery ? (
+            <button
+              type="button"
+              onClick={handleMobileClear}
+              className="ml-2 inline-flex h-7 w-7 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition hover:bg-slate-200 hover:text-slate-700"
+              aria-label="Clear search"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-4 w-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth="1.5"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
+          ) : null}
+        </form>
+      </div>
       <AnimatePresence mode="wait">
         {isSearching ? (
           <motion.div

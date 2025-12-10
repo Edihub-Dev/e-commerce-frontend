@@ -4,6 +4,8 @@ import { X, Loader2, Sparkles, Copy } from "lucide-react";
 import { fetchOfferLightboxes } from "../../services/offerLightboxApi";
 import { useNavigate } from "react-router-dom";
 
+let hasShownOfferLightboxOnce = false;
+
 const OfferLightboxModal = () => {
   const [offer, setOffer] = useState(null);
   const [status, setStatus] = useState("idle");
@@ -24,7 +26,9 @@ const OfferLightboxModal = () => {
         if (!isMounted) return;
         if (activeOffer) {
           setOffer(activeOffer);
-          setIsVisible(true);
+          const shouldAutoDisplay =
+            activeOffer.isActive !== false && !hasShownOfferLightboxOnce;
+          setIsVisible(shouldAutoDisplay);
           setStatus("success");
         } else {
           setOffer(null);
@@ -50,7 +54,15 @@ const OfferLightboxModal = () => {
       setIsVisible(false);
       return;
     }
-    setIsVisible(Boolean(offer.isActive !== false));
+
+    if (offer.isActive === false) {
+      setIsVisible(false);
+      return;
+    }
+
+    if (!hasShownOfferLightboxOnce) {
+      setIsVisible(true);
+    }
   }, [offer]);
 
   useEffect(() => {
@@ -83,6 +95,12 @@ const OfferLightboxModal = () => {
       }
     };
   }, []);
+
+  useEffect(() => {
+    if (isVisible) {
+      hasShownOfferLightboxOnce = true;
+    }
+  }, [isVisible]);
 
   const palette = useMemo(() => {
     return {

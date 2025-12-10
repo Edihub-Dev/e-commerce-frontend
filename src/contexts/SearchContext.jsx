@@ -419,6 +419,8 @@ const PRODUCT_KEYWORDS = Object.freeze({
     "office",
     "gift",
     "leather",
+    "book",
+    "notepad",
   ],
   Diary: [
     "diary",

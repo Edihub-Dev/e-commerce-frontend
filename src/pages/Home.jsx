@@ -162,85 +162,8 @@ const Home = () => {
         <div className="mt-4 md:mt-0">
           <HeroCarousel />
         </div>
-        <div className="container mx-auto px-4 space-y-8 md:space-y-12">
+        <div className="container mx-auto px-4">
           <DealsSection />
-          <section className="bg-slate-50 rounded-3xl p-6 md:p-10 shadow-sm border border-slate-100">
-            <h2 className="text-2xl md:text-3xl font-bold text-slate-900 mb-4">
-              Premium Custom Merchandise for Every Brand Moment
-            </h2>
-            <p className="text-slate-600 leading-relaxed">
-              From startup launch kits to enterprise gifting, p2pdeal delivers
-              high-quality, customizable merchandise that keeps your brand in
-              focus. Choose from brushed cotton t-shirts, embroidered caps,
-              ceramic mugs, drinkware, diaries, pens, and bespoke
-              hampers—crafted with long-lasting prints and immaculate finishing.
-              Our in-house design team, color-managed production, and strict QC
-              ensure your logo looks sharp on every item.
-            </p>
-            <div className="grid md:grid-cols-3 gap-6 mt-6">
-              <div>
-                <h3 className="text-lg font-semibold text-slate-900 mb-2">
-                  Why Businesses Trust p2pdeal
-                </h3>
-                <ul className="space-y-2 text-slate-600 text-sm leading-relaxed">
-                  <li>• Bulk-friendly pricing with transparent MOQs</li>
-                  <li>• Artwork proofing & design assistance before print</li>
-                  <li>• Nationwide logistics support with dispatch tracking</li>
-                  <li>• Eco-conscious material options on request</li>
-                </ul>
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-slate-900 mb-2">
-                  Custom Merchandise Categories
-                </h3>
-                <ul className="space-y-2 text-slate-600 text-sm leading-relaxed">
-                  <li>• Cotton & dri-fit t-shirts, polos, hoodies</li>
-                  <li>• Caps, bucket hats, and sports headwear</li>
-                  <li>• Mugs, tumblers, sippers, and drinkware sets</li>
-                  <li>• Stationery: diaries, notebooks, pens, office kits</li>
-                  <li>• Premium gift hampers, onboarding kits, accessories</li>
-                </ul>
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-slate-900 mb-2">
-                  Industries We Serve
-                </h3>
-                <ul className="space-y-2 text-slate-600 text-sm leading-relaxed">
-                  <li>• Startups & tech companies scaling culture</li>
-                  <li>• Corporate HR & procurement teams</li>
-                  <li>• Marketing agencies & event planners</li>
-                  <li>• Colleges, NGOs, and community clubs</li>
-                </ul>
-              </div>
-            </div>
-          </section>
-          <section className="grid gap-6 md:grid-cols-2">
-            <div className="rounded-3xl border border-slate-100 bg-white p-6 shadow-sm">
-              <h3 className="text-xl font-semibold text-slate-900 mb-3">
-                Bulk Ordering Made Effortless
-              </h3>
-              <p className="text-slate-600 text-sm leading-relaxed">
-                Upload your artwork, confirm digital proofs, and let us handle
-                production and fulfillment. Dedicated account specialists help
-                you coordinate sizing breakdowns, personalized naming, and
-                last-mile delivery. Our manufacturing partners across India keep
-                lead times fast—ideal for marketing campaigns, annual meets, and
-                festive gifting.
-              </p>
-            </div>
-            <div className="rounded-3xl border border-slate-100 bg-white p-6 shadow-sm">
-              <h3 className="text-xl font-semibold text-slate-900 mb-3">
-                Ready-to-Launch Corporate Gift Kits
-              </h3>
-              <p className="text-slate-600 text-sm leading-relaxed">
-                Choose curated onboarding boxes, festive hampers, or tailor-made
-                appreciation kits combining apparel, accessories, and
-                stationery. Every kit is finished with custom packaging and
-                message cards so your recipients feel the brand love from the
-                first unboxing.
-              </p>
-            </div>
-          </section>
         </div>
       </motion.div>
     </>

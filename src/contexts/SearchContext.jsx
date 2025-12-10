@@ -979,10 +979,13 @@ export const SearchProvider = ({ children }) => {
   const activeRequestRef = useRef(null);
   const searchResultsRef = useRef([]);
   const keywordMatchesRef = useRef([]);
+  const requestSequenceRef = useRef(0);
 
   // Memoize the search function to prevent unnecessary re-renders
   const searchProducts = useCallback(
     async (query) => {
+      const requestId = requestSequenceRef.current + 1;
+      requestSequenceRef.current = requestId;
       const trimmedQuery = query.trim();
 
       // If the query is empty, clear results
@@ -991,6 +994,7 @@ export const SearchProvider = ({ children }) => {
           activeRequestRef.current.abort();
           activeRequestRef.current = null;
         }
+        setSearchQuery("");
         setSearchResults([]);
         searchResultsRef.current = [];
         setLastSearchQuery("");
@@ -1079,7 +1083,9 @@ export const SearchProvider = ({ children }) => {
           activeRequestRef.current.abort();
           activeRequestRef.current = null;
         }
-        setIsSearching(false);
+        if (requestSequenceRef.current === requestId) {
+          setIsSearching(false);
+        }
         return {
           products: searchResultsRef.current,
           keywordMatches: keywordMatchesRef.current,
@@ -1167,6 +1173,13 @@ export const SearchProvider = ({ children }) => {
           data = Array.from(seen.values());
         }
 
+        if (requestSequenceRef.current !== requestId) {
+          return {
+            products: data || [],
+            keywordMatches: matches,
+          };
+        }
+
         setSearchQuery(trimmedQuery);
         setSearchResults(data || []);
         searchResultsRef.current = data || [];
@@ -1183,7 +1196,7 @@ export const SearchProvider = ({ children }) => {
           error?.code === "ERR_CANCELED" ||
           abortController.signal.aborted;
 
-        if (!isCanceled) {
+        if (!isCanceled && requestSequenceRef.current === requestId) {
           console.error("Search error:", error);
           setSearchResults([]);
           searchResultsRef.current = [];
@@ -1193,7 +1206,10 @@ export const SearchProvider = ({ children }) => {
 
         return [];
       } finally {
-        if (activeRequestRef.current === abortController) {
+        if (
+          activeRequestRef.current === abortController &&
+          requestSequenceRef.current === requestId
+        ) {
           activeRequestRef.current = null;
           setIsSearching(false);
         }
@@ -1203,6 +1219,7 @@ export const SearchProvider = ({ children }) => {
   );
 
   const clearSearch = useCallback(() => {
+    requestSequenceRef.current += 1;
     if (activeRequestRef.current) {
       activeRequestRef.current.abort();
       activeRequestRef.current = null;

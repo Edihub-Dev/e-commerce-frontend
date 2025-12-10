@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import ProductCard from "../components/ProductCard";
@@ -7,10 +13,20 @@ import { useSearch } from "../contexts/SearchContext";
 const SearchResults = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { searchResults, isSearching, searchProducts, setSearchQuery } =
-    useSearch();
+  const {
+    searchResults,
+    isSearching,
+    searchProducts,
+    setSearchQuery,
+    clearSearch,
+  } = useSearch();
   const [mobileQuery, setMobileQuery] = useState("");
   const [isMobileFocused, setIsMobileFocused] = useState(false);
+  const searchProductsRef = useRef(searchProducts);
+
+  useEffect(() => {
+    searchProductsRef.current = searchProducts;
+  }, [searchProducts]);
 
   // Memoize the query to prevent unnecessary re-renders
   const query = useMemo(() => {
@@ -28,44 +44,32 @@ const SearchResults = () => {
 
       if (!trimmed) {
         setMobileQuery("");
-        setSearchQuery("");
-        await searchProducts("");
+        clearSearch();
         navigate("/");
         return;
       }
 
       setSearchQuery(trimmed);
-      await searchProducts(trimmed);
+      await searchProductsRef.current(trimmed);
       navigate(`/search?q=${encodeURIComponent(trimmed)}`);
     },
-    [mobileQuery, navigate, searchProducts, setSearchQuery]
+    [mobileQuery, navigate, setSearchQuery, clearSearch]
   );
 
   const handleMobileClear = useCallback(() => {
     setMobileQuery("");
-    setSearchQuery("");
-    searchProducts("");
+    clearSearch();
     navigate("/");
-  }, [navigate, searchProducts, setSearchQuery]);
+  }, [clearSearch, navigate]);
 
   // Only trigger search when query changes
   useEffect(() => {
-    let isMounted = true;
-
-    const performSearch = async () => {
-      if (query) {
-        await searchProducts(query);
-      }
-    };
-
-    if (isMounted) {
-      performSearch();
+    if (!query) {
+      return;
     }
 
-    return () => {
-      isMounted = false;
-    };
-  }, [query, searchProducts]);
+    searchProductsRef.current(query);
+  }, [query]);
 
   // Memoize the loading state to prevent unnecessary re-renders
   const loadingContent = useMemo(

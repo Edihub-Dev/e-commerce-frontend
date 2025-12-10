@@ -58,7 +58,8 @@ const Header = () => {
     (state) => state.address
   );
   const { shippingAddress } = useSelector((state) => state.checkout);
-  const { searchQuery, setSearchQuery, searchProducts } = useSearch();
+  const { searchQuery, setSearchQuery, searchProducts, clearSearch } =
+    useSearch();
 
   useEffect(() => {
     setLocalSearchQuery(searchQuery || "");
@@ -73,8 +74,9 @@ const Header = () => {
       event.preventDefault();
       const trimmed = localSearchQuery.trim();
       if (!trimmed) {
-        setSearchQuery("");
-        searchProducts("");
+        setLocalSearchQuery("");
+        clearSearch();
+        navigate("/");
         return;
       }
 
@@ -82,7 +84,7 @@ const Header = () => {
       searchProducts(trimmed);
       navigate(`/search?q=${encodeURIComponent(trimmed)}`);
     },
-    [localSearchQuery, setSearchQuery, searchProducts, navigate]
+    [localSearchQuery, setSearchQuery, searchProducts, clearSearch, navigate]
   );
 
   const persistLocationLabel = useCallback(
@@ -463,8 +465,7 @@ const Header = () => {
                   type="button"
                   onClick={() => {
                     setLocalSearchQuery("");
-                    setSearchQuery("");
-                    searchProducts("");
+                    clearSearch();
                     navigate("/");
                     searchInputRef.current?.focus();
                   }}

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Pagination, Autoplay } from "swiper/modules";
 import { ChevronRight } from "lucide-react";
@@ -76,6 +76,84 @@ const preferUrl = (...values) =>
   values.reduce((picked, value) => (!picked && value ? value : picked), "");
 
 const productLookupCache = new Map();
+
+const HERO_CACHE_KEY = "shop-p2p-hero-cache-v1";
+const HERO_CACHE_TTL = 1000 * 60 * 60 * 6; // 6 hours
+
+const DEFAULT_HERO_SLIDES = [
+  {
+    id: "default-hero",
+    overline: "Official Merch",
+    title: "Unlock ₹200 off your first order",
+    description:
+      "Exclusive MST Blockchain apparel and accessories now available with fast nationwide delivery.",
+    background:
+      "https://shop.p2pdeal.net/images/og/mst-blockchain-merch-home.jpg",
+    spotlightImage:
+      "https://shop.p2pdeal.net/images/og/mst-blockchain-merch-home.jpg",
+    showTitle: true,
+    showOverline: true,
+    showDescription: true,
+    primaryCta: {
+      label: "Shop Now",
+      href: "/shop",
+    },
+    secondaryCta: null,
+    showPrimaryCta: true,
+    showSecondaryCta: false,
+    order: 0,
+    isActive: true,
+  },
+];
+
+const isBrowser = typeof window !== "undefined";
+
+const loadCachedSlides = () => {
+  if (!isBrowser) {
+    return [];
+  }
+
+  try {
+    const raw = window.sessionStorage.getItem(HERO_CACHE_KEY);
+    if (!raw) {
+      return [];
+    }
+
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed?.slides) || typeof parsed?.savedAt !== "number") {
+      window.sessionStorage.removeItem(HERO_CACHE_KEY);
+      return [];
+    }
+
+    if (Date.now() - parsed.savedAt > HERO_CACHE_TTL) {
+      window.sessionStorage.removeItem(HERO_CACHE_KEY);
+      return [];
+    }
+
+    return parsed.slides;
+  } catch (error) {
+    console.error("Failed to read cached hero slides", error);
+    if (isBrowser) {
+      window.sessionStorage.removeItem(HERO_CACHE_KEY);
+    }
+    return [];
+  }
+};
+
+const persistSlidesCache = (slides) => {
+  if (!isBrowser || !Array.isArray(slides) || !slides.length) {
+    return;
+  }
+
+  try {
+    window.sessionStorage.setItem(
+      HERO_CACHE_KEY,
+      JSON.stringify({ slides, savedAt: Date.now() })
+    );
+  } catch (error) {
+    console.error("Failed to persist hero slides cache", error);
+  }
+};
 
 const getMetadataValue = (metadata, key) => {
   if (!metadata) {
@@ -228,8 +306,16 @@ const normalizeHeroSlide = (slide, index) => {
 };
 
 const HeroCarousel = () => {
-  const [remoteSlides, setRemoteSlides] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const initialSlidesRef = useRef(null);
+  if (initialSlidesRef.current === null) {
+    const cached = loadCachedSlides();
+    initialSlidesRef.current = cached.length ? cached : DEFAULT_HERO_SLIDES;
+  }
+
+  const [remoteSlides, setRemoteSlides] = useState(initialSlidesRef.current);
+  const [isLoading, setIsLoading] = useState(
+    initialSlidesRef.current === DEFAULT_HERO_SLIDES
+  );
 
   useEffect(() => {
     let isMounted = true;
@@ -302,11 +388,18 @@ const HeroCarousel = () => {
           const filteredSlides = resolvedSlides
             .filter(Boolean)
             .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
-          setRemoteSlides(filteredSlides);
+
+          if (filteredSlides.length > 0) {
+            initialSlidesRef.current = filteredSlides;
+            persistSlidesCache(filteredSlides);
+            setRemoteSlides(filteredSlides);
+          } else if (!loadCachedSlides().length) {
+            setRemoteSlides(DEFAULT_HERO_SLIDES);
+          }
         }
       } catch (error) {
-        if (isMounted) {
-          setRemoteSlides([]);
+        if (isMounted && !loadCachedSlides().length) {
+          setRemoteSlides(DEFAULT_HERO_SLIDES);
         }
         console.error("Failed to load hero carousel slides", error);
       } finally {
@@ -324,6 +417,30 @@ const HeroCarousel = () => {
   }, []);
 
   const slidesToRender = useMemo(() => remoteSlides, [remoteSlides]);
+
+  useEffect(() => {
+    if (!isBrowser) {
+      return undefined;
+    }
+
+    const preloaders = [];
+    slidesToRender.slice(1).forEach((slide) => {
+      const candidate = slide?.background || slide?.spotlightImage;
+      if (!candidate) {
+        return;
+      }
+      const image = new Image();
+      image.crossOrigin = "anonymous";
+      image.src = candidate;
+      preloaders.push(image);
+    });
+
+    return () => {
+      preloaders.forEach((image) => {
+        image.src = "";
+      });
+    };
+  }, [slidesToRender]);
 
   useEffect(() => {
     const firstSlide = slidesToRender[0];
@@ -347,7 +464,7 @@ const HeroCarousel = () => {
     preloadLink.as = "image";
     preloadLink.href = criticalImage;
     preloadLink.crossOrigin = "anonymous";
-    preloadLink.setAttribute("fetchpriority", "high");
+    preloadLink.fetchPriority = "high";
     preloadLink.setAttribute("data-hero-preload", criticalImage);
 
     document.head.appendChild(preloadLink);
@@ -398,12 +515,16 @@ const HeroCarousel = () => {
           spaceBetween={0}
           slidesPerView={1}
           pagination={{ clickable: true }}
-          loop={true}
-          autoplay={{
-            delay: 5000,
-            disableOnInteraction: false,
-            reverseDirection: false,
-          }}
+          loop={slidesToRender.length > 1}
+          autoplay={
+            slidesToRender.length > 1
+              ? {
+                  delay: 5000,
+                  disableOnInteraction: false,
+                  reverseDirection: false,
+                }
+              : false
+          }
           onSwiper={(instance) => {
             if (!instance?.autoplay?.start) {
               return;
@@ -452,7 +573,7 @@ const HeroCarousel = () => {
                       alt={slide.title || "Featured hero background"}
                       className="absolute inset-0 h-full w-full object-cover md:object-[center_20%]"
                       loading={isFirstSlide ? "eager" : "lazy"}
-                      fetchpriority={isFirstSlide ? "high" : "auto"}
+                      fetchPriority={isFirstSlide ? "high" : "auto"}
                       crossOrigin="anonymous"
                     />
                   ) : null}

@@ -326,6 +326,30 @@ const HeroCarousel = () => {
   const slidesToRender = useMemo(() => remoteSlides, [remoteSlides]);
 
   if (!slidesToRender.length) {
+    if (isLoading) {
+      return (
+        <section
+          className="relative overflow-hidden bg-slate-950 w-screen"
+          style={{ left: "50%", transform: "translateX(-50%)" }}
+          aria-hidden
+        >
+          <div className="relative flex h-full w-full items-center justify-center overflow-hidden min-h-[55vh] md:min-h-[90vh]">
+            <div className="absolute inset-0 bg-gradient-to-br from-slate-800 via-slate-900 to-black animate-pulse" />
+            <div className="absolute inset-0 bg-slate-950/60" />
+            <div className="relative z-10 mx-auto flex max-w-3xl flex-col items-center gap-6 px-4 pt-12 pb-16 text-center text-white sm:gap-7 sm:px-6 sm:pt-16 sm:pb-20">
+              <div className="h-3 w-32 rounded-full bg-white/30" />
+              <div className="h-10 w-3/4 rounded-full bg-white/25 sm:h-14" />
+              <div className="hidden h-16 w-full max-w-xl rounded-2xl bg-white/20 sm:block" />
+              <div className="flex flex-wrap items-center justify-center gap-4">
+                <span className="h-10 w-32 rounded-full bg-[#008ECC]/40" />
+                <span className="h-10 w-24 rounded-full bg-[#008ECC]/30" />
+              </div>
+            </div>
+          </div>
+        </section>
+      );
+    }
+
     return null;
   }
 

@@ -10,6 +10,8 @@ const DealsSection = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  const SKELETON_COUNT = 6;
+
   useEffect(() => {
     let isMounted = true;
 
@@ -82,11 +84,30 @@ const DealsSection = () => {
           className="w-full overflow-hidden flex flex-col"
           variants={staggerContainer}
         >
-          {loading && (
-            <div className="py-6 text-center text-sm text-slate-500">
-              Loading featured products...
-            </div>
-          )}
+          <div className="flex flex-col sm:grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4 sm:gap-4 min-h-[360px]">
+            {loading
+              ? Array.from({ length: SKELETON_COUNT }).map((_, index) => (
+                  <div
+                    key={`deals-skeleton-${index}`}
+                    className="w-full min-w-0 animate-pulse rounded-2xl border border-slate-200/60 bg-slate-100/40 px-4 py-5"
+                    aria-hidden
+                  >
+                    <div className="h-40 w-full rounded-xl bg-slate-200" />
+                    <div className="mt-4 h-3 w-3/4 rounded-full bg-slate-200" />
+                    <div className="mt-2 h-3 w-1/2 rounded-full bg-slate-200" />
+                    <div className="mt-5 h-9 w-full rounded-full bg-slate-300/80" />
+                  </div>
+                ))
+              : products.map((product) => (
+                  <motion.div
+                    key={product.id}
+                    variants={staggerItem}
+                    className="w-full min-w-0"
+                  >
+                    <ProductCard product={product} />
+                  </motion.div>
+                ))}
+          </div>
 
           {error && !loading && (
             <div className="py-6 text-center text-sm text-red-500">{error}</div>
@@ -97,18 +118,6 @@ const DealsSection = () => {
               No featured products yet. Check back soon!
             </div>
           )}
-
-          <div className="flex flex-col sm:grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4 sm:gap-4">
-            {products.map((product) => (
-              <motion.div
-                key={product.id}
-                variants={staggerItem}
-                className="w-full min-w-0"
-              >
-                <ProductCard product={product} />
-              </motion.div>
-            ))}
-          </div>
 
           {/* View All Button - Only visible on small screens */}
           <div className="sm:hidden mt-4 w-full">

@@ -278,14 +278,12 @@ const OfferLightboxModal = () => {
                         {offer.subtitle}
                       </p>
                     ) : null}
-                    {offer?.description ? (
-                      <p
-                        className="text-sm text-slate-600"
-                        style={{ color: palette.text }}
-                      >
-                        {offer.description}
-                      </p>
-                    ) : null}
+                    <p
+                      className="text-sm text-slate-600 min-h-[3.25rem]"
+                      style={{ color: palette.text }}
+                    >
+                      {offer?.description || ""}
+                    </p>
                   </div>
                   <div className="space-y-3">
                     <div className="space-y-2">

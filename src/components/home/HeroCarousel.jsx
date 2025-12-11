@@ -173,6 +173,18 @@ const persistSlidesCache = (slides) => {
   }
 };
 
+const clearSlidesCache = () => {
+  if (!isBrowser) {
+    return;
+  }
+
+  try {
+    window.sessionStorage.removeItem(HERO_CACHE_KEY);
+  } catch (error) {
+    console.error("Failed to clear hero slides cache", error);
+  }
+};
+
 const getMetadataValue = (metadata, key) => {
   if (!metadata) {
     return "";
@@ -329,14 +341,15 @@ const normalizeHeroSlide = (slide, index) => {
 
 const HeroCarousel = () => {
   const initialSlidesRef = useRef(null);
+  const heroPreloadRef = useRef(null);
   if (initialSlidesRef.current === null) {
     const cached = loadCachedSlides();
-    initialSlidesRef.current = cached.length ? cached : DEFAULT_HERO_SLIDES;
+    initialSlidesRef.current = cached.length ? cached : [];
   }
 
   const [remoteSlides, setRemoteSlides] = useState(initialSlidesRef.current);
   const [isLoading, setIsLoading] = useState(
-    initialSlidesRef.current === DEFAULT_HERO_SLIDES
+    initialSlidesRef.current.length === 0
   );
 
   useEffect(() => {
@@ -415,13 +428,22 @@ const HeroCarousel = () => {
             initialSlidesRef.current = filteredSlides;
             persistSlidesCache(filteredSlides);
             setRemoteSlides(filteredSlides);
-          } else if (!loadCachedSlides().length) {
-            setRemoteSlides(DEFAULT_HERO_SLIDES);
+          } else {
+            clearSlidesCache();
+            initialSlidesRef.current = [];
+            setRemoteSlides([]);
           }
         }
       } catch (error) {
-        if (isMounted && !loadCachedSlides().length) {
-          setRemoteSlides(DEFAULT_HERO_SLIDES);
+        if (isMounted) {
+          const cachedSlides = loadCachedSlides();
+          if (cachedSlides.length) {
+            initialSlidesRef.current = cachedSlides;
+            setRemoteSlides(cachedSlides);
+          } else {
+            initialSlidesRef.current = DEFAULT_HERO_SLIDES;
+            setRemoteSlides(DEFAULT_HERO_SLIDES);
+          }
         }
         console.error("Failed to load hero carousel slides", error);
       } finally {
@@ -465,20 +487,34 @@ const HeroCarousel = () => {
   }, [slidesToRender]);
 
   useEffect(() => {
+    if (!isBrowser) {
+      return undefined;
+    }
+
     const firstSlide = slidesToRender[0];
     const criticalImage =
       firstSlide?.background || firstSlide?.spotlightImage || "";
 
+    const removeExistingPreload = () => {
+      const existingLink = heroPreloadRef.current;
+      if (existingLink?.parentNode) {
+        existingLink.parentNode.removeChild(existingLink);
+      }
+      heroPreloadRef.current = null;
+    };
+
     if (!criticalImage) {
+      removeExistingPreload();
       return undefined;
     }
 
-    const existing = document.head.querySelector(
-      `link[data-hero-preload="${criticalImage}"]`
-    );
-
-    if (existing) {
+    const currentLink = heroPreloadRef.current;
+    if (currentLink?.getAttribute("data-hero-preload") === criticalImage) {
       return undefined;
+    }
+
+    if (currentLink) {
+      removeExistingPreload();
     }
 
     const preloadLink = document.createElement("link");
@@ -490,10 +526,12 @@ const HeroCarousel = () => {
     preloadLink.setAttribute("data-hero-preload", criticalImage);
 
     document.head.appendChild(preloadLink);
+    heroPreloadRef.current = preloadLink;
 
     return () => {
-      if (preloadLink.parentNode) {
+      if (heroPreloadRef.current === preloadLink && preloadLink.parentNode) {
         preloadLink.parentNode.removeChild(preloadLink);
+        heroPreloadRef.current = null;
       }
     };
   }, [slidesToRender]);

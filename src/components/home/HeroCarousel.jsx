@@ -325,6 +325,40 @@ const HeroCarousel = () => {
 
   const slidesToRender = useMemo(() => remoteSlides, [remoteSlides]);
 
+  useEffect(() => {
+    const firstSlide = slidesToRender[0];
+    const criticalImage =
+      firstSlide?.background || firstSlide?.spotlightImage || "";
+
+    if (!criticalImage) {
+      return undefined;
+    }
+
+    const existing = document.head.querySelector(
+      `link[data-hero-preload="${criticalImage}"]`
+    );
+
+    if (existing) {
+      return undefined;
+    }
+
+    const preloadLink = document.createElement("link");
+    preloadLink.rel = "preload";
+    preloadLink.as = "image";
+    preloadLink.href = criticalImage;
+    preloadLink.crossOrigin = "anonymous";
+    preloadLink.setAttribute("fetchpriority", "high");
+    preloadLink.setAttribute("data-hero-preload", criticalImage);
+
+    document.head.appendChild(preloadLink);
+
+    return () => {
+      if (preloadLink.parentNode) {
+        preloadLink.parentNode.removeChild(preloadLink);
+      }
+    };
+  }, [slidesToRender]);
+
   if (!slidesToRender.length) {
     if (isLoading) {
       return (
@@ -393,7 +427,7 @@ const HeroCarousel = () => {
           className="hero-slider h-full min-h-[55vh] md:min-h-[90vh]"
           style={{ width: "100%" }}
         >
-          {slidesToRender.map((slide) => {
+          {slidesToRender.map((slide, slideIndex) => {
             const backgroundImage = slide.background || slide.spotlightImage;
             const primaryCta = slide.primaryCta;
             const secondaryCta = slide.secondaryCta;
@@ -403,6 +437,7 @@ const HeroCarousel = () => {
             const showPrimary = slide.showPrimaryCta !== false;
             const showSecondary =
               slide.showSecondaryCta !== false && hasSecondaryCta;
+            const isFirstSlide = slideIndex === 0;
 
             return (
               <SwiperSlide
@@ -411,14 +446,16 @@ const HeroCarousel = () => {
                 style={{ width: "100%" }}
               >
                 <div className="relative flex h-full w-full items-center justify-center overflow-hidden min-h-[55vh] md:min-h-[90vh]">
-                  <div
-                    className="absolute inset-0 bg-cover bg-center md:bg-[center_20%]"
-                    style={{
-                      backgroundImage: backgroundImage
-                        ? `url(${backgroundImage})`
-                        : undefined,
-                    }}
-                  />
+                  {backgroundImage ? (
+                    <img
+                      src={backgroundImage}
+                      alt={slide.title || "Featured hero background"}
+                      className="absolute inset-0 h-full w-full object-cover md:object-[center_20%]"
+                      loading={isFirstSlide ? "eager" : "lazy"}
+                      fetchpriority={isFirstSlide ? "high" : "auto"}
+                      crossOrigin="anonymous"
+                    />
+                  ) : null}
                   <div className="absolute inset-0 bg-slate-950/55" />
                   <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(148,163,184,0.18),transparent_70%)]" />
 

@@ -1,46 +1,58 @@
-import { useEffect } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { Routes, Route, useLocation } from "react-router-dom";
 import { SearchProvider } from "./contexts/SearchContext";
 import Layout from "./components/Layout";
-import Home from "./pages/Home";
-import Shop from "./pages/Shop";
-import ProductPage from "./pages/ProductPage";
-import CategoryPage from "./pages/CategoryPage";
-import BrandPage from "./pages/BrandPage";
-import Cart from "./pages/Cart";
-import CheckoutLayout from "./pages/checkout/CheckoutLayout";
-import CheckoutOrder from "./pages/checkout/CheckoutOrder";
-import CheckoutAddress from "./pages/checkout/CheckoutAddress";
-import CheckoutPayment from "./pages/checkout/CheckoutPayment";
-import CheckoutConfirmation from "./pages/checkout/CheckoutConfirmation";
-import OrdersPage from "./pages/orders/OrdersPage";
-import OrderDetailsPage from "./pages/orders/OrderDetailsPage";
-import Login from "./pages/Login";
-import Signup from "./pages/Signup";
-import ForgotPassword from "./pages/ForgotPassword";
-import ResetPasswordOtp from "./pages/ResetPasswordOtp";
-import VerifyEmail from "./pages/VerifyEmail";
-import Profile from "./pages/Profile";
-import About from "./pages/About";
-import Contact from "./pages/Contact";
-import OffersPage from "./pages/OffersPage";
-import HelpSupport from "./pages/HelpSupport";
-import PrivacyPolicy from "./pages/legal/PrivacyPolicy";
-import TermsAndConditions from "./pages/legal/TermsAndConditions";
-import ReturnPolicy from "./pages/legal/ReturnPolicy";
-import SearchResults from "./pages/SearchResults";
-import NotFound from "./pages/NotFound";
-import AdminDashboard from "./pages/AdminDashboard";
-import AdminProductsPage from "./pages/AdminProductsPage";
-import AdminAddProductPage from "./pages/AdminAddProductPage";
-import AdminOrdersPage from "./pages/AdminOrdersPage";
-import AdminOrderDetailsPage from "./pages/AdminOrderDetailsPage";
-import AdminHelpSupportPage from "./pages/AdminHelpSupportPage";
-import AdminHeroCarouselPage from "./pages/AdminHeroCarouselPage";
-import AdminCustomersPage from "./pages/AdminCustomersPage";
-import AdminCouponsPage from "./pages/AdminCouponsPage";
-import AdminFooterCategoriesPage from "./pages/AdminFooterCategoriesPage";
-import AdminOfferLightboxPage from "./pages/AdminOfferLightboxPage";
+const Home = lazy(() => import("./pages/Home"));
+const Shop = lazy(() => import("./pages/Shop"));
+const ProductPage = lazy(() => import("./pages/ProductPage"));
+const CategoryPage = lazy(() => import("./pages/CategoryPage"));
+const BrandPage = lazy(() => import("./pages/BrandPage"));
+const Cart = lazy(() => import("./pages/Cart"));
+const CheckoutLayout = lazy(() => import("./pages/checkout/CheckoutLayout"));
+const CheckoutOrder = lazy(() => import("./pages/checkout/CheckoutOrder"));
+const CheckoutAddress = lazy(() => import("./pages/checkout/CheckoutAddress"));
+const CheckoutPayment = lazy(() => import("./pages/checkout/CheckoutPayment"));
+const CheckoutConfirmation = lazy(() =>
+  import("./pages/checkout/CheckoutConfirmation")
+);
+const OrdersPage = lazy(() => import("./pages/orders/OrdersPage"));
+const OrderDetailsPage = lazy(() => import("./pages/orders/OrderDetailsPage"));
+const Login = lazy(() => import("./pages/Login"));
+const Signup = lazy(() => import("./pages/Signup"));
+const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
+const ResetPasswordOtp = lazy(() => import("./pages/ResetPasswordOtp"));
+const VerifyEmail = lazy(() => import("./pages/VerifyEmail"));
+const Profile = lazy(() => import("./pages/Profile"));
+const About = lazy(() => import("./pages/About"));
+const Contact = lazy(() => import("./pages/Contact"));
+const OffersPage = lazy(() => import("./pages/OffersPage"));
+const HelpSupport = lazy(() => import("./pages/HelpSupport"));
+const PrivacyPolicy = lazy(() => import("./pages/legal/PrivacyPolicy"));
+const TermsAndConditions = lazy(() =>
+  import("./pages/legal/TermsAndConditions")
+);
+const ReturnPolicy = lazy(() => import("./pages/legal/ReturnPolicy"));
+const SearchResults = lazy(() => import("./pages/SearchResults"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
+const AdminProductsPage = lazy(() => import("./pages/AdminProductsPage"));
+const AdminAddProductPage = lazy(() => import("./pages/AdminAddProductPage"));
+const AdminOrdersPage = lazy(() => import("./pages/AdminOrdersPage"));
+const AdminOrderDetailsPage = lazy(() =>
+  import("./pages/AdminOrderDetailsPage")
+);
+const AdminHelpSupportPage = lazy(() => import("./pages/AdminHelpSupportPage"));
+const AdminHeroCarouselPage = lazy(() =>
+  import("./pages/AdminHeroCarouselPage")
+);
+const AdminCustomersPage = lazy(() => import("./pages/AdminCustomersPage"));
+const AdminCouponsPage = lazy(() => import("./pages/AdminCouponsPage"));
+const AdminFooterCategoriesPage = lazy(() =>
+  import("./pages/AdminFooterCategoriesPage")
+);
+const AdminOfferLightboxPage = lazy(() =>
+  import("./pages/AdminOfferLightboxPage")
+);
 import ProtectedRoute from "./components/ProtectedRoute";
 
 const ScrollToTop = () => {
@@ -57,162 +69,164 @@ function App() {
   return (
     <SearchProvider>
       <ScrollToTop />
-      <Routes>
-        <Route path="/" element={<Layout />}>
-          <Route index element={<Home />} />
-          <Route path="shop" element={<Shop />} />
-          <Route path="search" element={<SearchResults />} />
-          <Route path="product/:id" element={<ProductPage />} />
-          <Route path="category/:slug" element={<CategoryPage />} />
-          <Route path="brand/:slug" element={<BrandPage />} />
-          <Route path="cart" element={<Cart />} />
-          <Route path="offers" element={<OffersPage />} />
-          <Route path="login" element={<Login />} />
-          <Route path="signup" element={<Signup />} />
-          <Route path="forgot-password" element={<ForgotPassword />} />
-          <Route path="reset-password-otp" element={<ResetPasswordOtp />} />
-          <Route path="verify-email" element={<VerifyEmail />} />
-          <Route path="about" element={<About />} />
-          <Route path="contact" element={<Contact />} />
-          <Route path="help-support" element={<HelpSupport />} />
-          <Route path="legal/privacy" element={<PrivacyPolicy />} />
-          <Route path="legal/terms" element={<TermsAndConditions />} />
-          <Route path="legal/returns" element={<ReturnPolicy />} />
+      <Suspense fallback={<div className="min-h-screen bg-white" />}>
+        <Routes>
+          <Route path="/" element={<Layout />}>
+            <Route index element={<Home />} />
+            <Route path="shop" element={<Shop />} />
+            <Route path="search" element={<SearchResults />} />
+            <Route path="product/:id" element={<ProductPage />} />
+            <Route path="category/:slug" element={<CategoryPage />} />
+            <Route path="brand/:slug" element={<BrandPage />} />
+            <Route path="cart" element={<Cart />} />
+            <Route path="offers" element={<OffersPage />} />
+            <Route path="login" element={<Login />} />
+            <Route path="signup" element={<Signup />} />
+            <Route path="forgot-password" element={<ForgotPassword />} />
+            <Route path="reset-password-otp" element={<ResetPasswordOtp />} />
+            <Route path="verify-email" element={<VerifyEmail />} />
+            <Route path="about" element={<About />} />
+            <Route path="contact" element={<Contact />} />
+            <Route path="help-support" element={<HelpSupport />} />
+            <Route path="legal/privacy" element={<PrivacyPolicy />} />
+            <Route path="legal/terms" element={<TermsAndConditions />} />
+            <Route path="legal/returns" element={<ReturnPolicy />} />
 
-          <Route
-            path="checkout"
-            element={
-              <ProtectedRoute>
-                <CheckoutLayout />
-              </ProtectedRoute>
-            }
-          >
-            <Route index element={<CheckoutOrder />} />
-            <Route path="order" element={<CheckoutOrder />} />
-            <Route path="address" element={<CheckoutAddress />} />
-            <Route path="payment" element={<CheckoutPayment />} />
-            <Route path="confirmation" element={<CheckoutConfirmation />} />
             <Route
-              path="confirmation/:orderId"
-              element={<CheckoutConfirmation />}
+              path="checkout"
+              element={
+                <ProtectedRoute>
+                  <CheckoutLayout />
+                </ProtectedRoute>
+              }
+            >
+              <Route index element={<CheckoutOrder />} />
+              <Route path="order" element={<CheckoutOrder />} />
+              <Route path="address" element={<CheckoutAddress />} />
+              <Route path="payment" element={<CheckoutPayment />} />
+              <Route path="confirmation" element={<CheckoutConfirmation />} />
+              <Route
+                path="confirmation/:orderId"
+                element={<CheckoutConfirmation />}
+              />
+            </Route>
+            <Route
+              path="orders"
+              element={
+                <ProtectedRoute>
+                  <OrdersPage />
+                </ProtectedRoute>
+              }
             />
+            <Route
+              path="orders/:orderId"
+              element={
+                <ProtectedRoute>
+                  <OrderDetailsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="profile"
+              element={
+                <ProtectedRoute>
+                  <Profile />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route path="*" element={<NotFound />} />
           </Route>
           <Route
-            path="orders"
+            path="/admin"
             element={
-              <ProtectedRoute>
-                <OrdersPage />
+              <ProtectedRoute requireAdmin>
+                <AdminDashboard />
               </ProtectedRoute>
             }
           />
           <Route
-            path="orders/:orderId"
+            path="/admin/products"
             element={
-              <ProtectedRoute>
-                <OrderDetailsPage />
+              <ProtectedRoute requireAdmin>
+                <AdminProductsPage />
               </ProtectedRoute>
             }
           />
           <Route
-            path="profile"
+            path="/admin/orders"
             element={
-              <ProtectedRoute>
-                <Profile />
+              <ProtectedRoute requireAdmin>
+                <AdminOrdersPage />
               </ProtectedRoute>
             }
           />
-
-          <Route path="*" element={<NotFound />} />
-        </Route>
-        <Route
-          path="/admin"
-          element={
-            <ProtectedRoute requireAdmin>
-              <AdminDashboard />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin/products"
-          element={
-            <ProtectedRoute requireAdmin>
-              <AdminProductsPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin/orders"
-          element={
-            <ProtectedRoute requireAdmin>
-              <AdminOrdersPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin/coupons"
-          element={
-            <ProtectedRoute requireAdmin>
-              <AdminCouponsPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin/footer-categories"
-          element={
-            <ProtectedRoute requireAdmin>
-              <AdminFooterCategoriesPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin/customers"
-          element={
-            <ProtectedRoute requireAdmin>
-              <AdminCustomersPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin/help-support"
-          element={
-            <ProtectedRoute requireAdmin>
-              <AdminHelpSupportPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin/hero-carousel"
-          element={
-            <ProtectedRoute requireAdmin>
-              <AdminHeroCarouselPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin/offer-lightbox"
-          element={
-            <ProtectedRoute requireAdmin>
-              <AdminOfferLightboxPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin/orders/:orderId"
-          element={
-            <ProtectedRoute requireAdmin>
-              <AdminOrderDetailsPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin/products/new"
-          element={
-            <ProtectedRoute requireAdmin>
-              <AdminAddProductPage />
-            </ProtectedRoute>
-          }
-        />
-      </Routes>
+          <Route
+            path="/admin/coupons"
+            element={
+              <ProtectedRoute requireAdmin>
+                <AdminCouponsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/footer-categories"
+            element={
+              <ProtectedRoute requireAdmin>
+                <AdminFooterCategoriesPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/customers"
+            element={
+              <ProtectedRoute requireAdmin>
+                <AdminCustomersPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/help-support"
+            element={
+              <ProtectedRoute requireAdmin>
+                <AdminHelpSupportPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/hero-carousel"
+            element={
+              <ProtectedRoute requireAdmin>
+                <AdminHeroCarouselPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/offer-lightbox"
+            element={
+              <ProtectedRoute requireAdmin>
+                <AdminOfferLightboxPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/orders/:orderId"
+            element={
+              <ProtectedRoute requireAdmin>
+                <AdminOrderDetailsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/products/new"
+            element={
+              <ProtectedRoute requireAdmin>
+                <AdminAddProductPage />
+              </ProtectedRoute>
+            }
+          />
+        </Routes>
+      </Suspense>
     </SearchProvider>
   );
 }

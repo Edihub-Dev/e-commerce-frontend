@@ -29,7 +29,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(
         <AuthProvider>
           <CartProvider>
             <App />
-            <Toaster
+            {/* <Toaster
               position="top-right"
               toastOptions={{
                 duration: 1000,
@@ -40,7 +40,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(
                   duration: 1000,
                 },
               }}
-            />
+            /> */}
             <ToastContainer
               position="bottom-right"
               autoClose={1000}

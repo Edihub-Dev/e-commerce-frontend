@@ -77,6 +77,26 @@ const preferUrl = (...values) =>
 
 const productLookupCache = new Map();
 
+const FALLBACK_HERO_IMAGE =
+  "https://shop.p2pdeal.net/images/og/mst-blockchain-merch-home.jpg";
+
+const ensureAccessibleHeroAsset = (value) => {
+  if (typeof value !== "string") {
+    return value;
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return trimmed;
+  }
+
+  if (/hero-carousel\/primary\/landing-hero\.webp/i.test(trimmed)) {
+    return FALLBACK_HERO_IMAGE;
+  }
+
+  return trimmed;
+};
+
 const HERO_CACHE_KEY = "shop-p2p-hero-cache-v1";
 const HERO_CACHE_TTL = 1000 * 60 * 60 * 6; // 6 hours
 
@@ -87,10 +107,8 @@ const DEFAULT_HERO_SLIDES = [
     title: "Unlock ₹200 off your first order",
     description:
       "Exclusive MST Blockchain apparel and accessories now available with fast nationwide delivery.",
-    background:
-      "https://shop.p2pdeal.net/images/og/mst-blockchain-merch-home.jpg",
-    spotlightImage:
-      "https://shop.p2pdeal.net/images/og/mst-blockchain-merch-home.jpg",
+    background: FALLBACK_HERO_IMAGE,
+    spotlightImage: FALLBACK_HERO_IMAGE,
     showTitle: true,
     showOverline: true,
     showDescription: true,
@@ -221,8 +239,12 @@ const normalizeHeroSlide = (slide, index) => {
       ? slide.metadata
       : {};
 
-  const imageUrl = sanitize(slide.imageUrl || slide.spotlightImage || "");
-  const backgroundUrl = sanitize(slide.backgroundUrl || slide.background || "");
+  const imageUrl = ensureAccessibleHeroAsset(
+    sanitize(slide.imageUrl || slide.spotlightImage || "")
+  );
+  const backgroundUrl = ensureAccessibleHeroAsset(
+    sanitize(slide.backgroundUrl || slide.background || "")
+  );
   const primaryLabel = sanitize(slide.primaryCta?.label);
   const primaryHrefRaw = sanitize(slide.primaryCta?.href || "");
   const productUrlFromMetadata = sanitize(

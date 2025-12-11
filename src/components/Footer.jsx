@@ -6,6 +6,8 @@ const Footer = () => {
   const [categories, setCategories] = useState([]);
   const [loadingCategories, setLoadingCategories] = useState(false);
 
+  const PLACEHOLDER_COUNT = 8;
+
   const customerServices = [
     { label: "Privacy Policy", to: "/legal/privacy" },
     { label: "Terms & Conditions", to: "/legal/terms" },
@@ -56,6 +58,8 @@ const Footer = () => {
     return [];
   }, [categories]);
 
+  const showSkeleton = loadingCategories && !popularCategories.length;
+
   return (
     <footer
       className="text-white pt-12 pb-6 relative overflow-hidden"
@@ -69,13 +73,18 @@ const Footer = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-12 mb-8 justify-items-center max-w-6xl mx-auto">
           {/* Most Popular Categories */}
           <div className="text-center">
-            <h3 className="font-semibold text-base mb-4 border-b-2 border-white pb-1 inline-block mx-auto">
+            <h3 className="font-semibold text-base mb-4 border-b-2 border-white pb-1 inline-flex items-center justify-center mx-auto min-h-[2.25rem] px-2">
               Most Popular Categories
             </h3>
-            <ul className="space-y-2 text-center">
-              {loadingCategories && !popularCategories.length && (
-                <li className="text-sm opacity-80">Loading categories…</li>
-              )}
+            <ul className="space-y-2 text-center min-h-[10.5rem] flex flex-col items-center justify-start">
+              {showSkeleton &&
+                Array.from({ length: PLACEHOLDER_COUNT }).map((_, index) => (
+                  <li
+                    key={`footer-skeleton-${index}`}
+                    className="h-5 w-40 rounded-full bg-white/20 animate-pulse"
+                    aria-hidden
+                  ></li>
+                ))}
               {!loadingCategories && !popularCategories.length && (
                 <li className="text-sm opacity-80">Categories unavailable</li>
               )}
@@ -98,7 +107,7 @@ const Footer = () => {
 
           {/* Customer Services */}
           <div className="text-center">
-            <h3 className="font-semibold text-base mb-4 border-b-2 border-white pb-1 inline-block mx-auto">
+            <h3 className="font-semibold text-base mb-4 border-b-2 border-white pb-1 inline-flex items-center justify-center mx-auto min-h-[2.25rem] px-2">
               Customer Services
             </h3>
             <ul className="space-y-2 text-center">
@@ -114,7 +123,7 @@ const Footer = () => {
 
           {/* Contact Us */}
           <div className="text-center flex flex-col items-center gap-3">
-            <h3 className="text-xl font-semibold mb-4 border-b-2 border-white pb-1 inline-block px-4">
+            <h3 className="text-xl font-semibold mb-4 border-b-2 border-white pb-1 inline-flex items-center justify-center px-4 min-h-[2.75rem]">
               Contact Us
             </h3>
             <Link

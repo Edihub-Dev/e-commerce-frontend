@@ -660,11 +660,32 @@ const AdminHeroCarouselPage = () => {
       return productId ? { productId } : undefined;
     };
 
+    const normalizeImageField = (value) => {
+      const trimmed = trimValue(value);
+      if (!trimmed) {
+        return { url: undefined, base64: undefined };
+      }
+
+      if (trimmed.startsWith("data:")) {
+        return { url: undefined, base64: trimmed };
+      }
+
+      return { url: trimmed, base64: undefined };
+    };
+
+    const { url: normalizedImageUrl, base64: imageBase64 } =
+      normalizeImageField(draft.imageUrl);
+    const { url: normalizedBackgroundUrl, base64: backgroundBase64 } =
+      normalizeImageField(draft.backgroundUrl);
+
     const payload = {
       title: trimValue(draft.title),
       description: trimValue(draft.description),
       overline: trimValue(draft.overline),
-      imageUrl: trimValue(draft.imageUrl),
+      imageUrl: normalizedImageUrl,
+      imageBase64,
+      backgroundUrl: normalizedBackgroundUrl,
+      backgroundBase64,
       titleColor: trimValue(draft.titleColor) || undefined,
       overlineColor: trimValue(draft.overlineColor) || undefined,
       descriptionColor: trimValue(draft.descriptionColor) || undefined,

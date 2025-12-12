@@ -682,23 +682,23 @@ const AdminHeroCarouselPage = () => {
       return productId ? { productId } : undefined;
     };
 
-    const normalizeImageField = (value) => {
-      const trimmed = trimValue(value);
-      if (!trimmed) {
-        return { url: undefined, base64: undefined };
+    const normalizeImageField = (urlValue, base64Value) => {
+      if (base64Value && base64Value.startsWith("data:")) {
+        return { url: undefined, base64: base64Value };
       }
 
-      if (trimmed.startsWith("data:")) {
-        return { url: undefined, base64: trimmed };
+      const trimmedUrl = trimValue(urlValue);
+      if (trimmedUrl && !trimmedUrl.startsWith("data:")) {
+        return { url: trimmedUrl, base64: undefined };
       }
 
-      return { url: trimmed, base64: undefined };
+      return { url: undefined, base64: undefined };
     };
 
     const { url: normalizedImageUrl, base64: imageBase64 } =
-      normalizeImageField(draft.imageUrl);
+      normalizeImageField(draft.imageUrl, draft.imageBase64);
     const { url: normalizedBackgroundUrl, base64: backgroundBase64 } =
-      normalizeImageField(draft.backgroundUrl);
+      normalizeImageField(draft.backgroundUrl, draft.backgroundBase64);
 
     const payload = {
       title: trimValue(draft.title),

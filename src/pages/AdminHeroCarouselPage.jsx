@@ -31,6 +31,7 @@ const emptySlide = {
   overlineColor: "",
   descriptionColor: "",
   imageUrl: "",
+  imageBase64: "",
   primaryCta: { label: "", href: "" },
   secondaryCta: { label: "", href: "" },
   showPrimaryCta: true,
@@ -135,7 +136,17 @@ const SlideForm = ({ draft, onChange, onSave, onCancel, isSaving }) => {
     setUploadingField(field);
     try {
       const dataUrl = await readFileAsDataURL(file);
-      onChange({ ...draft, [field]: dataUrl });
+      const nextDraft = { ...draft, [field]: dataUrl };
+
+      if (field === "imageUrl") {
+        nextDraft.imageBase64 = dataUrl;
+      }
+
+      if (field === "backgroundUrl") {
+        nextDraft.backgroundBase64 = dataUrl;
+      }
+
+      onChange(nextDraft);
       toast.success(`${label} ready to upload`);
     } catch (error) {
       toast.error("Failed to process image");
@@ -146,7 +157,16 @@ const SlideForm = ({ draft, onChange, onSave, onCancel, isSaving }) => {
   };
 
   const handleClearImage = (field) => () => {
-    onChange({ ...draft, [field]: "" });
+    const nextDraft = { ...draft, [field]: "" };
+    if (field === "imageUrl") {
+      nextDraft.imageBase64 = "";
+    }
+
+    if (field === "backgroundUrl") {
+      nextDraft.backgroundBase64 = "";
+    }
+
+    onChange(nextDraft);
   };
 
   return (
@@ -631,6 +651,8 @@ const AdminHeroCarouselPage = () => {
         typeof slide.showDescription === "boolean"
           ? slide.showDescription
           : true,
+      imageBase64: "",
+      backgroundBase64: "",
     });
     setEditingId(slide._id);
     setIsFormOpen(true);

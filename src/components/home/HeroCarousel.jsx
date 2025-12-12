@@ -612,10 +612,13 @@ const HeroCarousel = () => {
             const backgroundImage = slide.background || slide.spotlightImage;
             const primaryCta = slide.primaryCta;
             const secondaryCta = slide.secondaryCta;
+            const hasPrimaryCta = Boolean(
+              primaryCta?.label && primaryCta?.href
+            );
             const hasSecondaryCta = Boolean(
               secondaryCta?.label && secondaryCta?.href
             );
-            const showPrimary = slide.showPrimaryCta !== false;
+            const showPrimary = slide.showPrimaryCta !== false && hasPrimaryCta;
             const showSecondary =
               slide.showSecondaryCta !== false && hasSecondaryCta;
             const isFirstSlide = slideIndex === 0;

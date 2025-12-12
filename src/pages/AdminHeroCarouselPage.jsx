@@ -31,7 +31,6 @@ const emptySlide = {
   overlineColor: "",
   descriptionColor: "",
   imageUrl: "",
-  imageBase64: "",
   primaryCta: { label: "", href: "" },
   secondaryCta: { label: "", href: "" },
   showPrimaryCta: true,
@@ -136,17 +135,7 @@ const SlideForm = ({ draft, onChange, onSave, onCancel, isSaving }) => {
     setUploadingField(field);
     try {
       const dataUrl = await readFileAsDataURL(file);
-      const nextDraft = { ...draft, [field]: dataUrl };
-
-      if (field === "imageUrl") {
-        nextDraft.imageBase64 = dataUrl;
-      }
-
-      if (field === "backgroundUrl") {
-        nextDraft.backgroundBase64 = dataUrl;
-      }
-
-      onChange(nextDraft);
+      onChange({ ...draft, [field]: dataUrl });
       toast.success(`${label} ready to upload`);
     } catch (error) {
       toast.error("Failed to process image");
@@ -157,16 +146,7 @@ const SlideForm = ({ draft, onChange, onSave, onCancel, isSaving }) => {
   };
 
   const handleClearImage = (field) => () => {
-    const nextDraft = { ...draft, [field]: "" };
-    if (field === "imageUrl") {
-      nextDraft.imageBase64 = "";
-    }
-
-    if (field === "backgroundUrl") {
-      nextDraft.backgroundBase64 = "";
-    }
-
-    onChange(nextDraft);
+    onChange({ ...draft, [field]: "" });
   };
 
   return (
@@ -651,8 +631,6 @@ const AdminHeroCarouselPage = () => {
         typeof slide.showDescription === "boolean"
           ? slide.showDescription
           : true,
-      imageBase64: "",
-      backgroundBase64: "",
     });
     setEditingId(slide._id);
     setIsFormOpen(true);
@@ -682,23 +660,23 @@ const AdminHeroCarouselPage = () => {
       return productId ? { productId } : undefined;
     };
 
-    const normalizeImageField = (urlValue, base64Value) => {
-      if (base64Value && base64Value.startsWith("data:")) {
-        return { url: undefined, base64: base64Value };
+    const normalizeImageField = (value) => {
+      const trimmed = trimValue(value);
+      if (!trimmed) {
+        return { url: undefined, base64: undefined };
       }
 
-      const trimmedUrl = trimValue(urlValue);
-      if (trimmedUrl && !trimmedUrl.startsWith("data:")) {
-        return { url: trimmedUrl, base64: undefined };
+      if (trimmed.startsWith("data:")) {
+        return { url: undefined, base64: trimmed };
       }
 
-      return { url: undefined, base64: undefined };
+      return { url: trimmed, base64: undefined };
     };
 
     const { url: normalizedImageUrl, base64: imageBase64 } =
-      normalizeImageField(draft.imageUrl, draft.imageBase64);
+      normalizeImageField(draft.imageUrl);
     const { url: normalizedBackgroundUrl, base64: backgroundBase64 } =
-      normalizeImageField(draft.backgroundUrl, draft.backgroundBase64);
+      normalizeImageField(draft.backgroundUrl);
 
     const payload = {
       title: trimValue(draft.title),

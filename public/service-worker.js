@@ -1,5 +1,8 @@
-const HERO_CACHE = "hero-images-v1";
-const STATIC_CACHE = "static-assets-v1";
+// const HERO_CACHE = "hero-images-v1";
+// const STATIC_CACHE = "static-assets-v1";
+const CACHE_VERSION = "2025-12-12T22-05";
+const HERO_CACHE = `hero-images-${CACHE_VERSION}`;
+const STATIC_CACHE = `static-assets-${CACHE_VERSION}`;
 const HERO_IMAGE_MATCHERS = [
   /https:\/\/ecom-mega-mart\.s3\.ap-south-1\.amazonaws\.com\/hero-carousel\//,
 ];

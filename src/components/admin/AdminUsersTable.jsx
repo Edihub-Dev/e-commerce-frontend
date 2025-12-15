@@ -15,6 +15,31 @@ import {
 import api from "../../utils/api";
 import { toast } from "react-toastify";
 
+const normalizeRole = (role) => {
+  const value = String(role || "")
+    .trim()
+    .toLowerCase();
+  if (["admin", "seller", "customer"].includes(value)) {
+    return value;
+  }
+  return "customer";
+};
+
+const ROLE_DISPLAY = {
+  admin: {
+    label: "Admin",
+    badgeClass: "bg-blue-100 text-blue-600",
+  },
+  seller: {
+    label: "Seller",
+    badgeClass: "bg-purple-100 text-purple-600",
+  },
+  customer: {
+    label: "Customer",
+    badgeClass: "bg-slate-100 text-slate-500",
+  },
+};
+
 const AdminUsersTable = ({
   users,
   isLoading,
@@ -66,7 +91,7 @@ const AdminUsersTable = ({
       name: user.name || "",
       username: user.username || "",
       email: user.email || "",
-      role: user.role || "customer",
+      role: normalizeRole(user.role),
       isVerified: Boolean(user.isVerified),
     });
     setIsDrawerOpen(true);
@@ -140,7 +165,12 @@ const AdminUsersTable = ({
 
   const sortedUsers = useMemo(
     () =>
-      [...users].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)),
+      [...users]
+        .map((user) => ({
+          ...user,
+          role: normalizeRole(user.role),
+        }))
+        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)),
     [users]
   );
 
@@ -154,7 +184,8 @@ const AdminUsersTable = ({
             .some((value) => value.toLowerCase().includes(query))
         : true;
 
-      const matchesRole = roleFilter === "all" ? true : usr.role === roleFilter;
+      const matchesRole =
+        roleFilter === "all" ? true : normalizeRole(usr.role) === roleFilter;
 
       const matchesStatus =
         statusFilter === "all"
@@ -178,7 +209,7 @@ const AdminUsersTable = ({
       (usr.name || "").replace(/\n|\r|"/g, " "),
       (usr.username || "").replace(/\n|\r|"/g, " "),
       usr.email,
-      usr.role,
+      ROLE_DISPLAY[normalizeRole(usr.role)].label,
       usr.isVerified ? "Yes" : "No",
       new Intl.DateTimeFormat("en-IN", {
         dateStyle: "medium",
@@ -322,6 +353,7 @@ const AdminUsersTable = ({
           >
             <option value="all">All roles</option>
             <option value="customer">Customers</option>
+            <option value="seller">Sellers</option>
             <option value="admin">Admins</option>
           </select>
           <select
@@ -464,15 +496,18 @@ const AdminUsersTable = ({
                     {usr.email}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span
-                      className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${
-                        usr.role === "admin"
-                          ? "bg-blue-100 text-blue-600"
-                          : "bg-slate-100 text-slate-500"
-                      }`}
-                    >
-                      {usr.role === "admin" ? "Admin" : "Customer"}
-                    </span>
+                    {(() => {
+                      const normalized = normalizeRole(usr.role);
+                      const { label, badgeClass } =
+                        ROLE_DISPLAY[normalized] || ROLE_DISPLAY.customer;
+                      return (
+                        <span
+                          className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${badgeClass}`}
+                        >
+                          {label}
+                        </span>
+                      );
+                    })()}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     {usr.isVerified ? (
@@ -631,15 +666,18 @@ const AdminUsersTable = ({
                             {usr.username}
                           </p>
                         </div>
-                        <span
-                          className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${
-                            usr.role === "admin"
-                              ? "bg-blue-100 text-blue-600"
-                              : "bg-slate-100 text-slate-500"
-                          }`}
-                        >
-                          {usr.role === "admin" ? "Admin" : "Customer"}
-                        </span>
+                        {(() => {
+                          const normalized = normalizeRole(usr.role);
+                          const { label, badgeClass } =
+                            ROLE_DISPLAY[normalized] || ROLE_DISPLAY.customer;
+                          return (
+                            <span
+                              className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${badgeClass}`}
+                            >
+                              {label}
+                            </span>
+                          );
+                        })()}
                       </div>
 
                       <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-slate-500">
@@ -767,15 +805,18 @@ const AdminUsersTable = ({
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-3">
-                  <span
-                    className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${
-                      viewUser.role === "admin"
-                        ? "bg-blue-100 text-blue-600"
-                        : "bg-slate-100 text-slate-500"
-                    }`}
-                  >
-                    {viewUser.role === "admin" ? "Admin" : "Customer"}
-                  </span>
+                  {(() => {
+                    const normalized = normalizeRole(viewUser.role);
+                    const { label, badgeClass } =
+                      ROLE_DISPLAY[normalized] || ROLE_DISPLAY.customer;
+                    return (
+                      <span
+                        className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${badgeClass}`}
+                      >
+                        {label}
+                      </span>
+                    );
+                  })()}
                   {viewUser.isVerified ? (
                     <span className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-600">
                       <ShieldCheck size={14} /> Verified
@@ -1082,9 +1123,10 @@ const AdminUsersTable = ({
                     name="role"
                     value={formState.role}
                     onChange={handleChange}
-                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-600 focus:border-blue-400 focus:outline-none"
                   >
                     <option value="customer">Customer</option>
+                    <option value="seller">Seller</option>
                     <option value="admin">Admin</option>
                   </select>
                 </div>

@@ -168,10 +168,13 @@ export const AuthProvider = ({ children }) => {
 
   const isAdmin = Boolean(user?.role === "admin");
 
+  const isSeller = Boolean(user?.role === "seller");
+
   const value = {
     user,
     isAuthenticated,
     isAdmin,
+    isSeller,
     loading,
     login,
     signup,

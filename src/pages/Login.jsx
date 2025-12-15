@@ -44,8 +44,10 @@ const Login = () => {
     setErrors({});
     try {
       setSubmitting(true);
-      await login(formData);
-      navigate("/", { replace: true });
+      const response = await login(formData);
+      const nextPath =
+        response?.user?.role === "seller" ? "/seller/dashboard" : from;
+      navigate(nextPath, { replace: true });
     } catch (apiError) {
       toast.error(apiError.message || "Failed to log in.", {
         autoClose: 1000,

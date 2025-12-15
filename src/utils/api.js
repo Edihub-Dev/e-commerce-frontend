@@ -401,6 +401,74 @@ export const resendVerificationOtp = async ({ email }) => {
 export default api;
 export { withApiHandling };
 
+export const applyForSeller = async (payload) => {
+  try {
+    const response = await api.post("/sellers/apply", payload);
+    return response.data;
+  } catch (error) {
+    const message =
+      error.response?.data?.message || "Failed to submit seller application";
+    throw new Error(message);
+  }
+};
+
+export const fetchSellerOverview = () =>
+  withApiHandling(
+    () => api.get("/sellers/overview"),
+    "Failed to load seller dashboard"
+  );
+
+export const fetchSellerProducts = (params = {}) =>
+  withApiHandling(
+    () =>
+      api.get("/sellers/products", {
+        params,
+      }),
+    "Failed to load seller products"
+  );
+
+export const fetchSellerProductById = (id) =>
+  withApiHandling(
+    () => api.get(`/sellers/products/${id}`),
+    "Failed to load product details"
+  );
+
+export const fetchSellerOrders = (params = {}) =>
+  withApiHandling(
+    () =>
+      api.get("/sellers/orders", {
+        params,
+      }),
+    "Failed to load seller orders"
+  );
+
+export const fetchSellerCoupons = (params = {}) =>
+  withApiHandling(
+    () =>
+      api.get("/sellers/coupons", {
+        params,
+      }),
+    "Failed to load seller coupons"
+  );
+
+export const createSellerProduct = (payload) =>
+  withApiHandling(
+    () => api.post("/sellers/products", payload),
+    "Failed to create seller product"
+  );
+
+export const updateSellerProduct = (id, payload) =>
+  withApiHandling(
+    () => api.put(`/sellers/products/${id}`, payload),
+    "Failed to update seller product"
+  );
+
+export const deleteSellerProduct = (id) =>
+  withApiHandling(
+    () => api.delete(`/sellers/products/${id}`),
+    "Failed to delete seller product"
+  );
+
 export const fetchAddresses = async () => {
   const response = await api.get("/user/address/get");
   return response.data;

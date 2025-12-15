@@ -207,15 +207,25 @@ const Signup = () => {
             </motion.button>
           </div>
         </form>
-        <p className="text-sm text-center text-gray-600">
-          Already have an account?{" "}
-          <Link
-            to="/login"
-            className="font-medium text-primary hover:underline"
-          >
-            Log in
-          </Link>
-        </p>
+        <div className="space-y-2 text-center">
+          <p className="text-sm text-center text-gray-600">
+            Already have an account?{" "}
+            <Link
+              to="/login"
+              className="font-medium text-primary hover:underline"
+            >
+              Log in
+            </Link>
+          </p>
+          <p className="text-sm text-center text-gray-600">
+            <Link
+              to="/seller/register"
+              className="font-medium text-primary hover:underline"
+            >
+              Register as Seller
+            </Link>
+          </p>
+        </div>
       </motion.div>
     </motion.div>
   );

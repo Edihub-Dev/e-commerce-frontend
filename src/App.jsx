@@ -53,6 +53,13 @@ const AdminFooterCategoriesPage = lazy(() =>
 const AdminOfferLightboxPage = lazy(() =>
   import("./pages/AdminOfferLightboxPage")
 );
+const SellerSignup = lazy(() => import("./pages/SellerSignup"));
+const SellerDashboard = lazy(() => import("./pages/SellerDashboard"));
+const SellerLayout = lazy(() => import("./components/seller/SellerLayout"));
+const SellerProducts = lazy(() => import("./pages/SellerProducts"));
+const SellerOrders = lazy(() => import("./pages/SellerOrders"));
+const SellerCoupons = lazy(() => import("./pages/SellerCoupons"));
+const SellerAddProduct = lazy(() => import("./pages/SellerAddProduct"));
 import ProtectedRoute from "./components/ProtectedRoute";
 
 const ScrollToTop = () => {
@@ -82,6 +89,7 @@ function App() {
             <Route path="offers" element={<OffersPage />} />
             <Route path="login" element={<Login />} />
             <Route path="signup" element={<Signup />} />
+            <Route path="seller/register" element={<SellerSignup />} />
             <Route path="forgot-password" element={<ForgotPassword />} />
             <Route path="reset-password-otp" element={<ResetPasswordOtp />} />
             <Route path="verify-email" element={<VerifyEmail />} />
@@ -137,6 +145,24 @@ function App() {
 
             <Route path="*" element={<NotFound />} />
           </Route>
+
+          <Route
+            path="/seller"
+            element={
+              <ProtectedRoute requireSeller>
+                <SellerLayout />
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<SellerDashboard />} />
+            <Route path="dashboard" element={<SellerDashboard />} />
+            {/* <Route path="products" element={<SellerProducts />} />
+            <Route path="products/new" element={<SellerAddProduct />} />
+            <Route path="products/:id" element={<SellerAddProduct />} />
+            <Route path="orders" element={<SellerOrders />} />
+            <Route path="coupons" element={<SellerCoupons />} /> */}
+          </Route>
+
           <Route
             path="/admin"
             element={

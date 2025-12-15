@@ -48,7 +48,7 @@ const Header = () => {
   const [navCategories, setNavCategories] = useState([]);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [localSearchQuery, setLocalSearchQuery] = useState("");
-  const { isAuthenticated, user, logout, isAdmin } = useAuth();
+  const { isAuthenticated, user, logout, isAdmin, isSeller } = useAuth();
   const { cartCount } = useCart();
   const profileMenuRef = useRef(null);
   const searchInputRef = useRef(null);
@@ -518,6 +518,18 @@ const Header = () => {
                         Admin Profile
                       </Link>
                     )}
+                    {isSeller && (
+                      <Link
+                        to="/seller/dashboard"
+                        onClick={() => {
+                          setIsProfileMenuOpen(false);
+                          setIsProfilePinned(false);
+                        }}
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      >
+                        Seller Dashboard
+                      </Link>
+                    )}
                     <Link
                       to="/profile"
                       onClick={() => {
@@ -669,6 +681,16 @@ const Header = () => {
                       >
                         <User className="h-5 w-5" />
                         <span>Admin Profile</span>
+                      </Link>
+                    )}
+                    {isSeller && (
+                      <Link
+                        to="/seller/dashboard"
+                        className={mobileMenuItemClasses}
+                        onClick={() => setIsMenuOpen(false)}
+                      >
+                        <LayoutDashboard className="h-5 w-5" />
+                        <span>Seller Dashboard</span>
                       </Link>
                     )}
                     <Link

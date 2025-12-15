@@ -5,17 +5,38 @@ import { ChevronRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import api, { fetchProducts } from "../../utils/api";
 
-const BackgroundRemovedImage = ({ src, threshold = 240, ...props }) => {
+const BackgroundRemovedImage = ({
+  src,
+  threshold = 240,
+  isFirstSlide = false,
+  ...props
+}) => {
   const [processedSrc, setProcessedSrc] = useState(null);
+  const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
     const img = new Image();
     img.crossOrigin = "anonymous";
+
+    // For first slide, use fetchpriority and loading=eager
+    if (isFirstSlide) {
+      img.fetchPriority = "high";
+      img.loading = "eager";
+    }
+
     img.src = src;
 
     img.onload = () => {
       if (!isMounted) return;
+      setIsLoaded(true);
+
+      // Skip background removal for first slide to improve LCP
+      if (isFirstSlide) {
+        setProcessedSrc(src);
+        return;
+      }
+
       const canvas = document.createElement("canvas");
       canvas.width = img.width;
       canvas.height = img.height;
@@ -46,15 +67,37 @@ const BackgroundRemovedImage = ({ src, threshold = 240, ...props }) => {
     img.onerror = () => {
       if (isMounted) {
         setProcessedSrc(src);
+        setIsLoaded(true);
       }
     };
 
     return () => {
       isMounted = false;
     };
-  }, [src, threshold]);
+  }, [src, threshold, isFirstSlide]);
 
-  return <img src={processedSrc || src} alt="" {...props} />;
+  // For first slide, use fetchpriority and loading=eager
+  const imgProps = isFirstSlide
+    ? {
+        ...props,
+        fetchPriority: "high",
+        loading: "eager",
+        "data-lcp-image": "true",
+      }
+    : { ...props, loading: "lazy" };
+
+  return (
+    <img
+      src={processedSrc || src}
+      alt=""
+      {...imgProps}
+      style={{
+        ...(imgProps.style || {}),
+        opacity: isLoaded ? 1 : 0,
+        transition: "opacity 0.3s ease-in-out",
+      }}
+    />
+  );
 };
 
 const createSlug = (value) => {
@@ -340,6 +383,25 @@ const normalizeHeroSlide = (slide, index) => {
 };
 
 const HeroCarousel = () => {
+  // Add preload link for first hero image
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const preloadLink = document.createElement("link");
+    preloadLink.rel = "preload";
+    preloadLink.as = "image";
+    preloadLink.href =
+      "https://ecom-mega-mart.s3.ap-south-1.amazonaws.com/hero-carousel/primary/1765561416926-9dff5ed0f1a91ba7f030da8491df240f.webp";
+    preloadLink.imagesrcset =
+      "https://ecom-mega-mart.s3.ap-south-1.amazonaws.com/hero-carousel/primary/1765561416926-9dff5ed0f1a91ba7f030da8491df240f.webp 1x";
+    preloadLink.fetchPriority = "high";
+
+    document.head.appendChild(preloadLink);
+
+    return () => {
+      document.head.removeChild(preloadLink);
+    };
+  }, []);
   const initialSlidesRef = useRef(null);
   const heroPreloadRef = useRef(null);
   if (initialSlidesRef.current === null) {
@@ -631,13 +693,17 @@ const HeroCarousel = () => {
               >
                 <div className="relative flex h-full w-full items-center justify-center overflow-hidden min-h-[55vh] md:min-h-[90vh]">
                   {backgroundImage ? (
-                    <img
+                    <BackgroundRemovedImage
                       src={backgroundImage}
-                      alt={slide.title || "Featured hero background"}
-                      className="absolute inset-0 h-full w-full object-cover md:object-[center_20%]"
-                      loading={isFirstSlide ? "eager" : "lazy"}
-                      fetchPriority={isFirstSlide ? "high" : "auto"}
-                      crossOrigin="anonymous"
+                      alt={slide.heading || "Hero Image"}
+                      className="absolute inset-0 h-full w-full object-cover object-center"
+                      isFirstSlide={isFirstSlide}
+                      width="1920"
+                      height="1080"
+                      style={{
+                        contentVisibility: "auto",
+                        contain: "paint",
+                      }}
                     />
                   ) : null}
                   <div className="absolute inset-0 bg-slate-950/55" />

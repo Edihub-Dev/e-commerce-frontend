@@ -159,8 +159,8 @@ function App() {
           >
             <Route index element={<SellerDashboard />} />
             <Route path="dashboard" element={<SellerDashboard />} />
-            {/* <Route path="products" element={<SellerProducts />} />
-            <Route path="products/new" element={<SellerAddProduct />} />
+            <Route path="products" element={<SellerProducts />} />
+            {/* <Route path="products/new" element={<SellerAddProduct />} />
             <Route path="products/:id" element={<SellerAddProduct />} /> */}
             {/* <Route path="orders" element={<SellerOrders />} /> */}
             {/* <Route

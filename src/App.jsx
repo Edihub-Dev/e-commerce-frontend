@@ -58,6 +58,9 @@ const SellerDashboard = lazy(() => import("./pages/SellerDashboard"));
 const SellerLayout = lazy(() => import("./components/seller/SellerLayout"));
 const SellerProducts = lazy(() => import("./pages/SellerProducts"));
 const SellerOrders = lazy(() => import("./pages/SellerOrders"));
+const SellerOrderDetailsPage = lazy(() =>
+  import("./pages/SellerOrderDetailsPage")
+);
 const SellerCoupons = lazy(() => import("./pages/SellerCoupons"));
 const SellerAddProduct = lazy(() => import("./pages/SellerAddProduct"));
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -158,9 +161,13 @@ function App() {
             <Route path="dashboard" element={<SellerDashboard />} />
             {/* <Route path="products" element={<SellerProducts />} />
             <Route path="products/new" element={<SellerAddProduct />} />
-            <Route path="products/:id" element={<SellerAddProduct />} />
-            <Route path="orders" element={<SellerOrders />} />
-            <Route path="coupons" element={<SellerCoupons />} /> */}
+            <Route path="products/:id" element={<SellerAddProduct />} /> */}
+            {/* <Route path="orders" element={<SellerOrders />} /> */}
+            {/* <Route
+              path="orders/:orderId"
+              element={<SellerOrderDetailsPage />}
+            /> */}
+            {/* <Route path="coupons" element={<SellerCoupons />} /> */}
           </Route>
 
           <Route

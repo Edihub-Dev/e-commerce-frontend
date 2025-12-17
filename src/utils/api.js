@@ -207,9 +207,43 @@ const normalizeSizes = (value) =>
         .filter(Boolean)
     : [];
 
+const normalizeObjectId = (value) => {
+  if (!value) {
+    return undefined;
+  }
+
+  if (typeof value === "string") {
+    return value.length ? value : undefined;
+  }
+
+  if (typeof value === "object") {
+    if (typeof value.toHexString === "function") {
+      return value.toHexString();
+    }
+    if (typeof value.$oid === "string") {
+      return value.$oid;
+    }
+    if (
+      typeof value.toString === "function" &&
+      value.toString !== Object.prototype.toString
+    ) {
+      const asString = value.toString();
+      return typeof asString === "string" && asString.length
+        ? asString
+        : undefined;
+    }
+  }
+
+  return undefined;
+};
+
 const mapProductCard = (product = {}) => {
   const { price, originalPrice, discountPercentage, saveAmount } =
     ensurePriceFields(product);
+
+  const mongoId = normalizeObjectId(product._id);
+  const sellerId = normalizeObjectId(product.sellerProductId);
+  const normalizedId = product.slug || mongoId || sellerId || product.id;
 
   const gallery = Array.isArray(product.gallery)
     ? product.gallery.map((entry) => ensureS3Url(entry))
@@ -232,9 +266,11 @@ const mapProductCard = (product = {}) => {
   const normalizedRating = normalizedReviews > 0 ? Number(rawRating) || 0 : 0;
 
   return {
-    id: product.slug || product._id,
+    id: normalizedId,
     slug: product.slug || "",
-    mongoId: product._id,
+    mongoId,
+    productId: mongoId,
+    sellerProductId: sellerId,
     name: product.name || "Unnamed Product",
     description: product.shortDescription || "",
     image: primaryImage,
@@ -258,6 +294,8 @@ const mapProductCard = (product = {}) => {
 
 const mapProductDetail = (product = {}) => {
   const card = mapProductCard(product);
+  const mongoId = card.mongoId || normalizeObjectId(product._id);
+
   const keyFeatures = Array.isArray(product.keyFeatures)
     ? product.keyFeatures
         .map((feature) => feature?.toString().trim())
@@ -277,6 +315,8 @@ const mapProductDetail = (product = {}) => {
     : [];
   return {
     ...card,
+    _id: mongoId,
+    mongoId,
     description: product.description || card.description,
     shortDescription: product.shortDescription || card.description,
     gallery,
@@ -536,3 +576,22 @@ export const rateOrderItem = async (orderId, payload) => {
   const response = await api.post(`/orders/${orderId}/rate`, payload);
   return response.data;
 };
+
+export const downloadOrderInvoice = async (orderId) => {
+  const response = await api.get(`/orders/${orderId}/invoice`, {
+    responseType: "blob",
+  });
+  return response;
+};
+
+export const deleteSellerOrder = async (orderId) =>
+  withApiHandling(
+    () => api.delete(`/orders/${orderId}`),
+    "Failed to delete order"
+  );
+
+export const deleteSellerOrdersBulk = async (orderIds = []) =>
+  withApiHandling(
+    () => api.post("/orders/bulk-delete", { ids: orderIds }),
+    "Failed to delete selected orders"
+  );

@@ -37,7 +37,7 @@ const SellerSidebar = ({ onNavigate, className }) => {
           <p className="text-xs font-semibold uppercase tracking-[0.35em] text-slate-400">
             Seller Hub
           </p>
-          <h1 className="text-lg font-semibold">Control Panel</h1>
+          <h1 className="text-lg font-semibold">p2pdeal panel</h1>
         </div>
       </div>
 

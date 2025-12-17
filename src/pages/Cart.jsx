@@ -110,13 +110,91 @@ const Cart = () => {
   const normalizedCartItems = useMemo(() => {
     const mongoIdRegex = /^[a-f\d]{24}$/i;
 
+    const extractProductId = (candidateItem) => {
+      if (!candidateItem || typeof candidateItem !== "object") {
+        return null;
+      }
+
+      const queue = [
+        candidateItem.product,
+        candidateItem.mongoId,
+        candidateItem._id,
+        candidateItem.id,
+        candidateItem.slug,
+        candidateItem.productId,
+      ];
+
+      const visited = new Set();
+
+      while (queue.length) {
+        const current = queue.shift();
+
+        if (current === undefined || current === null) {
+          continue;
+        }
+
+        if (typeof current === "string" || typeof current === "number") {
+          const normalized = String(current).trim();
+          if (mongoIdRegex.test(normalized)) {
+            return normalized;
+          }
+          continue;
+        }
+
+        if (typeof current === "object") {
+          if (visited.has(current)) {
+            continue;
+          }
+          visited.add(current);
+
+          if (
+            typeof current.$oid === "string" &&
+            mongoIdRegex.test(current.$oid)
+          ) {
+            return current.$oid.trim();
+          }
+
+          if (typeof current.toHexString === "function") {
+            const hex = current.toHexString();
+            if (mongoIdRegex.test(hex)) {
+              return hex;
+            }
+          }
+
+          const nestedCandidates = [
+            current._id,
+            current.mongoId,
+            current.id,
+            current.product,
+            current.slug,
+            current.$id,
+          ];
+
+          queue.push(
+            ...nestedCandidates.filter((entry) => entry !== undefined)
+          );
+
+          if (
+            current.toString &&
+            current.toString !== Object.prototype.toString &&
+            typeof current.toString === "function"
+          ) {
+            const toStringValue = current.toString();
+            if (
+              typeof toStringValue === "string" &&
+              mongoIdRegex.test(toStringValue.trim())
+            ) {
+              return toStringValue.trim();
+            }
+          }
+        }
+      }
+
+      return null;
+    };
+
     return cartItems.map((item) => {
-      const candidateId =
-        item.product || item.mongoId || item._id || item.id || item.slug;
-      const normalizedProductId =
-        typeof candidateId === "string" && mongoIdRegex.test(candidateId)
-          ? candidateId
-          : undefined;
+      const normalizedProductId = extractProductId(item);
 
       return {
         ...item,

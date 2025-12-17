@@ -107,11 +107,100 @@ const CheckoutPayment = () => {
     };
   }, []);
 
-  const orderItems = useMemo(
-    () =>
-      items.map(
-        ({
-          product,
+  const orderItems = useMemo(() => {
+    const mongoIdRegex = /^[a-f\d]{24}$/i;
+
+    const extractProductId = (sourceItem) => {
+      if (!sourceItem || typeof sourceItem !== "object") {
+        return undefined;
+      }
+
+      const visited = new Set();
+      const queue = [
+        sourceItem.product,
+        sourceItem.mongoId,
+        sourceItem._id,
+        sourceItem.id,
+        sourceItem.slug,
+        sourceItem.productId,
+      ];
+
+      while (queue.length) {
+        const current = queue.shift();
+
+        if (current === undefined || current === null) {
+          continue;
+        }
+
+        if (typeof current === "string" || typeof current === "number") {
+          const normalized = String(current).trim();
+          if (mongoIdRegex.test(normalized)) {
+            return normalized;
+          }
+          continue;
+        }
+
+        if (typeof current === "object") {
+          if (visited.has(current)) {
+            continue;
+          }
+          visited.add(current);
+
+          if (
+            typeof current.$oid === "string" &&
+            mongoIdRegex.test(current.$oid)
+          ) {
+            return current.$oid.trim();
+          }
+
+          if (typeof current.toHexString === "function") {
+            const hex = current.toHexString();
+            if (mongoIdRegex.test(hex)) {
+              return hex;
+            }
+          }
+
+          const additionalCandidates = [
+            current._id,
+            current.mongoId,
+            current.id,
+            current.product,
+            current.slug,
+            current.$id,
+          ];
+
+          queue.push(
+            ...additionalCandidates.filter(
+              (candidate) => candidate !== undefined
+            )
+          );
+
+          if (
+            current.toString &&
+            current.toString !== Object.prototype.toString &&
+            typeof current.toString === "function"
+          ) {
+            const toStringValue = current.toString();
+            if (
+              typeof toStringValue === "string" &&
+              mongoIdRegex.test(toStringValue.trim())
+            ) {
+              return toStringValue.trim();
+            }
+          }
+        }
+      }
+
+      return undefined;
+    };
+
+    return items
+      .map((item) => {
+        if (!item || typeof item !== "object") {
+          return null;
+        }
+
+        const {
           name,
           image,
           price,
@@ -121,8 +210,12 @@ const CheckoutPayment = () => {
           hsn,
           gstRate,
           taxRate,
-        }) => ({
-          product,
+        } = item;
+
+        const resolvedProductId = extractProductId(item);
+
+        return {
+          product: resolvedProductId,
           name,
           image,
           price,
@@ -135,10 +228,10 @@ const CheckoutPayment = () => {
               : taxRate !== undefined && taxRate !== null
               ? Number(taxRate)
               : undefined,
-        })
-      ),
-    [items]
-  );
+        };
+      })
+      .filter(Boolean);
+  }, [items]);
 
   const fallbackSubtotal = useMemo(
     () =>
@@ -413,7 +506,30 @@ const CheckoutPayment = () => {
   }, [dispatch, resolvedTotals, totals]);
 
   const placeCodOrder = useCallback(async () => {
-    if (!sanitizedAddress) return;
+    if (!sanitizedAddress) {
+      return;
+    }
+
+    const missingProductIndex = orderItems.findIndex((item) => !item?.product);
+
+    if (missingProductIndex !== -1) {
+      const rawItem = items?.[missingProductIndex];
+      const normalizedItem = orderItems[missingProductIndex];
+
+      console.error("Checkout item missing product reference", {
+        itemIndex: missingProductIndex,
+        rawItem,
+        normalizedItem,
+      });
+
+      toast.error(
+        `Cart item #${
+          missingProductIndex + 1
+        } is outdated. Please remove it and add the product again.`,
+        { duration: 4000 }
+      );
+      throw new Error("Checkout item missing product reference");
+    }
 
     const payload = {
       items: orderItems,
@@ -436,10 +552,12 @@ const CheckoutPayment = () => {
 
     const response = await createOrder(payload);
     const orderData = response?.data;
-    const orderId = orderData?._id;
+    const createdOrderId = orderData?._id;
 
     dispatch(setPaymentStatus("pending"));
-    dispatch(setOrderId(orderId));
+    if (createdOrderId) {
+      dispatch(setOrderId(createdOrderId));
+    }
 
     removeItems(Array.isArray(orderData?.items) ? orderData.items : orderItems);
 
@@ -447,20 +565,20 @@ const CheckoutPayment = () => {
     navigate("/", {
       replace: true,
       state: {
-        recentOrderId: orderId,
+        recentOrderId: createdOrderId,
       },
     });
 
     dispatch(resetCheckout());
   }, [
+    appliedCoupon?.code,
     dispatch,
+    items,
     navigate,
     orderItems,
     pricingPayload,
-    resolvedTotals.subtotal,
-    resolvedTotals.total,
-    sanitizedAddress,
     removeItems,
+    sanitizedAddress,
   ]);
 
   const handleManualRefresh = useCallback(() => {

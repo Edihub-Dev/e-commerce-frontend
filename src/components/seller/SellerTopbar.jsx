@@ -29,7 +29,7 @@ const SellerTopbar = ({ onToggleSidebar }) => {
           </button>
           <div className="max-w-[70vw] space-y-0.5 sm:max-w-none sm:space-y-1">
             <h1 className="text-base font-semibold text-slate-900 sm:text-xl">
-              Welcome back, {displayName}
+              Welcome Seller, {displayName}
             </h1>
             <p className="text-xs text-slate-500 sm:text-sm">
               Manage your catalogue and orders

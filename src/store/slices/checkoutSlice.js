@@ -54,12 +54,17 @@ const sanitizeCheckoutItem = (item = {}) => {
     sanitized.hsnCode = trimmed || undefined;
   }
 
-  const gstCandidate =
+  const rawGstCandidate =
     sanitized.gstRate !== undefined && sanitized.gstRate !== null
       ? sanitized.gstRate
       : sanitized.taxRate !== undefined && sanitized.taxRate !== null
       ? sanitized.taxRate
       : undefined;
+
+  let gstCandidate = rawGstCandidate;
+  if (typeof gstCandidate === "string") {
+    gstCandidate = gstCandidate.replace(/[^0-9.]+/g, "");
+  }
 
   const parsedGst = Number(gstCandidate);
   sanitized.gstRate =

@@ -20,9 +20,9 @@ const SellerLayout = () => {
   }, [isSidebarOpen]);
 
   return (
-    <div className="flex h-screen overflow-hidden bg-slate-50 text-slate-900">
-      <div className="flex h-full w-full">
-        <SellerSidebar className="hidden lg:flex lg:w-72" />
+    <div className="min-h-screen bg-slate-50 text-slate-900">
+      <div className="flex min-h-screen w-full">
+        <SellerSidebar className="hidden lg:flex lg:w-72 lg:flex-none lg:flex-col lg:overflow-y-auto lg:border-r lg:border-slate-100 lg:sticky lg:top-0 lg:h-screen" />
 
         <AnimatePresence>
           {isSidebarOpen && (
@@ -54,14 +54,12 @@ const SellerLayout = () => {
           )}
         </AnimatePresence>
 
-        <div className="flex h-full min-h-0 flex-1 flex-col overflow-x-hidden">
+        <div className="flex min-h-screen flex-1 flex-col">
           <SellerTopbar
             onToggleSidebar={() => setIsSidebarOpen((prev) => !prev)}
           />
-          <main className="flex-1 min-h-0 overflow-hidden bg-slate-50">
-            <div className="h-full overflow-y-auto px-5 pb-10 pt-6 sm:px-8 lg:px-12">
-              <Outlet />
-            </div>
+          <main className="flex-1 bg-slate-50 px-5 pb-10 pt-6 sm:px-8 lg:px-12">
+            <Outlet />
           </main>
         </div>
       </div>

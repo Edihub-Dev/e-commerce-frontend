@@ -2,13 +2,19 @@ import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import ProductCard from "../ProductCard";
 import SectionHeader from "../SectionHeader";
-import { getSmartphoneDeals as getMerchDeals } from "../../utils/api";
+import {
+  getSmartphoneDeals as getMerchDeals,
+  fetchProducts,
+} from "../../utils/api";
 import { staggerContainer, staggerItem } from "../../utils/animations";
 
-const DealsSection = () => {
+const SellerSection = () => {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [sellerProducts, setSellerProducts] = useState([]);
+  const [sellerLoading, setSellerLoading] = useState(true);
+  const [sellerError, setSellerError] = useState("");
 
   const SKELETON_COUNT = 6;
 
@@ -18,7 +24,10 @@ const DealsSection = () => {
     const fetchDeals = async () => {
       setLoading(true);
       try {
-        const { data } = await getMerchDeals({ limit: 50 });
+        const { data } = await getMerchDeals({
+          limit: 50,
+          excludeSellerProducts: true,
+        });
         if (isMounted) {
           const sorted = Array.isArray(data)
             ? [...data].sort((a, b) => {
@@ -62,6 +71,48 @@ const DealsSection = () => {
     };
   }, []);
 
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchSellerHighlights = async () => {
+      setSellerLoading(true);
+      try {
+        const payload = await fetchProducts(
+          {
+            onlySellerProducts: true,
+            status: "published",
+            sortBy: "createdAt",
+            sortOrder: "desc",
+            limit: 8,
+          },
+          { suppressToast: true }
+        );
+
+        if (!isMounted) return;
+
+        const list = Array.isArray(payload?.data) ? payload.data : [];
+        setSellerProducts(list.slice(0, 8));
+        setSellerError("");
+      } catch (err) {
+        console.error("Failed to load seller spotlight", err);
+        if (isMounted) {
+          setSellerError(err.message || "Unable to load seller products.");
+          setSellerProducts([]);
+        }
+      } finally {
+        if (isMounted) {
+          setSellerLoading(false);
+        }
+      }
+    };
+
+    fetchSellerHighlights();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   return (
     <motion.section
       className="w-full"
@@ -88,7 +139,7 @@ const DealsSection = () => {
             {loading
               ? Array.from({ length: SKELETON_COUNT }).map((_, index) => (
                   <div
-                    key={`deals-skeleton-${index}`}
+                    key={`mst-skeleton-${index}`}
                     className="w-full min-w-0 animate-pulse rounded-2xl border border-slate-200/60 bg-slate-100/40 px-4 py-5"
                     aria-hidden
                   >
@@ -100,7 +151,7 @@ const DealsSection = () => {
                 ))
               : products.map((product) => (
                   <motion.div
-                    key={product.id}
+                    key={product.id || product._id}
                     variants={staggerItem}
                     className="w-full min-w-0"
                   >
@@ -130,8 +181,72 @@ const DealsSection = () => {
           </div>
         </motion.div>
       </div>
+
+      <div className="container mx-auto px-2 sm:px-4 mt-10">
+        <SectionHeader
+          title={
+            <>
+              Seller Hub Spotlight{" "}
+              <span style={{ color: "#008ECC" }}>Latest Listings</span>
+            </>
+          }
+          description="Fresh drops from our verified sellers"
+          linkTo="/shop?seller=true"
+          linkText="Browse Seller Products"
+        />
+
+        <motion.div
+          className="w-full overflow-hidden"
+          variants={staggerContainer}
+        >
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+            {sellerLoading
+              ? Array.from({ length: 6 }).map((_, index) => (
+                  <div
+                    key={`seller-skeleton-${index}`}
+                    className="w-full min-w-0 animate-pulse rounded-2xl border border-slate-200/60 bg-white px-4 py-5 shadow-sm"
+                  >
+                    <div className="h-40 w-full rounded-xl bg-slate-200" />
+                    <div className="mt-4 h-3 w-3/4 rounded-full bg-slate-200" />
+                    <div className="mt-2 h-3 w-1/2 rounded-full bg-slate-200" />
+                    <div className="mt-5 h-9 w-full rounded-full bg-slate-200/80" />
+                  </div>
+                ))
+              : sellerProducts.map((product) => (
+                  <motion.div
+                    key={product.id || product._id}
+                    variants={staggerItem}
+                    className="w-full min-w-0"
+                  >
+                    <ProductCard product={product} variant="seller" />
+                  </motion.div>
+                ))}
+          </div>
+
+          {sellerError && !sellerLoading && (
+            <div className="py-6 text-center text-sm text-red-500">
+              {sellerError}
+            </div>
+          )}
+
+          {!sellerLoading && !sellerError && sellerProducts.length === 0 && (
+            <div className="py-6 text-center text-sm text-slate-500">
+              Seller products will appear here once published.
+            </div>
+          )}
+
+          <div className="mt-4 flex justify-center sm:hidden">
+            <a
+              href="/shop?seller=true"
+              className="block w-full rounded-lg bg-gray-100 px-4 py-3 text-center text-gray-800 font-medium transition-colors hover:bg-gray-200"
+            >
+              View All Seller Products
+            </a>
+          </div>
+        </motion.div>
+      </div>
     </motion.section>
   );
 };
 
-export default DealsSection;
+export default SellerSection;

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
+import { useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import ProductCard from "../components/ProductCard";
 import { getAllProducts } from "../utils/api";
@@ -12,6 +13,7 @@ const Shop = () => {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [searchParams] = useSearchParams();
 
   useEffect(() => {
     let isActive = true;
@@ -19,7 +21,17 @@ const Shop = () => {
     const fetchProducts = async () => {
       setLoading(true);
       try {
-        const { data } = await getAllProducts({ limit: "all" });
+        const sellerMode =
+          (searchParams.get("seller") || "").toLowerCase() === "true";
+        const params = { limit: "all" };
+
+        if (sellerMode) {
+          params.onlySellerProducts = true;
+        } else {
+          params.excludeSellerProducts = true;
+        }
+
+        const { data } = await getAllProducts(params);
         if (isActive) {
           setProducts(data);
           setError("");
@@ -44,7 +56,10 @@ const Shop = () => {
     return () => {
       isActive = false;
     };
-  }, []);
+  }, [searchParams]);
+
+  const sellerMode =
+    (searchParams.get("seller") || "").toLowerCase() === "true";
 
   const categories = useMemo(() => {
     const categoryMap = new Map();
@@ -82,14 +97,21 @@ const Shop = () => {
       animate="animate"
       exit="exit"
     >
-      <motion.h1
-        className="text-3xl font-bold mb-6"
-        initial={{ opacity: 0, x: -20 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ delay: 0.2 }}
+      <motion.div
+        className="mb-6 space-y-2"
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.15 }}
       >
-        Shop All Products
-      </motion.h1>
+        <h1 className="text-3xl font-bold">
+          {sellerMode ? "Seller Hub Products" : "MST Blockchain Collection"}
+        </h1>
+        <p className="text-sm text-slate-500">
+          {sellerMode
+            ? "Browse categories curated by our verified sellers."
+            : "Official MST Blockchain merchandise organised by category."}
+        </p>
+      </motion.div>
       {loading && (
         <div className="py-6 text-center text-sm text-slate-500">
           Loading products...
@@ -100,7 +122,9 @@ const Shop = () => {
       )}
       {!loading && !error && products.length === 0 && (
         <div className="py-6 text-center text-sm text-slate-500">
-          No products found. Check back soon!
+          {sellerMode
+            ? "Seller listings have not been published yet."
+            : "MST products are coming soon. Check back shortly!"}
         </div>
       )}
 
@@ -142,7 +166,10 @@ const Shop = () => {
                 >
                   {categoryProducts.map((product) => (
                     <motion.div key={product.id} variants={staggerItem}>
-                      <ProductCard product={product} />
+                      <ProductCard
+                        product={product}
+                        variant={sellerMode ? "seller" : undefined}
+                      />
                     </motion.div>
                   ))}
                 </motion.div>

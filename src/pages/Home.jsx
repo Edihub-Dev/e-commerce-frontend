@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import HeroCarousel from "../components/home/HeroCarousel";
-import DealsSection from "../components/home/DealsSection";
+import SellerSection from "../components/home/SelllerSection";
 import OfferLightboxModal from "../components/home/OfferLightboxModal";
 import { useSearch } from "../contexts/SearchContext";
 import { useNavigate } from "react-router-dom";
@@ -132,7 +132,7 @@ const Home = () => {
         <HeroCarousel />
       </div>
       <div className="container mx-auto px-4 space-y-8 md:space-y-12">
-        <DealsSection />
+        <SellerSection />
         {/* Commented out sections as per request
         <CategoriesSection />
         <BrandsSection />

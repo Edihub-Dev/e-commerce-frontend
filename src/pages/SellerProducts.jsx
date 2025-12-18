@@ -841,214 +841,397 @@ const SellerProducts = () => {
         </div>
       )}
 
-      <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-        <div className="overflow-x-auto pb-2">
-          <table className="min-w-[64rem] table-auto text-sm text-slate-600">
-            <thead className="bg-slate-50/80 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
-              <tr>
-                <th className="px-6 py-4">
-                  <input
-                    type="checkbox"
-                    className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-400"
-                    checked={allVisibleSelected}
-                    onChange={toggleSelectAll}
-                    aria-label="Select all products"
-                  />
-                </th>
-                <th className="min-w-[14rem] px-6 py-4 text-left">Product</th>
-                <th className="min-w-[11rem] px-6 py-4 text-left">ID</th>
-                <th className="min-w-[9rem] px-6 py-4 text-left">Category</th>
-                <th className="min-w-[6rem] px-6 py-4">
-                  <button
-                    type="button"
-                    onClick={() => toggleSort("price")}
-                    className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400"
-                  >
-                    Price
-                    <ArrowUpDown
-                      size={14}
-                      className={
-                        sortConfig.field === "price"
-                          ? "text-blue-500"
-                          : "text-slate-300"
-                      }
-                    />
-                  </button>
-                </th>
-                <th className="min-w-[5rem] px-6 py-4 text-left">Stock</th>
-                <th className="min-w-[7rem] px-6 py-4 text-center">Featured</th>
-                <th className="min-w-[7rem] px-6 py-4 text-center">Status</th>
-                <th className="min-w-[7rem] px-6 py-4 text-left">Added</th>
-                <th className="min-w-[6rem] px-6 py-4 text-right">Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                Array.from({ length: 6 }).map((_, rowIndex) => (
-                  <tr key={rowIndex} className="border-t border-slate-100">
-                    {Array.from({ length: 10 }).map((__, cellIndex) => (
-                      <td key={cellIndex} className="px-6 py-4">
-                        <span className="inline-block h-4 w-full max-w-[8rem] rounded bg-slate-100 animate-pulse" />
-                      </td>
-                    ))}
-                  </tr>
-                ))
-              ) : processedRows.length ? (
-                processedRows.map((row) => {
-                  const availabilityClass =
-                    availabilityBadge[row.availability] ||
-                    "bg-slate-100 text-slate-500";
-                  const statusClass =
-                    statusBadge[row.status] || "bg-slate-100 text-slate-500";
-                  const isSelected = selectedIds.has(row.id);
+      <div className="space-y-4">
+        <div className="md:hidden">
+          {loading ? (
+            <div className="grid gap-3">
+              {Array.from({ length: 4 }).map((_, index) => (
+                <div
+                  key={index}
+                  className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
+                >
+                  <div className="flex items-start gap-3">
+                    <span className="h-10 w-10 rounded-xl bg-slate-100" />
+                    <div className="flex-1 space-y-2">
+                      <span className="block h-4 w-3/4 rounded bg-slate-100" />
+                      <span className="block h-3 w-1/2 rounded bg-slate-100" />
+                    </div>
+                  </div>
+                  <div className="mt-4 space-y-2">
+                    <span className="block h-3 w-full rounded bg-slate-100" />
+                    <span className="block h-3 w-5/6 rounded bg-slate-100" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : processedRows.length ? (
+            <div className="grid gap-3">
+              {processedRows.map((row) => {
+                const availabilityClass =
+                  availabilityBadge[row.availability] ||
+                  "bg-slate-100 text-slate-500";
+                const statusClass =
+                  statusBadge[row.status] || "bg-slate-100 text-slate-500";
+                const isSelected = selectedIds.has(row.id);
 
-                  return (
-                    <tr
-                      key={row.id}
-                      className="border-t border-slate-100 transition hover:bg-blue-50/40"
-                    >
-                      <td className="px-6 py-4">
-                        <input
-                          type="checkbox"
-                          className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-400"
-                          checked={isSelected}
-                          onChange={() => toggleRowSelection(row.id)}
-                          aria-label={`Select ${row.name}`}
-                        />
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
-                          <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-white">
-                            {row.thumbnail ? (
-                              <img
-                                src={row.thumbnail}
-                                alt={row.name}
-                                className="h-full w-full object-cover"
-                              />
-                            ) : null}
-                          </div>
-                          <div className="min-w-0 space-y-1">
-                            <p className="truncate text-sm font-semibold text-slate-900">
-                              {row.name}
-                            </p>
-                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
-                              {row.brand ? (
-                                <span className="font-medium uppercase tracking-wide text-slate-400">
-                                  {row.brand}
-                                </span>
-                              ) : null}
-                              {row.sku && row.sku !== "-" ? (
-                                <span className="rounded-full bg-slate-100 px-2 py-0.5 font-mono text-[11px] text-slate-500">
-                                  {row.sku}
-                                </span>
-                              ) : null}
-                              <span className="text-[11px] text-slate-400">
-                                {row.variants} Variants
+                return (
+                  <div
+                    key={row.id}
+                    className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
+                  >
+                    <div className="flex items-start gap-3">
+                      <input
+                        type="checkbox"
+                        className="mt-1 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-400"
+                        checked={isSelected}
+                        onChange={() => toggleRowSelection(row.id)}
+                        aria-label={`Select ${row.name}`}
+                      />
+                      <div className="flex flex-1 items-center gap-3">
+                        <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
+                          {row.thumbnail ? (
+                            <img
+                              src={row.thumbnail}
+                              alt={row.name}
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            <span className="text-xs text-slate-400">
+                              No image
+                            </span>
+                          )}
+                        </div>
+                        <div className="min-w-0 space-y-1">
+                          <p className="truncate text-base font-semibold text-slate-900">
+                            {row.name}
+                          </p>
+                          <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                            {row.brand ? (
+                              <span className="font-medium uppercase tracking-wide text-slate-400">
+                                {row.brand}
                               </span>
-                            </div>
+                            ) : null}
+                            {row.sku && row.sku !== "-" ? (
+                              <span className="rounded-full bg-slate-100 px-2 py-0.5 font-mono text-[11px] text-slate-500">
+                                {row.sku}
+                              </span>
+                            ) : null}
+                            <span className="text-[11px] text-slate-400">
+                              {row.variants} Variants
+                            </span>
                           </div>
                         </div>
-                      </td>
-                      <td className="px-6 py-4">
+                      </div>
+                    </div>
+
+                    <div className="mt-4 space-y-2 text-sm text-slate-600">
+                      <div className="flex flex-wrap items-center gap-2 text-xs">
                         <span
-                          className="block max-w-[14rem] break-all text-xs font-medium text-slate-500"
-                          title={row.id}
+                          className={`inline-flex items-center gap-2 rounded-full px-3 py-1 font-semibold ${availabilityClass}`}
                         >
-                          {row.id}
+                          Stock: {row.stock}
                         </span>
-                      </td>
-                      <td className="px-6 py-4 text-sm font-medium text-slate-600">
                         <span
-                          className="block max-w-[14rem] truncate"
-                          title={row.category}
-                        >
-                          {row.category}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 font-semibold whitespace-nowrap text-slate-900">
-                        {row.displayPrice}
-                      </td>
-                      <td className="px-6 py-4">
-                        <span
-                          className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold ${availabilityClass}`}
-                        >
-                          {row.stock}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-center">
-                        {row.isFeatured ? (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-600">
-                            <Star size={12} /> Featured
-                          </span>
-                        ) : (
-                          <span className="text-xs text-slate-400">-</span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 text-center">
-                        <span
-                          className={`inline-flex items-center justify-center rounded-full px-3 py-1 text-xs font-semibold ${statusClass}`}
+                          className={`inline-flex items-center gap-2 rounded-full px-3 py-1 font-semibold ${statusClass}`}
                         >
                           {row.status.toString().toUpperCase()}
                         </span>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-slate-500">
-                        {row.createdAt}
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center justify-end gap-2 text-slate-400">
-                          <button
-                            type="button"
-                            onClick={() => handleViewProduct(row)}
-                            className="rounded-full border border-transparent p-2 transition hover:border-blue-100 hover:text-blue-600"
-                            title="View product"
-                          >
-                            <Eye size={16} />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleEditProduct(row)}
-                            className="rounded-full border border-transparent p-2 transition hover:border-blue-100 hover:text-blue-600"
-                            title="Edit product"
-                          >
-                            <Pencil size={16} />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteProduct(row)}
-                            disabled={deletingId === row.id}
-                            className="rounded-full border border-transparent p-2 transition hover:border-rose-100 hover:text-rose-600 disabled:cursor-not-allowed disabled:opacity-50"
-                            title="Delete product"
-                          >
-                            {deletingId === row.id ? (
-                              <Loader2
-                                size={16}
-                                className="animate-spin text-rose-500"
-                              />
-                            ) : (
-                              <Trash2 size={16} />
-                            )}
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
-              ) : (
-                <tr>
-                  <td
-                    colSpan={10}
-                    className="px-6 py-16 text-center text-slate-500"
-                  >
-                    No products match your filters yet. Try creating a new
-                    listing to start selling.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+                      </div>
+                      <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
+                        <span className="font-semibold text-slate-900">
+                          {row.displayPrice}
+                        </span>
+                        <span className="truncate" title={row.category}>
+                          {row.category}
+                        </span>
+                      </div>
+                      <div className="space-y-1 text-xs text-slate-500">
+                        <p className="break-all" title={row.id}>
+                          ID: {row.id}
+                        </p>
+                        <p>Added: {row.createdAt}</p>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
+                      {row.isFeatured ? (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-600">
+                          <Star size={12} /> Featured
+                        </span>
+                      ) : (
+                        <span className="text-xs text-slate-400">
+                          Not featured
+                        </span>
+                      )}
+                      <div className="flex items-center gap-2 text-slate-400">
+                        <button
+                          type="button"
+                          onClick={() => handleViewProduct(row)}
+                          className="rounded-full border border-transparent p-2 transition hover:border-blue-100 hover:text-blue-600"
+                          title="View product"
+                        >
+                          <Eye size={16} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleEditProduct(row)}
+                          className="rounded-full border border-transparent p-2 transition hover:border-blue-100 hover:text-blue-600"
+                          title="Edit product"
+                        >
+                          <Pencil size={16} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteProduct(row)}
+                          disabled={deletingId === row.id}
+                          className="rounded-full border border-transparent p-2 transition hover:border-rose-100 hover:text-rose-600 disabled:cursor-not-allowed disabled:opacity-50"
+                          title="Delete product"
+                        >
+                          {deletingId === row.id ? (
+                            <Loader2
+                              size={16}
+                              className="animate-spin text-rose-500"
+                            />
+                          ) : (
+                            <Trash2 size={16} />
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-dashed border-slate-200 bg-white p-6 text-center text-sm text-slate-500">
+              No products match your filters yet. Try creating a new listing to
+              start selling.
+            </div>
+          )}
         </div>
 
-        <footer className="flex flex-col justify-between gap-3 border-t border-slate-200 bg-slate-50 px-6 py-4 text-xs text-slate-500 sm:flex-row sm:items-center">
+        <div className="hidden md:block">
+          <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+            <div className="overflow-x-auto pb-2">
+              <table className="min-w-[64rem] table-auto text-sm text-slate-600">
+                <thead className="bg-slate-50/80 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
+                  <tr>
+                    <th className="px-6 py-4">
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-400"
+                        checked={allVisibleSelected}
+                        onChange={toggleSelectAll}
+                        aria-label="Select all products"
+                      />
+                    </th>
+                    <th className="min-w-[14rem] px-6 py-4 text-left">
+                      Product
+                    </th>
+                    <th className="min-w-[11rem] px-6 py-4 text-left">ID</th>
+                    <th className="min-w-[9rem] px-6 py-4 text-left">
+                      Category
+                    </th>
+                    <th className="min-w-[6rem] px-6 py-4">
+                      <button
+                        type="button"
+                        onClick={() => toggleSort("price")}
+                        className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400"
+                      >
+                        Price
+                        <ArrowUpDown
+                          size={14}
+                          className={
+                            sortConfig.field === "price"
+                              ? "text-blue-500"
+                              : "text-slate-300"
+                          }
+                        />
+                      </button>
+                    </th>
+                    <th className="min-w-[5rem] px-6 py-4 text-left">Stock</th>
+                    <th className="min-w-[7rem] px-6 py-4 text-center">
+                      Featured
+                    </th>
+                    <th className="min-w-[7rem] px-6 py-4 text-center">
+                      Status
+                    </th>
+                    <th className="min-w-[7rem] px-6 py-4 text-left">Added</th>
+                    <th className="min-w-[6rem] px-6 py-4 text-right">
+                      Action
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {loading ? (
+                    Array.from({ length: 6 }).map((_, rowIndex) => (
+                      <tr key={rowIndex} className="border-t border-slate-100">
+                        {Array.from({ length: 10 }).map((__, cellIndex) => (
+                          <td key={cellIndex} className="px-6 py-4">
+                            <span className="inline-block h-4 w-full max-w-[8rem] rounded bg-slate-100 animate-pulse" />
+                          </td>
+                        ))}
+                      </tr>
+                    ))
+                  ) : processedRows.length ? (
+                    processedRows.map((row) => {
+                      const availabilityClass =
+                        availabilityBadge[row.availability] ||
+                        "bg-slate-100 text-slate-500";
+                      const statusClass =
+                        statusBadge[row.status] ||
+                        "bg-slate-100 text-slate-500";
+                      const isSelected = selectedIds.has(row.id);
+
+                      return (
+                        <tr
+                          key={row.id}
+                          className="border-t border-slate-100 transition hover:bg-blue-50/40"
+                        >
+                          <td className="px-6 py-4">
+                            <input
+                              type="checkbox"
+                              className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-400"
+                              checked={isSelected}
+                              onChange={() => toggleRowSelection(row.id)}
+                              aria-label={`Select ${row.name}`}
+                            />
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="flex items-center gap-3">
+                              <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-white">
+                                {row.thumbnail ? (
+                                  <img
+                                    src={row.thumbnail}
+                                    alt={row.name}
+                                    className="h-full w-full object-cover"
+                                  />
+                                ) : null}
+                              </div>
+                              <div className="min-w-0 space-y-1">
+                                <p className="truncate text-sm font-semibold text-slate-900">
+                                  {row.name}
+                                </p>
+                                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
+                                  {row.brand ? (
+                                    <span className="font-medium uppercase tracking-wide text-slate-400">
+                                      {row.brand}
+                                    </span>
+                                  ) : null}
+                                  {row.sku && row.sku !== "-" ? (
+                                    <span className="rounded-full bg-slate-100 px-2 py-0.5 font-mono text-[11px] text-slate-500">
+                                      {row.sku}
+                                    </span>
+                                  ) : null}
+                                  <span className="text-[11px] text-slate-400">
+                                    {row.variants} Variants
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <span
+                              className="block max-w-[14rem] break-all text-xs font-medium text-slate-500"
+                              title={row.id}
+                            >
+                              {row.id}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 text-sm font-medium text-slate-600">
+                            <span
+                              className="block max-w-[14rem] truncate"
+                              title={row.category}
+                            >
+                              {row.category}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 font-semibold whitespace-nowrap text-slate-900">
+                            {row.displayPrice}
+                          </td>
+                          <td className="px-6 py-4">
+                            <span
+                              className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold ${availabilityClass}`}
+                            >
+                              {row.stock}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 text-center">
+                            {row.isFeatured ? (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-600">
+                                <Star size={12} /> Featured
+                              </span>
+                            ) : (
+                              <span className="text-xs text-slate-400">-</span>
+                            )}
+                          </td>
+                          <td className="px-6 py-4 text-center">
+                            <span
+                              className={`inline-flex items-center justify-center rounded-full px-3 py-1 text-xs font-semibold ${statusClass}`}
+                            >
+                              {row.status.toString().toUpperCase()}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 text-sm text-slate-500">
+                            {row.createdAt}
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="flex items-center justify-end gap-2 text-slate-400">
+                              <button
+                                type="button"
+                                onClick={() => handleViewProduct(row)}
+                                className="rounded-full border border-transparent p-2 transition hover:border-blue-100 hover:text-blue-600"
+                                title="View product"
+                              >
+                                <Eye size={16} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleEditProduct(row)}
+                                className="rounded-full border border-transparent p-2 transition hover:border-blue-100 hover:text-blue-600"
+                                title="Edit product"
+                              >
+                                <Pencil size={16} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteProduct(row)}
+                                disabled={deletingId === row.id}
+                                className="rounded-full border border-transparent p-2 transition hover:border-rose-100 hover:text-rose-600 disabled:cursor-not-allowed disabled:opacity-50"
+                                title="Delete product"
+                              >
+                                {deletingId === row.id ? (
+                                  <Loader2
+                                    size={16}
+                                    className="animate-spin text-rose-500"
+                                  />
+                                ) : (
+                                  <Trash2 size={16} />
+                                )}
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  ) : (
+                    <tr>
+                      <td
+                        colSpan={10}
+                        className="px-6 py-16 text-center text-slate-500"
+                      >
+                        No products match your filters yet. Try creating a new
+                        listing to start selling.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <footer className="flex flex-col justify-between gap-3 rounded-3xl border border-slate-200 bg-white px-4 py-4 text-xs text-slate-500 shadow-sm sm:flex-row sm:items-center">
           <span>
             {meta.total > 0
               ? `Showing ${

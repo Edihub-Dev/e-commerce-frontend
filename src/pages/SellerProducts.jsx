@@ -1012,11 +1012,11 @@ const SellerProducts = () => {
 
         <div className="hidden md:block">
           <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-            <div className="overflow-x-auto pb-2">
-              <table className="min-w-[64rem] table-auto text-sm text-slate-600">
+            <div className="pb-2">
+              <table className="w-full table-auto text-sm text-slate-600">
                 <thead className="bg-slate-50/80 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
                   <tr>
-                    <th className="px-6 py-4">
+                    <th className="px-4 py-4 w-10">
                       <input
                         type="checkbox"
                         className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-400"
@@ -1025,14 +1025,10 @@ const SellerProducts = () => {
                         aria-label="Select all products"
                       />
                     </th>
-                    <th className="min-w-[14rem] px-6 py-4 text-left">
-                      Product
-                    </th>
-                    <th className="min-w-[11rem] px-6 py-4 text-left">ID</th>
-                    <th className="min-w-[9rem] px-6 py-4 text-left">
-                      Category
-                    </th>
-                    <th className="min-w-[6rem] px-6 py-4">
+                    <th className="px-4 py-4 text-left">Product</th>
+                    <th className="px-4 py-4 text-left">ID</th>
+                    <th className="px-4 py-4 text-left">Category</th>
+                    <th className="px-4 py-4">
                       <button
                         type="button"
                         onClick={() => toggleSort("price")}
@@ -1049,17 +1045,11 @@ const SellerProducts = () => {
                         />
                       </button>
                     </th>
-                    <th className="min-w-[5rem] px-6 py-4 text-left">Stock</th>
-                    <th className="min-w-[7rem] px-6 py-4 text-center">
-                      Featured
-                    </th>
-                    <th className="min-w-[7rem] px-6 py-4 text-center">
-                      Status
-                    </th>
-                    <th className="min-w-[7rem] px-6 py-4 text-left">Added</th>
-                    <th className="min-w-[6rem] px-6 py-4 text-right">
-                      Action
-                    </th>
+                    <th className="px-4 py-4 text-left">Stock</th>
+                    <th className="px-4 py-4 text-center">Featured</th>
+                    <th className="px-4 py-4 text-center">Status</th>
+                    <th className="px-4 py-4 text-left">Added</th>
+                    <th className="px-4 py-4 text-right">Action</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1067,7 +1057,7 @@ const SellerProducts = () => {
                     Array.from({ length: 6 }).map((_, rowIndex) => (
                       <tr key={rowIndex} className="border-t border-slate-100">
                         {Array.from({ length: 10 }).map((__, cellIndex) => (
-                          <td key={cellIndex} className="px-6 py-4">
+                          <td key={cellIndex} className="px-4 py-4">
                             <span className="inline-block h-4 w-full max-w-[8rem] rounded bg-slate-100 animate-pulse" />
                           </td>
                         ))}
@@ -1088,7 +1078,7 @@ const SellerProducts = () => {
                           key={row.id}
                           className="border-t border-slate-100 transition hover:bg-blue-50/40"
                         >
-                          <td className="px-6 py-4">
+                          <td className="px-4 py-4">
                             <input
                               type="checkbox"
                               className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-400"
@@ -1097,7 +1087,7 @@ const SellerProducts = () => {
                               aria-label={`Select ${row.name}`}
                             />
                           </td>
-                          <td className="px-6 py-4">
+                          <td className="px-4 py-4">
                             <div className="flex items-center gap-3">
                               <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-white">
                                 {row.thumbnail ? (
@@ -1130,33 +1120,33 @@ const SellerProducts = () => {
                               </div>
                             </div>
                           </td>
-                          <td className="px-6 py-4">
+                          <td className="px-4 py-4">
                             <span
-                              className="block max-w-[14rem] break-all text-xs font-medium text-slate-500"
+                              className="block break-all text-xs font-medium text-slate-500"
                               title={row.id}
                             >
                               {row.id}
                             </span>
                           </td>
-                          <td className="px-6 py-4 text-sm font-medium text-slate-600">
+                          <td className="px-4 py-4 text-sm font-medium text-slate-600">
                             <span
-                              className="block max-w-[14rem] truncate"
+                              className="block truncate"
                               title={row.category}
                             >
                               {row.category}
                             </span>
                           </td>
-                          <td className="px-6 py-4 font-semibold whitespace-nowrap text-slate-900">
+                          <td className="px-4 py-4 font-semibold text-slate-900">
                             {row.displayPrice}
                           </td>
-                          <td className="px-6 py-4">
+                          <td className="px-4 py-4">
                             <span
                               className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold ${availabilityClass}`}
                             >
                               {row.stock}
                             </span>
                           </td>
-                          <td className="px-6 py-4 text-center">
+                          <td className="px-4 py-4 text-center">
                             {row.isFeatured ? (
                               <span className="inline-flex items-center gap-1 rounded-full bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-600">
                                 <Star size={12} /> Featured
@@ -1165,17 +1155,17 @@ const SellerProducts = () => {
                               <span className="text-xs text-slate-400">-</span>
                             )}
                           </td>
-                          <td className="px-6 py-4 text-center">
+                          <td className="px-4 py-4 text-center">
                             <span
                               className={`inline-flex items-center justify-center rounded-full px-3 py-1 text-xs font-semibold ${statusClass}`}
                             >
                               {row.status.toString().toUpperCase()}
                             </span>
                           </td>
-                          <td className="px-6 py-4 text-sm text-slate-500">
+                          <td className="px-4 py-4 text-sm text-slate-500">
                             {row.createdAt}
                           </td>
-                          <td className="px-6 py-4">
+                          <td className="px-4 py-4">
                             <div className="flex items-center justify-end gap-2 text-slate-400">
                               <button
                                 type="button"

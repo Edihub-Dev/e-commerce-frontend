@@ -289,6 +289,14 @@ const mapProductCard = (product = {}) => {
     keyFeatures,
     sizes: normalizeSizes(product.sizes),
     showSizes: Boolean(product.showSizes),
+    hsnCode:
+      product.hsnCode !== undefined && product.hsnCode !== null
+        ? String(product.hsnCode).trim()
+        : undefined,
+    gstRate:
+      product.gstRate !== undefined && product.gstRate !== null
+        ? Number(product.gstRate)
+        : undefined,
   };
 };
 
@@ -337,6 +345,14 @@ const mapProductDetail = (product = {}) => {
       average: card.rating ?? 0,
       totalScore: (card.reviews ?? 0) * ((card.rating ?? 0) || 0),
     },
+    hsnCode:
+      product.hsnCode !== undefined && product.hsnCode !== null
+        ? String(product.hsnCode).trim()
+        : card.hsnCode,
+    gstRate:
+      product.gstRate !== undefined && product.gstRate !== null
+        ? Number(product.gstRate)
+        : card.gstRate,
   };
 };
 

@@ -271,6 +271,7 @@ const mapProductCard = (product = {}) => {
     mongoId,
     productId: mongoId,
     sellerProductId: sellerId,
+    sku: product.sku || "",
     name: product.name || "Unnamed Product",
     description: product.shortDescription || "",
     image: primaryImage,

@@ -18,6 +18,47 @@ const SellerSection = () => {
 
   const SKELETON_COUNT = 6;
 
+  const sortSellerListings = (items = []) => {
+    const parseSku = (sku) => {
+      const normalized = String(sku || "")
+        .trim()
+        .toUpperCase();
+      if (!normalized) {
+        return { normalized, prefix: "", numeric: Number.POSITIVE_INFINITY };
+      }
+
+      const match = normalized.match(/^([A-Z]+)(\d+)/);
+      if (!match) {
+        return {
+          normalized,
+          prefix: normalized,
+          numeric: Number.POSITIVE_INFINITY,
+        };
+      }
+
+      return {
+        normalized,
+        prefix: match[1],
+        numeric: Number.parseInt(match[2], 10),
+      };
+    };
+
+    return [...items].sort((a, b) => {
+      const aSku = parseSku(a?.sku);
+      const bSku = parseSku(b?.sku);
+
+      if (aSku.prefix !== bSku.prefix) {
+        return aSku.prefix.localeCompare(bSku.prefix);
+      }
+
+      if (Number.isFinite(aSku.numeric) && Number.isFinite(bSku.numeric)) {
+        return aSku.numeric - bSku.numeric;
+      }
+
+      return aSku.normalized.localeCompare(bSku.normalized);
+    });
+  };
+
   useEffect(() => {
     let isMounted = true;
 
@@ -91,7 +132,8 @@ const SellerSection = () => {
         if (!isMounted) return;
 
         const list = Array.isArray(payload?.data) ? payload.data : [];
-        setSellerProducts(list.slice(0, 8));
+        const sorted = sortSellerListings(list);
+        setSellerProducts(sorted.slice(0, 8));
         setSellerError("");
       } catch (err) {
         console.error("Failed to load seller spotlight", err);

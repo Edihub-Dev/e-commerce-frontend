@@ -895,7 +895,7 @@ const SellerProductForm = ({
               <div className="space-y-2">
                 {formState.keyFeatures.map((feature, index) => (
                   <div
-                    key={`${feature}-${index}`}
+                    key={`feature-${index}`}
                     className="flex gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2"
                   >
                     <input

@@ -167,7 +167,7 @@ function App() {
               path="orders/:orderId"
               element={<SellerOrderDetailsPage />}
             /> */}
-            <Route path="coupons" element={<SellerCoupons />} />
+            {/* <Route path="coupons" element={<SellerCoupons />} /> */}
           </Route>
 
           <Route

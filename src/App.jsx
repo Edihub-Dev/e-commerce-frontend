@@ -162,12 +162,12 @@ function App() {
             <Route path="products" element={<SellerProducts />} />
             <Route path="products/new" element={<SellerAddProduct />} />
             <Route path="products/:id" element={<SellerAddProduct />} />
-            <Route path="orders" element={<SellerOrders />} />
+            {/* <Route path="orders" element={<SellerOrders />} />
             <Route
               path="orders/:orderId"
               element={<SellerOrderDetailsPage />}
             />
-            <Route path="coupons" element={<SellerCoupons />} />
+            <Route path="coupons" element={<SellerCoupons />} /> */}
           </Route>
 
           <Route

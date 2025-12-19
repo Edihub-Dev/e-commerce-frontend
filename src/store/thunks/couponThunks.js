@@ -3,9 +3,9 @@ import { validateCoupon } from "../../services/couponApi";
 
 export const validateCouponThunk = createAsyncThunk(
   "coupon/validate",
-  async ({ code, orderAmount }, { rejectWithValue }) => {
+  async ({ code, orderAmount, items }, { rejectWithValue }) => {
     try {
-      return await validateCoupon({ code, orderAmount });
+      return await validateCoupon({ code, orderAmount, items });
     } catch (error) {
       const serverMessage =
         error?.response?.data?.message ||

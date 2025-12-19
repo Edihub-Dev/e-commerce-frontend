@@ -70,8 +70,18 @@ const CheckoutOrder = () => {
     }
 
     try {
+      const couponItems = items.map((item) => ({
+        product: item.product || item.id || item._id,
+        price: Number(item.price) || 0,
+        quantity: Number(item.quantity) || 0,
+      }));
+
       const result = await dispatch(
-        validateCouponThunk({ code, orderAmount: baseSubtotal })
+        validateCouponThunk({
+          code,
+          orderAmount: baseSubtotal,
+          items: couponItems,
+        })
       ).unwrap();
 
       dispatch(

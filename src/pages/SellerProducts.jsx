@@ -1247,13 +1247,13 @@ const SellerProducts = () => {
           <AnimatePresence>
             {viewingProduct && (
               <motion.div
-                className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/50"
+                className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 px-3 py-6 sm:px-4 sm:py-8"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 onClick={() => setViewingProduct(null)}
               >
-                <div className="flex min-h-full items-start justify-center px-4 py-8 sm:items-center">
+                <div className="flex w-full justify-center">
                   <motion.div
                     initial={{ y: 32, opacity: 0, scale: 0.97 }}
                     animate={{ y: 0, opacity: 1, scale: 1 }}
@@ -1271,7 +1271,7 @@ const SellerProducts = () => {
                       <X size={18} />
                     </button>
 
-                    <div className="max-h-[calc(100vh-2rem)] overflow-y-auto px-6 pb-12 pt-10 pr-4 sm:max-h-[calc(100vh-4rem)] lg:px-12">
+                    <div className="modal-scroll max-h-[calc(100vh-2rem)] overflow-y-auto px-6 pb-12 pt-10 pr-3 sm:max-h-[calc(100vh-4rem)] sm:pr-4 lg:px-12">
                       <div className="grid gap-6 lg:min-h-0 lg:grid-cols-[1.45fr,1fr] lg:gap-8">
                         <div className="space-y-6 lg:max-h-[calc(100vh-14rem)] lg:overflow-y-auto lg:pr-3">
                           <div className="flex flex-wrap items-start justify-between gap-4">

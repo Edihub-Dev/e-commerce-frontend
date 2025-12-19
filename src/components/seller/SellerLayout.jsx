@@ -58,7 +58,7 @@ const SellerLayout = () => {
           <SellerTopbar
             onToggleSidebar={() => setIsSidebarOpen((prev) => !prev)}
           />
-          <main className="flex-1 bg-slate-50 px-5 pb-10 pt-6 sm:px-8 lg:px-12">
+          <main className="flex-1 overflow-y-auto bg-slate-50 px-5 pb-10 pt-6 sm:px-8 lg:px-12">
             <Outlet />
           </main>
         </div>

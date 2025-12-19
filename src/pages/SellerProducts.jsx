@@ -343,19 +343,6 @@ const SellerProducts = () => {
     productFilters.dateRange.endDate,
   ]);
 
-  useEffect(() => {
-    if (!viewingProduct) {
-      return undefined;
-    }
-
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-
-    return () => {
-      document.body.style.overflow = previousOverflow;
-    };
-  }, [viewingProduct]);
-
   const processedRows = useMemo(() => {
     const base = products.map((product) => {
       const numericPrice = Number(product.price) || 0;
@@ -1260,19 +1247,19 @@ const SellerProducts = () => {
           <AnimatePresence>
             {viewingProduct && (
               <motion.div
-                className="fixed inset-0 z-50 bg-slate-900/50"
+                className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/50"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 onClick={() => setViewingProduct(null)}
               >
-                <div className="flex min-h-full items-center justify-center px-4 py-8">
+                <div className="flex min-h-full items-start justify-center px-4 py-8 sm:items-center">
                   <motion.div
                     initial={{ y: 32, opacity: 0, scale: 0.97 }}
                     animate={{ y: 0, opacity: 1, scale: 1 }}
                     exit={{ y: 24, opacity: 0, scale: 0.96 }}
                     transition={{ type: "spring", stiffness: 220, damping: 26 }}
-                    className="relative w-full max-w-4xl overflow-hidden rounded-3xl bg-white shadow-2xl md:my-0 max-h-[calc(100vh-4rem)]"
+                    className="relative w-full max-w-4xl overflow-hidden rounded-3xl bg-white shadow-2xl md:my-0"
                     onClick={(event) => event.stopPropagation()}
                   >
                     <button
@@ -1284,7 +1271,7 @@ const SellerProducts = () => {
                       <X size={18} />
                     </button>
 
-                    <div className="h-full w-full overflow-y-auto px-6 pb-12 pt-10 pr-4 lg:px-12">
+                    <div className="max-h-[calc(100vh-2rem)] overflow-y-auto px-6 pb-12 pt-10 pr-4 sm:max-h-[calc(100vh-4rem)] lg:px-12">
                       <div className="grid gap-6 lg:min-h-0 lg:grid-cols-[1.45fr,1fr] lg:gap-8">
                         <div className="space-y-6 lg:max-h-[calc(100vh-14rem)] lg:overflow-y-auto lg:pr-3">
                           <div className="flex flex-wrap items-start justify-between gap-4">

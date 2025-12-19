@@ -1,7 +1,14 @@
 import api from "../utils/api";
 
 export const fetchAdminOrders = async (params = {}) => {
-  const response = await api.get("/orders", { params });
+  const response = await api.get("/orders", {
+    params: {
+      ...params,
+      // Hide seller-split orders from the main admin orders list; those
+      // are surfaced via dedicated seller views instead.
+      excludeSellerOrders: true,
+    },
+  });
   const payload = response.data || {};
   if (!payload.success) {
     throw new Error(payload.message || "Failed to fetch admin orders");

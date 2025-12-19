@@ -209,7 +209,12 @@ const AdminDashboard = () => {
       try {
         const response = await api.get("/admin/users");
         if (!isSubscribed) return;
-        setUsers(response.data?.data || []);
+        const allUsers = response.data?.data || [];
+        const filteredUsers = allUsers.filter((usr) => {
+          const normalizedRole = String(usr.role).toLowerCase();
+          return normalizedRole === "customer" || normalizedRole === "admin";
+        });
+        setUsers(filteredUsers);
         setUsersError("");
       } catch (error) {
         if (!isSubscribed) return;
@@ -237,7 +242,7 @@ const AdminDashboard = () => {
       if (!isSubscribed) return;
       setOrdersLoading(true);
       try {
-        const params = {};
+        const params = { excludeSellerOrders: true };
         if (orderFilters.status) params.status = orderFilters.status;
         if (orderFilters.startDate) params.startDate = orderFilters.startDate;
         if (orderFilters.endDate) params.endDate = orderFilters.endDate;

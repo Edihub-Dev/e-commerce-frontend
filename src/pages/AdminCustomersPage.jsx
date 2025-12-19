@@ -24,7 +24,13 @@ const AdminCustomersPage = () => {
       }
 
       const data = await fetchAdminUsers();
-      setUsers(Array.isArray(data) ? data : []);
+      const filtered = Array.isArray(data)
+        ? data.filter((usr) => {
+            const normalizedRole = String(usr.role).toLowerCase();
+            return normalizedRole === "customer" || normalizedRole === "admin";
+          })
+        : [];
+      setUsers(filtered);
       setError("");
     } catch (err) {
       console.error("Failed to load users", err);
@@ -67,9 +73,13 @@ const AdminCustomersPage = () => {
 
   const metrics = useMemo(() => {
     const total = users.length;
-    const admins = users.filter((usr) => usr.role === "admin").length;
+    const admins = users.filter(
+      (usr) => String(usr.role).toLowerCase() === "admin"
+    ).length;
     const verified = users.filter((usr) => usr.isVerified).length;
-    const customers = total - admins;
+    const customers = users.filter(
+      (usr) => String(usr.role).toLowerCase() === "customer"
+    ).length;
 
     return {
       total,

@@ -53,6 +53,9 @@ const AdminFooterCategoriesPage = lazy(() =>
 const AdminOfferLightboxPage = lazy(() =>
   import("./pages/AdminOfferLightboxPage")
 );
+const AdminSellerDetailsPage = lazy(() =>
+  import("./pages/AdminSellerDetailsPage")
+);
 const SellerSignup = lazy(() => import("./pages/SellerSignup"));
 const SellerDashboard = lazy(() => import("./pages/SellerDashboard"));
 const SellerLayout = lazy(() => import("./components/seller/SellerLayout"));
@@ -148,7 +151,6 @@ function App() {
 
             <Route path="*" element={<NotFound />} />
           </Route>
-
           <Route
             path="/seller"
             element={
@@ -162,14 +164,13 @@ function App() {
             <Route path="products" element={<SellerProducts />} />
             <Route path="products/new" element={<SellerAddProduct />} />
             <Route path="products/:id" element={<SellerAddProduct />} />
-            {/* <Route path="orders" element={<SellerOrders />} /> */}
-            {/* <Route
+            <Route path="orders" element={<SellerOrders />} />
+            <Route
               path="orders/:orderId"
               element={<SellerOrderDetailsPage />}
             />
-            <Route path="coupons" element={<SellerCoupons />} /> */}
+            {/* <Route path="coupons" element={<SellerCoupons />} /> */}
           </Route>
-
           <Route
             path="/admin"
             element={
@@ -242,6 +243,14 @@ function App() {
               </ProtectedRoute>
             }
           />
+          {/* <Route
+            path="/admin/sellers"
+            element={
+              <ProtectedRoute requireAdmin>
+                <AdminSellerDetailsPage />
+              </ProtectedRoute>
+            }
+          /> */}
           <Route
             path="/admin/orders/:orderId"
             element={

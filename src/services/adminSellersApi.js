@@ -22,6 +22,11 @@ export const fetchAdminSellerProducts = async (params = {}) => {
   return ensureSuccess(response, "Failed to fetch seller products") || [];
 };
 
+export const fetchAdminSellerProductById = async (productId) => {
+  const response = await api.get(`/admin/sellers/products/${productId}`);
+  return ensureSuccess(response, "Failed to fetch seller product");
+};
+
 export const updateAdminSellerProduct = async (productId, updates) => {
   const response = await api.put(
     `/admin/sellers/products/${productId}`,

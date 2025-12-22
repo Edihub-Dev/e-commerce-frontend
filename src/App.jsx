@@ -243,14 +243,14 @@ function App() {
               </ProtectedRoute>
             }
           />
-          {/* <Route
+          <Route
             path="/admin/sellers"
             element={
               <ProtectedRoute requireAdmin>
                 <AdminSellerDetailsPage />
               </ProtectedRoute>
             }
-          /> */}
+          />
           <Route
             path="/admin/orders/:orderId"
             element={

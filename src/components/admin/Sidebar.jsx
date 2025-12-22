@@ -22,7 +22,7 @@ const navItems = [
     icon: TicketPercent,
     to: "/admin/offer-lightbox",
   },
-  // { label: "Seller Details", icon: Store, to: "/admin/sellers" },
+  { label: "Seller Details", icon: Store, to: "/admin/sellers" },
   { label: "Products", icon: Package, to: "/admin/products" },
   { label: "Orders", icon: ShoppingBag, to: "/admin/orders" },
   { label: "Customers", icon: Users, to: "/admin/customers" },

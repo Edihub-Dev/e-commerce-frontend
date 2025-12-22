@@ -64,7 +64,7 @@ const CheckoutPayment = () => {
     orderId: checkoutOrderId,
     appliedCoupon,
   } = useSelector((state) => state.checkout);
-  const { removeItems } = useCart();
+  const { clearCart } = useCart();
   const [selectedMethod, setSelectedMethod] = useState("cod");
   const [isProcessing, setIsProcessing] = useState(false);
   const [isAwaitingConfirmation, setIsAwaitingConfirmation] = useState(false);
@@ -336,11 +336,7 @@ const CheckoutPayment = () => {
         dispatch(setOrderId(orderId));
       }
 
-      const itemsToRemove =
-        Array.isArray(order?.items) && order.items.length
-          ? order.items
-          : orderItems;
-      removeItems(itemsToRemove);
+      clearCart();
 
       toast.success("Payment Success ✅");
       stopPolling();
@@ -365,7 +361,7 @@ const CheckoutPayment = () => {
       dispatch(clearAppliedCoupon());
       dispatch(resetCouponState());
     },
-    [dispatch, navigate, orderItems, removeItems, stopPolling]
+    [dispatch, navigate, stopPolling]
   );
 
   const handlePaymentFailure = useCallback(
@@ -559,7 +555,7 @@ const CheckoutPayment = () => {
       dispatch(setOrderId(createdOrderId));
     }
 
-    removeItems(Array.isArray(orderData?.items) ? orderData.items : orderItems);
+    clearCart();
 
     toast.success("Order placed successfully");
     navigate("/", {
@@ -577,7 +573,6 @@ const CheckoutPayment = () => {
     navigate,
     orderItems,
     pricingPayload,
-    removeItems,
     sanitizedAddress,
   ]);
 

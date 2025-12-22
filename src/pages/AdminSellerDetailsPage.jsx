@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   RefreshCw,
@@ -13,6 +13,8 @@ import {
   Search,
   ShieldCheck,
   ShieldAlert,
+  Loader2,
+  UploadCloud,
   X,
 } from "lucide-react";
 import Sidebar from "../components/admin/Sidebar";
@@ -21,6 +23,7 @@ import { useAuth } from "../contexts/AuthContext";
 import {
   fetchAdminSellers,
   fetchAdminSellerProducts,
+  fetchAdminSellerProductById,
   fetchAdminSellerOrders,
   fetchAdminSellerCoupons,
   updateAdminSellerProduct,
@@ -39,6 +42,346 @@ const STATUS_LABELS = {
     className: "bg-emerald-100 text-emerald-600",
   },
   archived: { label: "Archived", className: "bg-slate-100 text-slate-500" },
+};
+
+const defaultProductViewModalState = {
+  isOpen: false,
+  loading: false,
+  data: null,
+  error: null,
+};
+
+const defaultProductEditModalState = {
+  isOpen: false,
+  loading: false,
+  data: null,
+  draft: null,
+  error: null,
+  isSubmitting: false,
+};
+
+const AVAILABILITY_BADGE_CLASSES = {
+  in_stock: "bg-emerald-100 text-emerald-600",
+  low_stock: "bg-amber-100 text-amber-600",
+  out_of_stock: "bg-rose-100 text-rose-600",
+  preorder: "bg-blue-100 text-blue-600",
+};
+
+const AVAILABILITY_LABELS = {
+  in_stock: "In stock",
+  low_stock: "Low stock",
+  out_of_stock: "Out of stock",
+  preorder: "Pre-order",
+};
+
+const getAvailabilityLabel = (status) =>
+  AVAILABILITY_LABELS[status] || AVAILABILITY_LABELS.in_stock;
+
+const normalizePriceFields = (product = {}) => {
+  const priceValue = Number(product.price ?? 0);
+  const originalValue = Number(
+    product.originalPrice ?? product.price ?? product.costPrice ?? priceValue
+  );
+
+  const price =
+    Number.isFinite(priceValue) && priceValue > 0 ? priceValue : originalValue;
+  const originalPrice =
+    Number.isFinite(originalValue) && originalValue > 0 ? originalValue : price;
+
+  const discountPercentage =
+    product.discountPercentage !== undefined &&
+    product.discountPercentage !== null
+      ? Number(product.discountPercentage)
+      : originalPrice > price && originalPrice > 0
+      ? Math.round(((originalPrice - price) / originalPrice) * 100)
+      : 0;
+
+  const saveAmount =
+    product.saveAmount !== undefined && product.saveAmount !== null
+      ? Number(product.saveAmount)
+      : discountPercentage > 0
+      ? originalPrice - price
+      : 0;
+
+  return {
+    price,
+    originalPrice,
+    discountPercentage,
+    saveAmount,
+  };
+};
+
+const PRODUCT_TAX_PRESETS = [
+  { matcher: /keychain/i, hsnCode: "8305", gstRate: 18 },
+  {
+    matcher: /ceramic\s+coffee\s+mug|coffee\s+mug|mug/i,
+    hsnCode: "6912",
+    gstRate: 12,
+  },
+  { matcher: /executive\s+diary|pen\s+set/i, hsnCode: "4820", gstRate: 18 },
+  { matcher: /white\s+logo\s+cap|cap/i, hsnCode: "6501", gstRate: 18 },
+  { matcher: /diary/i, hsnCode: "4820", gstRate: 18 },
+  { matcher: /\bpen\b/i, hsnCode: "9608", gstRate: 18 },
+  { matcher: /t\s*-?shirt|polo/i, hsnCode: "6109", gstRate: 5 },
+];
+
+const resolveTaxPreset = (name = "") => {
+  const normalized = name.toString().trim();
+  if (!normalized) {
+    return null;
+  }
+
+  return (
+    PRODUCT_TAX_PRESETS.find((preset) => preset.matcher.test(normalized)) ||
+    null
+  );
+};
+
+const LOCKED_AVAILABILITY_STATUSES = ["out_of_stock", "preorder"];
+
+const computeSizeStockTotal = (sizes = []) =>
+  sizes.reduce((total, entry) => {
+    if (!entry || entry.isAvailable === false) {
+      return total;
+    }
+    const numeric = Number(entry.stock ?? 0);
+    if (!Number.isFinite(numeric)) {
+      return total;
+    }
+    return total + Math.max(numeric, 0);
+  }, 0);
+
+const STANDARD_SIZE_LABELS = ["XS", "S", "M", "L", "XL", "XXL"];
+
+const buildDefaultSizes = () =>
+  STANDARD_SIZE_LABELS.map((label) => ({
+    label,
+    isAvailable: true,
+    stock: 0,
+  }));
+
+const normalizeCategoryPriority = (value = "") => {
+  const raw = value?.toString().trim().toUpperCase();
+  if (!raw) {
+    return "";
+  }
+
+  if (/^P\d{1,2}$/.test(raw)) {
+    return raw;
+  }
+
+  const numeric = parseInt(raw.replace(/[^0-9]/g, ""), 10);
+  if (!Number.isNaN(numeric) && numeric > 0) {
+    return `P${numeric}`;
+  }
+
+  return "";
+};
+
+const AVAILABILITY_OPTIONS = [
+  { value: "in_stock", label: "In stock" },
+  { value: "low_stock", label: "Low stock" },
+  { value: "out_of_stock", label: "Out of stock" },
+  { value: "preorder", label: "Pre-order" },
+];
+
+const STATUS_OPTIONS = [
+  { value: "published", label: "Published" },
+  { value: "archived", label: "Archived" },
+];
+
+const MAX_IMAGE_SIZE = 2 * 1024 * 1024; // 2MB
+
+const readFileAsDataURL = (file) =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(new Error("Failed to read file"));
+    reader.readAsDataURL(file);
+  });
+
+const normalizeSellerProduct = (product = {}) => {
+  if (!product) {
+    return null;
+  }
+
+  const base = { ...product };
+
+  const metadata =
+    base.metadata instanceof Map
+      ? Object.fromEntries(base.metadata)
+      : typeof base.metadata === "object" && base.metadata !== null
+      ? { ...base.metadata }
+      : {};
+
+  const gallerySource = Array.isArray(base.gallery)
+    ? base.gallery
+    : Array.isArray(base.images)
+    ? base.images
+    : [];
+
+  const gallery = gallerySource
+    .map((entry) => (entry != null ? String(entry).trim() : ""))
+    .filter((entry) => entry.length);
+
+  const keyFeatures = Array.isArray(base.keyFeatures)
+    ? base.keyFeatures
+        .map((feature) => (feature != null ? String(feature).trim() : ""))
+        .filter((feature) => feature.length)
+    : [];
+
+  const sizes = Array.isArray(base.sizes)
+    ? base.sizes
+        .map((size) => ({
+          label: size?.label != null ? String(size.label).trim() : "",
+          isAvailable: size?.isAvailable !== false,
+          stock: Number.isFinite(Number(size?.stock)) ? Number(size.stock) : 0,
+        }))
+        .filter((size) => size.label || size.stock > 0)
+    : [];
+
+  const variants = Array.isArray(base.variants)
+    ? base.variants.map((variant) => ({
+        name: variant?.name,
+        sku: variant?.sku,
+        price: variant?.price,
+        stock: variant?.stock,
+        imageUrl: variant?.imageUrl,
+        attributes: variant?.attributes,
+        isActive: variant?.isActive !== false,
+      }))
+    : [];
+
+  const { price, originalPrice, discountPercentage, saveAmount } =
+    normalizePriceFields(base);
+
+  return {
+    ...base,
+    price,
+    originalPrice,
+    discountPercentage,
+    saveAmount,
+    sku: base.sku || base.id || base._id || "",
+    category: base.category || "",
+    brand: base.brand || "",
+    categoryPriority: base.categoryPriority || "",
+    description: base.description || "",
+    shortDescription: base.shortDescription || "",
+    thumbnail: base.thumbnail || "",
+    gallery,
+    images: Array.isArray(base.images)
+      ? base.images
+          .map((image) => (image != null ? String(image).trim() : ""))
+          .filter((image) => image.length)
+      : gallery,
+    keyFeatures,
+    sizes,
+    variants,
+    metadata,
+    stock: Number.isFinite(Number(base.stock)) ? Number(base.stock) : 0,
+    lowStockThreshold: Number.isFinite(Number(base.lowStockThreshold))
+      ? Number(base.lowStockThreshold)
+      : 0,
+    costPrice: Number.isFinite(Number(base.costPrice))
+      ? Number(base.costPrice)
+      : undefined,
+    availabilityStatus: base.availabilityStatus || "in_stock",
+    status: base.status || "published",
+    isFeatured: Boolean(base.isFeatured),
+    showSizes: Boolean(base.showSizes),
+    hsnCode: base.hsnCode != null ? String(base.hsnCode).trim() : "",
+    gstRate:
+      base.gstRate !== undefined && base.gstRate !== null && base.gstRate !== ""
+        ? String(base.gstRate)
+        : "",
+  };
+};
+
+const buildProductDraft = (product = {}) => {
+  const normalized = normalizeSellerProduct(product) || {};
+  const normalizedSizesList = normalized.showSizes
+    ? Array.isArray(normalized.sizes) && normalized.sizes.length
+      ? normalized.sizes
+      : buildDefaultSizes()
+    : Array.isArray(normalized.sizes)
+    ? normalized.sizes
+    : [];
+
+  return {
+    name: normalized.name || "",
+    sku: normalized.sku || "",
+    category: normalized.category || "",
+    brand: normalized.brand || "",
+    categoryPriority: normalized.categoryPriority || "",
+    price:
+      normalized.price !== undefined && normalized.price !== null
+        ? String(normalized.price)
+        : "",
+    originalPrice:
+      normalized.originalPrice !== undefined &&
+      normalized.originalPrice !== null
+        ? String(normalized.originalPrice)
+        : "",
+    discountPercentage:
+      normalized.discountPercentage !== undefined &&
+      normalized.discountPercentage !== null
+        ? String(normalized.discountPercentage)
+        : "",
+    saveAmount:
+      normalized.saveAmount !== undefined && normalized.saveAmount !== null
+        ? String(normalized.saveAmount)
+        : "",
+    costPrice:
+      normalized.costPrice !== undefined && normalized.costPrice !== null
+        ? String(normalized.costPrice)
+        : "",
+    stock:
+      normalized.stock !== undefined && normalized.stock !== null
+        ? String(normalized.stock)
+        : "0",
+    lowStockThreshold:
+      normalized.lowStockThreshold !== undefined &&
+      normalized.lowStockThreshold !== null
+        ? String(normalized.lowStockThreshold)
+        : "",
+    availabilityStatus: normalized.availabilityStatus || "in_stock",
+    status: normalized.status || "published",
+    isFeatured: Boolean(normalized.isFeatured),
+    showSizes: Boolean(normalized.showSizes),
+    description: normalized.description || "",
+    shortDescription: normalized.shortDescription || "",
+    hsnCode: normalized.hsnCode || "",
+    gstRate:
+      normalized.gstRate !== undefined && normalized.gstRate !== null
+        ? String(normalized.gstRate)
+        : "",
+    keyFeatures:
+      normalized.keyFeatures && normalized.keyFeatures.length
+        ? [...normalized.keyFeatures]
+        : [""],
+    gallery:
+      normalized.gallery && normalized.gallery.length
+        ? [...normalized.gallery]
+        : [],
+    images:
+      normalized.images && normalized.images.length
+        ? [...normalized.images]
+        : [],
+    thumbnail: normalized.thumbnail || "",
+    sizes: normalizedSizesList.map((size) => ({
+      label: size?.label || "",
+      isAvailable: size?.isAvailable !== false,
+      stock:
+        size?.stock !== undefined && size?.stock !== null
+          ? String(size.stock)
+          : "0",
+    })),
+    metadata:
+      normalized.metadata && typeof normalized.metadata === "object"
+        ? { ...normalized.metadata }
+        : {},
+    variants: normalized.variants || [],
+  };
 };
 
 const ORDER_STATUS_OPTIONS = [
@@ -89,18 +432,18 @@ const BaseModal = ({ isOpen, title, onClose, children, footer }) => (
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.95, opacity: 0 }}
           transition={{ duration: 0.2 }}
-          className="w-full max-w-2xl rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl"
+          className="relative w-full max-w-2xl rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl"
         >
-          <div className="flex items-center justify-between gap-4">
+          <button
+            type="button"
+            onClick={onClose}
+            className="absolute right-4 top-4 inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-500 transition hover:border-slate-300 hover:text-slate-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
+            aria-label="Close modal"
+          >
+            <X size={18} />
+          </button>
+          <div className="flex items-start justify-between gap-4 pr-12">
             <h3 className="text-lg font-semibold text-slate-900">{title}</h3>
-            <button
-              type="button"
-              onClick={onClose}
-              className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-500 transition hover:border-slate-300 hover:text-slate-700"
-              aria-label="Close modal"
-            >
-              <X size={18} />
-            </button>
           </div>
           <div className="mt-4 max-h-[60vh] overflow-y-auto pr-1 text-sm text-slate-600">
             {children}
@@ -144,8 +487,23 @@ const AdminSellerDetailsPage = () => {
   const [productsLoading, setProductsLoading] = useState(true);
   const [productsRefreshing, setProductsRefreshing] = useState(false);
   const [productsError, setProductsError] = useState("");
-  const [productEdit, setProductEdit] = useState(null);
-  const [productView, setProductView] = useState(null);
+  const [productViewModal, setProductViewModal] = useState(
+    defaultProductViewModalState
+  );
+  const [productEditModal, setProductEditModal] = useState(
+    defaultProductEditModalState
+  );
+  const [productMediaUploading, setProductMediaUploading] = useState({
+    thumbnail: false,
+    gallery: false,
+  });
+  const [productEditAuto, setProductEditAuto] = useState({
+    hasManualHsn: false,
+    hasManualGst: false,
+  });
+  const [newGalleryUrl, setNewGalleryUrl] = useState("");
+  const thumbnailInputRef = useRef(null);
+  const galleryInputRef = useRef(null);
 
   const [orders, setOrders] = useState([]);
   const [ordersLoading, setOrdersLoading] = useState(true);
@@ -196,7 +554,10 @@ const AdminSellerDetailsPage = () => {
         const params =
           selectedSellerId !== "all" ? { sellerId: selectedSellerId } : {};
         const data = await fetchAdminSellerProducts(params);
-        setProducts(Array.isArray(data) ? data : []);
+        const normalizedProducts = Array.isArray(data)
+          ? data.map((item) => normalizeSellerProduct(item) || item)
+          : [];
+        setProducts(normalizedProducts);
         setProductsError("");
       } catch (error) {
         console.error("Failed to load seller products", error);
@@ -402,77 +763,736 @@ const AdminSellerDetailsPage = () => {
     }
   };
 
-  const handleProductUpdate = async (productId, updates) => {
-    try {
-      const updated = await updateAdminSellerProduct(productId, updates);
-      toast.success("Product updated");
-      setProducts((prev) =>
-        prev.map((product) =>
-          product._id === updated._id ? { ...product, ...updated } : product
-        )
+  const handleViewProduct = useCallback(
+    async (productId) => {
+      const cached = products.find(
+        (item) => String(item._id) === String(productId)
       );
-      setProductEdit(null);
-      await loadSellers({ silent: true });
-    } catch (error) {
-      console.error("Failed to update seller product", error);
-      toast.error(error.message || "Unable to update seller product");
-    }
-  };
 
-  const handleProductDelete = async (productId) => {
-    const product = products.find((item) => item._id === productId);
-    const confirmed = confirmDeletion({
-      entity: "product",
-      name: product?.name || product?.sku || productId,
+      setProductViewModal({
+        isOpen: true,
+        loading: !cached,
+        data: cached ? normalizeSellerProduct(cached) : null,
+        error: null,
+      });
+
+      try {
+        const response = await fetchAdminSellerProductById(productId);
+        const normalized = normalizeSellerProduct(response) || response;
+        setProductViewModal({
+          isOpen: true,
+          loading: false,
+          data: normalized,
+          error: null,
+        });
+      } catch (error) {
+        console.error("Failed to load product", error);
+        const message = error?.message || "Failed to load product";
+        if (cached) {
+          toast.error(message);
+          setProductViewModal((prev) => ({
+            ...prev,
+            loading: false,
+            error: message,
+          }));
+        } else {
+          setProductViewModal({
+            isOpen: true,
+            loading: false,
+            data: null,
+            error: message,
+          });
+          await loadProducts({ silent: true });
+        }
+      }
+    },
+    [products, loadProducts]
+  );
+
+  const handleCloseViewProduct = useCallback(() => {
+    setProductViewModal(defaultProductViewModalState);
+  }, []);
+
+  const updateProductDraft = useCallback((updater) => {
+    setProductEditModal((prev) => {
+      if (!prev.draft) {
+        return prev;
+      }
+
+      const nextDraft = updater(prev.draft);
+      return {
+        ...prev,
+        draft: nextDraft,
+      };
     });
-    if (!confirmed) return;
-    try {
-      await deleteAdminSellerProduct(productId);
-      toast.success("Product removed");
-      setProducts((prev) =>
-        prev.filter((product) => product._id !== productId)
-      );
-      await loadSellers({ silent: true });
-    } catch (error) {
-      console.error("Failed to delete seller product", error);
-      toast.error(error.message || "Unable to delete seller product");
-    }
-  };
+  }, []);
 
-  const handleOrderUpdate = async (orderId, updates) => {
-    try {
-      const updated = await updateAdminSellerOrder(orderId, updates);
-      toast.success("Order updated");
-      setOrders((prev) =>
-        prev.map((order) =>
-          order._id === updated._id ? { ...order, ...updated } : order
-        )
+  const handleOpenEditProduct = useCallback(
+    async (productId) => {
+      const cached = products.find(
+        (item) => String(item._id) === String(productId)
       );
-      setOrderEdit(null);
-      await loadSellers({ silent: true });
-    } catch (error) {
-      console.error("Failed to update seller order", error);
-      toast.error(error.message || "Unable to update seller order");
-    }
-  };
+      const normalizedCached = cached ? normalizeSellerProduct(cached) : null;
 
-  const handleOrderDelete = async (orderId) => {
-    const order = orders.find((item) => item._id === orderId);
-    const confirmed = confirmDeletion({
-      entity: "order",
-      name: order?.orderNumber || order?.orderId || orderId,
+      setProductEditModal({
+        isOpen: true,
+        loading: !cached,
+        data: normalizedCached,
+        draft: normalizedCached ? buildProductDraft(normalizedCached) : null,
+        error: null,
+        isSubmitting: false,
+      });
+      setProductEditAuto({
+        hasManualHsn: Boolean(normalizedCached?.hsnCode),
+        hasManualGst:
+          normalizedCached?.gstRate !== undefined &&
+          normalizedCached?.gstRate !== null &&
+          normalizedCached?.gstRate !== "",
+      });
+      setProductMediaUploading({ thumbnail: false, gallery: false });
+      setNewGalleryUrl("");
+
+      try {
+        const response = await fetchAdminSellerProductById(productId);
+        const normalized = normalizeSellerProduct(response) || response;
+        const draft = buildProductDraft(normalized);
+
+        setProductEditModal({
+          isOpen: true,
+          loading: false,
+          data: normalized,
+          draft,
+          error: null,
+          isSubmitting: false,
+        });
+        setProductEditAuto({
+          hasManualHsn: Boolean(normalized?.hsnCode),
+          hasManualGst:
+            normalized?.gstRate !== undefined &&
+            normalized?.gstRate !== null &&
+            normalized?.gstRate !== "",
+        });
+        setProductMediaUploading({ thumbnail: false, gallery: false });
+        setNewGalleryUrl("");
+      } catch (error) {
+        console.error("Failed to load product", error);
+        const message = error?.message || "Failed to load product";
+        if (cached) {
+          toast.error(message);
+          setProductEditModal((prev) => ({
+            ...prev,
+            loading: false,
+            error: message,
+          }));
+        } else {
+          setProductEditModal({
+            isOpen: true,
+            loading: false,
+            data: null,
+            draft: null,
+            error: message,
+            isSubmitting: false,
+          });
+          await loadProducts({ silent: true });
+        }
+      }
+    },
+    [products, loadProducts]
+  );
+
+  const handleCloseEditProduct = useCallback(() => {
+    setProductEditModal(defaultProductEditModalState);
+    setProductEditAuto({ hasManualHsn: false, hasManualGst: false });
+    setProductMediaUploading({ thumbnail: false, gallery: false });
+    setNewGalleryUrl("");
+    if (thumbnailInputRef.current) {
+      thumbnailInputRef.current.value = "";
+    }
+    if (galleryInputRef.current) {
+      galleryInputRef.current.value = "";
+    }
+  }, []);
+
+  const handleChangeProductDraft = useCallback(
+    (field, value) => {
+      updateProductDraft((draft) => {
+        const nextDraft = { ...draft };
+        let nextValue = value;
+
+        if (field === "categoryPriority") {
+          nextValue = normalizeCategoryPriority(nextValue);
+        }
+
+        if (
+          [
+            "price",
+            "originalPrice",
+            "discountPercentage",
+            "saveAmount",
+            "stock",
+            "lowStockThreshold",
+            "costPrice",
+            "gstRate",
+          ].includes(field)
+        ) {
+          nextValue =
+            nextValue === "" || nextValue === null
+              ? ""
+              : String(nextValue).replace(/[^0-9.]/g, "");
+        }
+
+        nextDraft[field] = nextValue;
+        return nextDraft;
+      });
+    },
+    [updateProductDraft]
+  );
+
+  const handleNameChange = useCallback(
+    (value) => {
+      handleChangeProductDraft("name", value);
+      const preset = resolveTaxPreset(value);
+      if (preset) {
+        updateProductDraft((draft) => {
+          const nextDraft = { ...draft };
+          if (!productEditAuto.hasManualHsn || !nextDraft.hsnCode) {
+            nextDraft.hsnCode = preset.hsnCode;
+          }
+          if (!productEditAuto.hasManualGst || !nextDraft.gstRate) {
+            nextDraft.gstRate = String(preset.gstRate);
+          }
+          return nextDraft;
+        });
+      }
+    },
+    [
+      handleChangeProductDraft,
+      productEditAuto.hasManualGst,
+      productEditAuto.hasManualHsn,
+      updateProductDraft,
+    ]
+  );
+
+  const handleTaxFieldChange = useCallback(
+    (field, value) => {
+      setProductEditAuto((prev) => ({
+        ...prev,
+        [field === "hsnCode" ? "hasManualHsn" : "hasManualGst"]: true,
+      }));
+      handleChangeProductDraft(field, value);
+    },
+    [handleChangeProductDraft]
+  );
+
+  const handleToggleProductDraft = useCallback(
+    (field, checked) => {
+      updateProductDraft((draft) => {
+        const nextDraft = {
+          ...draft,
+          [field]: checked,
+        };
+
+        if (field === "showSizes") {
+          const sizes = checked
+            ? draft.sizes && draft.sizes.length
+              ? draft.sizes
+              : buildDefaultSizes().map((size) => ({
+                  label: size.label,
+                  isAvailable: true,
+                  stock: "0",
+                }))
+            : draft.sizes || [];
+
+          nextDraft.sizes = sizes;
+          if (
+            !LOCKED_AVAILABILITY_STATUSES.includes(draft.availabilityStatus)
+          ) {
+            const totalStock = computeSizeStockTotal(
+              sizes.map((size) => ({
+                ...size,
+                stock: Number(size.stock ?? 0),
+              }))
+            );
+            nextDraft.stock = checked ? String(totalStock) : draft.stock;
+          } else {
+            nextDraft.stock = "0";
+          }
+        }
+
+        return nextDraft;
+      });
+    },
+    [updateProductDraft]
+  );
+
+  const handleAvailabilityChange = useCallback(
+    (value) => {
+      updateProductDraft((draft) => {
+        const nextDraft = {
+          ...draft,
+          availabilityStatus: value,
+        };
+
+        if (LOCKED_AVAILABILITY_STATUSES.includes(value)) {
+          nextDraft.stock = "0";
+        } else if (draft.showSizes) {
+          const totalStock = computeSizeStockTotal(
+            (draft.sizes || []).map((size) => ({
+              ...size,
+              stock: Number(size.stock ?? 0),
+            }))
+          );
+          nextDraft.stock = String(totalStock);
+        }
+
+        return nextDraft;
+      });
+    },
+    [updateProductDraft]
+  );
+
+  const handlePricingChange = useCallback(
+    (field, value) => {
+      updateProductDraft((draft) => {
+        const nextDraft = { ...draft, [field]: value };
+
+        const priceValue = parseFloat(field === "price" ? value : draft.price);
+        const originalValue = parseFloat(
+          field === "originalPrice" ? value : draft.originalPrice
+        );
+
+        if (
+          !Number.isNaN(priceValue) &&
+          !Number.isNaN(originalValue) &&
+          originalValue >= priceValue &&
+          originalValue > 0
+        ) {
+          const save = originalValue - priceValue;
+          nextDraft.discountPercentage = Math.round(
+            (save / originalValue) * 100
+          ).toString();
+          nextDraft.saveAmount = save.toFixed(2);
+        } else {
+          nextDraft.discountPercentage = "";
+          nextDraft.saveAmount = "";
+        }
+
+        return nextDraft;
+      });
+    },
+    [updateProductDraft]
+  );
+
+  const handleFeatureChange = useCallback(
+    (index, value) => {
+      updateProductDraft((draft) => {
+        const features = Array.isArray(draft.keyFeatures)
+          ? [...draft.keyFeatures]
+          : [""];
+        features[index] = value;
+        return {
+          ...draft,
+          keyFeatures: features,
+        };
+      });
+    },
+    [updateProductDraft]
+  );
+
+  const handleAddFeature = useCallback(() => {
+    updateProductDraft((draft) => ({
+      ...draft,
+      keyFeatures: [...(draft.keyFeatures || []), ""],
+    }));
+  }, [updateProductDraft]);
+
+  const handleRemoveFeature = useCallback(
+    (index) => {
+      updateProductDraft((draft) => {
+        const features = Array.isArray(draft.keyFeatures)
+          ? draft.keyFeatures.filter((_, idx) => idx !== index)
+          : [];
+        return {
+          ...draft,
+          keyFeatures: features.length ? features : [""],
+        };
+      });
+    },
+    [updateProductDraft]
+  );
+
+  const handleSizeChange = useCallback(
+    (index, field, value) => {
+      updateProductDraft((draft) => {
+        const existingSizes = Array.isArray(draft.sizes)
+          ? [...draft.sizes]
+          : [];
+        const sizes = existingSizes.length
+          ? existingSizes
+          : buildDefaultSizes().map((size) => ({
+              label: size.label,
+              isAvailable: true,
+              stock: "0",
+            }));
+
+        const target = sizes[index] || {
+          label: "",
+          isAvailable: true,
+          stock: "0",
+        };
+
+        sizes[index] = {
+          ...target,
+          [field]: field === "stock" ? String(value) : value,
+        };
+
+        const totalStock = computeSizeStockTotal(
+          sizes.map((size) => ({
+            ...size,
+            stock: Number(size.stock ?? 0),
+          }))
+        );
+
+        return {
+          ...draft,
+          sizes,
+          stock:
+            draft.showSizes &&
+            !LOCKED_AVAILABILITY_STATUSES.includes(draft.availabilityStatus)
+              ? String(totalStock)
+              : draft.stock,
+        };
+      });
+    },
+    [updateProductDraft]
+  );
+
+  const handleAddSize = useCallback(() => {
+    updateProductDraft((draft) => ({
+      ...draft,
+      sizes: [
+        ...(draft.sizes && draft.sizes.length
+          ? draft.sizes
+          : buildDefaultSizes().map((size) => ({
+              label: size.label,
+              isAvailable: true,
+              stock: "0",
+            }))),
+        {
+          label: "",
+          isAvailable: true,
+          stock: "0",
+        },
+      ],
+    }));
+  }, [updateProductDraft]);
+
+  const handleRemoveSize = useCallback(
+    (index) => {
+      updateProductDraft((draft) => {
+        const sizes = Array.isArray(draft.sizes)
+          ? draft.sizes.filter((_, idx) => idx !== index)
+          : [];
+        return {
+          ...draft,
+          sizes: sizes.length
+            ? sizes
+            : buildDefaultSizes().map((size) => ({
+                label: size.label,
+                isAvailable: true,
+                stock: "0",
+              })),
+        };
+      });
+    },
+    [updateProductDraft]
+  );
+
+  const handleSizeLabelChange = useCallback(
+    (index, value) => {
+      handleSizeChange(index, "label", value.toUpperCase());
+    },
+    [handleSizeChange]
+  );
+
+  const handleSizeStockChange = useCallback(
+    (index, value) => {
+      handleSizeChange(index, "stock", value);
+    },
+    [handleSizeChange]
+  );
+
+  const handleSizeAvailabilityChange = useCallback(
+    (index, checked) => {
+      handleSizeChange(index, "isAvailable", checked);
+    },
+    [handleSizeChange]
+  );
+
+  const handleThumbnailUpload = useCallback(
+    async (event) => {
+      const file = event.target.files?.[0];
+      if (!file) return;
+
+      if (!file.type.startsWith("image/")) {
+        toast.error("Please upload an image file for the thumbnail");
+        event.target.value = "";
+        return;
+      }
+
+      if (file.size > MAX_IMAGE_SIZE) {
+        toast.error("Thumbnail must be under 2MB");
+        event.target.value = "";
+        return;
+      }
+
+      setProductMediaUploading((prev) => ({ ...prev, thumbnail: true }));
+      try {
+        const dataUrl = await readFileAsDataURL(file);
+        updateProductDraft((draft) => ({
+          ...draft,
+          thumbnail: dataUrl,
+        }));
+      } catch (error) {
+        toast.error("Failed to load thumbnail image");
+      } finally {
+        setProductMediaUploading((prev) => ({ ...prev, thumbnail: false }));
+        event.target.value = "";
+      }
+    },
+    [updateProductDraft]
+  );
+
+  const handleRemoveThumbnail = useCallback(() => {
+    updateProductDraft((draft) => ({
+      ...draft,
+      thumbnail: "",
+    }));
+  }, [updateProductDraft]);
+
+  const handleGalleryUpload = useCallback(
+    async (event) => {
+      const files = Array.from(event.target.files || []);
+      if (!files.length) {
+        return;
+      }
+
+      if (files.some((file) => !file.type.startsWith("image/"))) {
+        toast.error("All gallery files must be images");
+        event.target.value = "";
+        return;
+      }
+
+      const oversized = files.find((file) => file.size > MAX_IMAGE_SIZE);
+      if (oversized) {
+        toast.error("Each gallery image must be under 2MB");
+        event.target.value = "";
+        return;
+      }
+
+      setProductMediaUploading((prev) => ({ ...prev, gallery: true }));
+      try {
+        const images = await Promise.all(files.map(readFileAsDataURL));
+        updateProductDraft((draft) => {
+          const existingGallery = Array.isArray(draft.gallery)
+            ? [...draft.gallery]
+            : [];
+          const merged = [...existingGallery, ...images];
+          return {
+            ...draft,
+            gallery: merged,
+            images: merged,
+          };
+        });
+      } catch (error) {
+        toast.error("Failed to load gallery images");
+      } finally {
+        setProductMediaUploading((prev) => ({ ...prev, gallery: false }));
+        event.target.value = "";
+      }
+    },
+    [updateProductDraft]
+  );
+
+  const handleRemoveGalleryImage = useCallback(
+    (index) => {
+      updateProductDraft((draft) => {
+        const gallery = Array.isArray(draft.gallery)
+          ? draft.gallery.filter((_, idx) => idx !== index)
+          : [];
+        return {
+          ...draft,
+          gallery,
+          images: gallery,
+        };
+      });
+    },
+    [updateProductDraft]
+  );
+
+  const handleAddGalleryUrl = useCallback(() => {
+    const trimmed = newGalleryUrl.trim();
+    if (!trimmed) {
+      return;
+    }
+    updateProductDraft((draft) => {
+      const gallery = Array.isArray(draft.gallery) ? [...draft.gallery] : [];
+      if (!gallery.includes(trimmed)) {
+        gallery.push(trimmed);
+      }
+      return {
+        ...draft,
+        gallery,
+        images: gallery,
+      };
     });
-    if (!confirmed) return;
-    try {
-      await deleteAdminSellerOrder(orderId);
-      toast.success("Order removed");
-      setOrders((prev) => prev.filter((order) => order._id !== orderId));
-      await loadSellers({ silent: true });
-    } catch (error) {
-      console.error("Failed to delete seller order", error);
-      toast.error(error.message || "Unable to delete seller order");
-    }
-  };
+    setNewGalleryUrl("");
+  }, [newGalleryUrl, updateProductDraft]);
+
+  const handleSetDraftField = useCallback(
+    (field) => (event) => handleChangeProductDraft(field, event.target.value),
+    [handleChangeProductDraft]
+  );
+
+  const handlePricingField = useCallback(
+    (field) => (event) => handlePricingChange(field, event.target.value),
+    [handlePricingChange]
+  );
+
+  const handleToggleField = useCallback(
+    (field) => (event) => handleToggleProductDraft(field, event.target.checked),
+    [handleToggleProductDraft]
+  );
+
+  const handleSizeLabelInput = useCallback(
+    (index) => (event) => handleSizeLabelChange(index, event.target.value),
+    [handleSizeLabelChange]
+  );
+
+  const handleSizeStockInput = useCallback(
+    (index) => (event) => handleSizeStockChange(index, event.target.value),
+    [handleSizeStockChange]
+  );
+
+  const handleSizeAvailabilityToggle = useCallback(
+    (index) => (event) =>
+      handleSizeAvailabilityChange(index, event.target.checked),
+    [handleSizeAvailabilityChange]
+  );
+
+  const handleSubmitProductEdit = useCallback(
+    async (event) => {
+      event.preventDefault();
+      if (!productEditModal.data || !productEditModal.draft) {
+        toast.error("Missing product information");
+        return;
+      }
+
+      setProductEditModal((prev) => ({
+        ...prev,
+        isSubmitting: true,
+        error: null,
+      }));
+
+      const draft = productEditModal.draft;
+
+      const payload = {
+        name: draft.name?.trim() || "",
+        sku: draft.sku?.trim() || "",
+        category: draft.category?.trim() || "",
+        brand: draft.brand?.trim() || "",
+        categoryPriority: normalizeCategoryPriority(draft.categoryPriority),
+        price: Number(draft.price) || 0,
+        originalPrice: Number(draft.originalPrice) || 0,
+        discountPercentage:
+          draft.discountPercentage !== "" && draft.discountPercentage !== null
+            ? Number(draft.discountPercentage)
+            : undefined,
+        saveAmount:
+          draft.saveAmount !== "" && draft.saveAmount !== null
+            ? Number(draft.saveAmount)
+            : undefined,
+        costPrice:
+          draft.costPrice !== "" && draft.costPrice !== null
+            ? Number(draft.costPrice)
+            : undefined,
+        stock: Number(draft.stock) || 0,
+        lowStockThreshold:
+          draft.lowStockThreshold !== "" && draft.lowStockThreshold !== null
+            ? Number(draft.lowStockThreshold)
+            : undefined,
+        availabilityStatus: draft.availabilityStatus || "in_stock",
+        status: draft.status || "published",
+        isFeatured: Boolean(draft.isFeatured),
+        showSizes: Boolean(draft.showSizes),
+        description: draft.description?.trim() || "",
+        shortDescription: draft.shortDescription?.trim() || "",
+        hsnCode: draft.hsnCode?.trim() || "",
+        gstRate:
+          draft.gstRate !== "" && draft.gstRate !== null
+            ? Number(draft.gstRate)
+            : undefined,
+        thumbnail: draft.thumbnail || "",
+        gallery: Array.isArray(draft.gallery) ? draft.gallery : [],
+        images: Array.isArray(draft.images) ? draft.images : [],
+        keyFeatures: Array.isArray(draft.keyFeatures)
+          ? draft.keyFeatures.map((feature) => feature?.trim()).filter(Boolean)
+          : [],
+        sizes:
+          draft.showSizes && Array.isArray(draft.sizes)
+            ? draft.sizes.map((size) => ({
+                label: size?.label?.trim() || "",
+                stock: Number(size?.stock) || 0,
+                isAvailable: Boolean(size?.isAvailable),
+              }))
+            : [],
+        metadata:
+          draft.metadata && typeof draft.metadata === "object"
+            ? draft.metadata
+            : undefined,
+      };
+
+      try {
+        const updated = await updateAdminSellerProduct(
+          productEditModal.data._id,
+          payload
+        );
+
+        toast.success("Product updated");
+
+        const normalizedUpdated = normalizeSellerProduct(updated) || updated;
+
+        setProducts((prev) =>
+          prev.map((product) =>
+            String(product._id) === String(updated._id)
+              ? normalizeSellerProduct({ ...product, ...normalizedUpdated })
+              : product
+          )
+        );
+
+        setProductEditModal((prev) => ({
+          ...prev,
+          isSubmitting: false,
+          isOpen: false,
+        }));
+
+        await loadProducts({ silent: true });
+      } catch (error) {
+        console.error("Failed to update seller product", error);
+        const message =
+          error?.response?.data?.message ||
+          error?.message ||
+          "Unable to update seller product";
+        toast.error(message);
+        setProductEditModal((prev) => ({
+          ...prev,
+          isSubmitting: false,
+          error: message,
+        }));
+      }
+    },
+    [productEditModal, loadProducts]
+  );
 
   const handleCouponUpdate = async (couponId, updates) => {
     try {
@@ -847,6 +1867,13 @@ const AdminSellerDetailsPage = () => {
                         const statusInfo =
                           STATUS_LABELS[product.status] ||
                           STATUS_LABELS.archived;
+                        const availabilityClass =
+                          AVAILABILITY_BADGE_CLASSES[
+                            product.availabilityStatus
+                          ] || AVAILABILITY_BADGE_CLASSES.in_stock;
+                        const availabilityLabel = getAvailabilityLabel(
+                          product.availabilityStatus
+                        );
                         return (
                           <tr
                             key={product._id}
@@ -876,17 +1903,24 @@ const AdminSellerDetailsPage = () => {
                               </div>
                             </td>
                             <td className="px-4 py-3 align-top">
-                              <span
-                                className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-medium ${statusInfo.className}`}
-                              >
-                                {statusInfo.label}
-                              </span>
+                              <div className="flex flex-col gap-2">
+                                <span
+                                  className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-medium ${statusInfo.className}`}
+                                >
+                                  {statusInfo.label}
+                                </span>
+                                <span
+                                  className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-medium ${availabilityClass}`}
+                                >
+                                  {availabilityLabel}
+                                </span>
+                              </div>
                             </td>
                             <td className="px-4 py-3 align-top">
                               <div className="flex items-center justify-end gap-2">
                                 <button
                                   type="button"
-                                  onClick={() => setProductView(product)}
+                                  onClick={() => handleViewProduct(product._id)}
                                   className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-500 transition hover:border-blue-200 hover:text-blue-600"
                                   aria-label="View product"
                                 >
@@ -894,7 +1928,9 @@ const AdminSellerDetailsPage = () => {
                                 </button>
                                 <button
                                   type="button"
-                                  onClick={() => setProductEdit(product)}
+                                  onClick={() =>
+                                    handleOpenEditProduct(product._id)
+                                  }
                                   className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-500 transition hover:border-blue-200 hover:text-blue-600"
                                   aria-label="Edit product"
                                 >
@@ -1311,121 +2347,375 @@ const AdminSellerDetailsPage = () => {
       </BaseModal>
 
       <BaseModal
-        isOpen={Boolean(productView)}
-        title={productView ? productView.name : "Product"}
-        onClose={() => setProductView(null)}
+        isOpen={productViewModal.isOpen}
+        title="Product Details"
+        onClose={handleCloseViewProduct}
       >
-        {productView ? (
-          <div className="space-y-3">
-            <div className="text-sm text-slate-600">
-              <p>SKU: {productView.sku}</p>
-              <p>Price: {formatCurrency(productView.price)}</p>
-              <p>Stock: {productView.stock ?? 0}</p>
-              <p>Status: {productView.status}</p>
-            </div>
-            {productView.description ? (
-              <div>
-                <p className="text-xs uppercase text-slate-400">Description</p>
-                <p className="mt-1 whitespace-pre-line text-sm text-slate-600">
-                  {productView.description}
-                </p>
+        {productViewModal.loading ? (
+          <div className="flex items-center justify-center py-8 text-sm text-gray-500">
+            Loading product details...
+          </div>
+        ) : productViewModal.error ? (
+          <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-600">
+            {productViewModal.error}
+          </div>
+        ) : productViewModal.data ? (
+          <div className="space-y-6">
+            <div className="grid gap-4 sm:grid-cols-[1.2fr,0.8fr]">
+              <div className="space-y-3">
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <div>
+                    <p className="text-xs uppercase text-slate-400">Name</p>
+                    <p className="text-base font-semibold text-slate-900">
+                      {productViewModal.data.name || "—"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs uppercase text-slate-400">SKU</p>
+                    <p className="text-sm font-medium text-slate-700">
+                      {productViewModal.data.sku ||
+                        productViewModal.data._id ||
+                        "—"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs uppercase text-slate-400">Category</p>
+                    <p className="text-sm text-slate-700">
+                      {productViewModal.data.category || "—"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs uppercase text-slate-400">Brand</p>
+                    <p className="text-sm text-slate-700">
+                      {productViewModal.data.brand || "—"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs uppercase text-slate-400">Seller</p>
+                    <p className="text-sm text-slate-700">
+                      {productViewModal.data.sellerId?.companyName ||
+                        productViewModal.data.sellerId?.name ||
+                        productViewModal.data.sellerId?.username ||
+                        "—"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs uppercase text-slate-400">
+                      HSN / GST
+                    </p>
+                    <p className="text-sm text-slate-700">
+                      {productViewModal.data.hsnCode || "—"} ·{" "}
+                      {productViewModal.data.gstRate !== undefined &&
+                      productViewModal.data.gstRate !== null
+                        ? `${productViewModal.data.gstRate}%`
+                        : "—"}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                    <p className="text-xs uppercase text-slate-400">Price</p>
+                    <p className="text-lg font-semibold text-slate-900">
+                      {formatCurrency(productViewModal.data.price)}
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      Original{" "}
+                      {formatCurrency(productViewModal.data.originalPrice)}
+                    </p>
+                  </div>
+                  <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                    <p className="text-xs uppercase text-slate-400">Stock</p>
+                    <p className="text-lg font-semibold text-slate-900">
+                      {productViewModal.data.stock ?? 0}
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      Availability:{" "}
+                      {getAvailabilityLabel(
+                        productViewModal.data.availabilityStatus
+                      )}
+                    </p>
+                  </div>
+                  <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                    <p className="text-xs uppercase text-slate-400">Status</p>
+                    <p className="text-lg font-semibold text-slate-900">
+                      {STATUS_LABELS[productViewModal.data.status]?.label ||
+                        productViewModal.data.status}
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      Featured:{" "}
+                      {productViewModal.data.isFeatured ? "Yes" : "No"}
+                    </p>
+                  </div>
+                  <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                    <p className="text-xs uppercase text-slate-400">Discount</p>
+                    <p className="text-lg font-semibold text-slate-900">
+                      {Number(productViewModal.data.discountPercentage ?? 0)}%
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      Savings:{" "}
+                      {formatCurrency(productViewModal.data.saveAmount ?? 0)}
+                    </p>
+                  </div>
+                </div>
+
+                {productViewModal.data.shortDescription ? (
+                  <div>
+                    <p className="text-xs uppercase text-slate-400">
+                      Short Description
+                    </p>
+                    <p className="mt-1 rounded-xl border border-slate-200 bg-white p-3 text-sm text-slate-600">
+                      {productViewModal.data.shortDescription}
+                    </p>
+                  </div>
+                ) : null}
+
+                {productViewModal.data.description ? (
+                  <div>
+                    <p className="text-xs uppercase text-slate-400">
+                      Description
+                    </p>
+                    <p className="mt-1 whitespace-pre-line rounded-xl border border-slate-200 bg-white p-3 text-sm text-slate-600">
+                      {productViewModal.data.description}
+                    </p>
+                  </div>
+                ) : null}
+
+                {Array.isArray(productViewModal.data.keyFeatures) &&
+                productViewModal.data.keyFeatures.length ? (
+                  <div className="space-y-2">
+                    <p className="text-xs uppercase text-slate-400">
+                      Key Features
+                    </p>
+                    <ul className="grid gap-2 sm:grid-cols-2">
+                      {productViewModal.data.keyFeatures.map(
+                        (feature, index) => (
+                          <li
+                            key={`${feature}-${index}`}
+                            className="rounded-xl border border-slate-200 bg-white p-3 text-sm text-slate-600"
+                          >
+                            {feature}
+                          </li>
+                        )
+                      )}
+                    </ul>
+                  </div>
+                ) : null}
+
+                {Array.isArray(productViewModal.data.sizes) &&
+                productViewModal.data.sizes.length ? (
+                  <div className="space-y-2">
+                    <p className="text-xs uppercase text-slate-400">Sizes</p>
+                    <div className="grid gap-2 sm:grid-cols-3">
+                      {productViewModal.data.sizes.map((size, index) => (
+                        <div
+                          key={`${size?.label || "size"}-${index}`}
+                          className="rounded-xl border border-slate-200 bg-white p-3 text-sm text-slate-600"
+                        >
+                          <p className="text-xs font-semibold text-slate-500">
+                            {size?.label || "—"}
+                          </p>
+                          <p className="text-sm text-slate-700">
+                            Stock: {size?.stock ?? 0}
+                          </p>
+                          <p className="text-xs text-slate-500">
+                            {size?.isAvailable ? "Available" : "Not available"}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
               </div>
-            ) : null}
+
+              <div className="space-y-4">
+                <div className="overflow-hidden rounded-2xl border border-dashed border-slate-200 bg-slate-50">
+                  <img
+                    src={
+                      productViewModal.data.thumbnail ||
+                      productViewModal.data.gallery?.[0] ||
+                      "https://placehold.co/480x480/f8fafc/e2e8f0?text=Thumbnail"
+                    }
+                    alt={productViewModal.data.name || "Product thumbnail"}
+                    className="h-64 w-full object-cover"
+                    onError={(event) => {
+                      event.currentTarget.src =
+                        "https://placehold.co/480x480/f8fafc/e2e8f0?text=Image";
+                    }}
+                  />
+                </div>
+
+                {Array.isArray(productViewModal.data.gallery) &&
+                productViewModal.data.gallery.length > 1 ? (
+                  <div className="space-y-2">
+                    <p className="text-xs uppercase text-slate-400">Gallery</p>
+                    <div className="grid grid-cols-3 gap-2">
+                      {productViewModal.data.gallery.map((image, index) => (
+                        <div
+                          key={`${image}-${index}`}
+                          className="overflow-hidden rounded-xl border border-slate-200 bg-white"
+                        >
+                          <img
+                            src={image}
+                            alt={`${productViewModal.data.name || "Product"} ${
+                              index + 1
+                            }`}
+                            className="h-24 w-full object-cover"
+                            onError={(event) => {
+                              event.currentTarget.src =
+                                "https://placehold.co/200x200/f8fafc/e2e8f0?text=Image";
+                            }}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            </div>
           </div>
         ) : null}
       </BaseModal>
 
       <BaseModal
-        isOpen={Boolean(productEdit)}
-        title={productEdit ? `Edit ${productEdit.name}` : "Edit product"}
-        onClose={() => setProductEdit(null)}
-        footer={
-          <button
-            type="button"
-            onClick={() => {
-              if (!productEdit) return;
-              handleProductUpdate(productEdit._id, {
-                price: Number(productEdit.price) || 0,
-                stock: Number(productEdit.stock) || 0,
-                status: productEdit.status,
-                availabilityStatus: productEdit.availabilityStatus,
-              });
-            }}
-            className="inline-flex items-center justify-center rounded-xl border border-blue-600 bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700"
-          >
-            Save Changes
-          </button>
+        isOpen={productEditModal.isOpen}
+        title={
+          productEditModal.data?.name
+            ? `Edit ${productEditModal.data.name}`
+            : "Edit product"
         }
+        onClose={() => {
+          if (!productEditModal.isSubmitting) {
+            handleCloseEditProduct();
+          }
+        }}
       >
-        {productEdit ? (
-          <div className="space-y-3 text-sm text-slate-600">
-            <label className="grid gap-1">
-              <span className="text-xs text-slate-500">Price (INR)</span>
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                value={productEdit.price ?? ""}
-                onChange={(event) =>
-                  setProductEdit((prev) => ({
-                    ...prev,
-                    price: event.target.value,
-                  }))
-                }
-                className="rounded-xl border border-slate-200 px-3 py-2 focus:border-blue-400 focus:outline-none"
-              />
-            </label>
-            <label className="grid gap-1">
-              <span className="text-xs text-slate-500">Stock</span>
-              <input
-                type="number"
-                min="0"
-                value={productEdit.stock ?? ""}
-                onChange={(event) =>
-                  setProductEdit((prev) => ({
-                    ...prev,
-                    stock: event.target.value,
-                  }))
-                }
-                className="rounded-xl border border-slate-200 px-3 py-2 focus:border-blue-400 focus:outline-none"
-              />
-            </label>
-            <label className="grid gap-1">
-              <span className="text-xs text-slate-500">Status</span>
-              <select
-                value={productEdit.status}
-                onChange={(event) =>
-                  setProductEdit((prev) => ({
-                    ...prev,
-                    status: event.target.value,
-                  }))
-                }
-                className="rounded-xl border border-slate-200 px-3 py-2 focus:border-blue-400 focus:outline-none"
-              >
-                <option value="published">Published</option>
-                <option value="archived">Archived</option>
-              </select>
-            </label>
-            <label className="grid gap-1">
-              <span className="text-xs text-slate-500">Availability</span>
-              <select
-                value={productEdit.availabilityStatus || "in_stock"}
-                onChange={(event) =>
-                  setProductEdit((prev) => ({
-                    ...prev,
-                    availabilityStatus: event.target.value,
-                  }))
-                }
-                className="rounded-xl border border-slate-200 px-3 py-2 focus:border-blue-400 focus:outline-none"
-              >
-                <option value="in_stock">In stock</option>
-                <option value="low_stock">Low stock</option>
-                <option value="out_of_stock">Out of stock</option>
-                <option value="preorder">Pre-order</option>
-              </select>
-            </label>
+        {productEditModal.loading ? (
+          <div className="flex items-center justify-center py-8 text-sm text-gray-500">
+            Loading product details...
           </div>
-        ) : null}
+        ) : productEditModal.error ? (
+          <div className="space-y-4">
+            <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-600">
+              {productEditModal.error}
+            </div>
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={handleCloseEditProduct}
+                className="inline-flex items-center justify-center rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 transition hover:border-slate-300 hover:text-slate-700"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        ) : productEditModal.data && productEditModal.draft ? (
+          <form onSubmit={handleSubmitProductEdit} className="space-y-6">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="grid gap-1 text-sm text-slate-600">
+                <span className="text-xs uppercase tracking-wide text-slate-400">
+                  Price (₹)
+                </span>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={productEditModal.draft.price}
+                  onChange={(event) =>
+                    handleChangeProductDraft("price", event.target.value)
+                  }
+                  className="rounded-xl border border-slate-200 px-3 py-2 focus:border-blue-400 focus:outline-none"
+                />
+              </label>
+              <label className="grid gap-1 text-sm text-slate-600">
+                <span className="text-xs uppercase tracking-wide text-slate-400">
+                  Original price (₹)
+                </span>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={productEditModal.draft.originalPrice}
+                  onChange={(event) =>
+                    handleChangeProductDraft(
+                      "originalPrice",
+                      event.target.value
+                    )
+                  }
+                  className="rounded-xl border border-slate-200 px-3 py-2 focus:border-blue-400 focus:outline-none"
+                />
+              </label>
+              <label className="grid gap-1 text-sm text-slate-600">
+                <span className="text-xs uppercase tracking-wide text-slate-400">
+                  Stock
+                </span>
+                <input
+                  type="number"
+                  min="0"
+                  value={productEditModal.draft.stock}
+                  onChange={(event) =>
+                    handleChangeProductDraft("stock", event.target.value)
+                  }
+                  className="rounded-xl border border-slate-200 px-3 py-2 focus:border-blue-400 focus:outline-none"
+                />
+              </label>
+              <label className="grid gap-1 text-sm text-slate-600">
+                <span className="text-xs uppercase tracking-wide text-slate-400">
+                  Availability status
+                </span>
+                <select
+                  value={productEditModal.draft.availabilityStatus}
+                  onChange={(event) =>
+                    handleChangeProductDraft(
+                      "availabilityStatus",
+                      event.target.value
+                    )
+                  }
+                  className="rounded-xl border border-slate-200 px-3 py-2 focus:border-blue-400 focus:outline-none"
+                >
+                  <option value="in_stock">In stock</option>
+                  <option value="low_stock">Low stock</option>
+                  <option value="out_of_stock">Out of stock</option>
+                  <option value="preorder">Pre-order</option>
+                </select>
+              </label>
+              <label className="grid gap-1 text-sm text-slate-600">
+                <span className="text-xs uppercase tracking-wide text-slate-400">
+                  Status
+                </span>
+                <select
+                  value={productEditModal.draft.status}
+                  onChange={(event) =>
+                    handleChangeProductDraft("status", event.target.value)
+                  }
+                  className="rounded-xl border border-slate-200 px-3 py-2 focus:border-blue-400 focus:outline-none"
+                >
+                  <option value="published">Published</option>
+                  <option value="archived">Archived</option>
+                </select>
+              </label>
+            </div>
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={handleCloseEditProduct}
+                disabled={productEditModal.isSubmitting}
+                className="inline-flex items-center justify-center rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 transition hover:border-slate-300 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={productEditModal.isSubmitting}
+                className="inline-flex items-center justify-center rounded-xl border border-blue-600 bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:border-blue-300 disabled:bg-blue-300"
+              >
+                {productEditModal.isSubmitting ? "Saving..." : "Save changes"}
+              </button>
+            </div>
+          </form>
+        ) : (
+          <p className="text-sm text-slate-600">No product selected</p>
+        )}
       </BaseModal>
 
       <BaseModal
@@ -1584,6 +2874,11 @@ const AdminSellerDetailsPage = () => {
               if (!couponEdit) return;
               handleCouponUpdate(couponEdit._id, {
                 description: couponEdit.description,
+                discountType: couponEdit.discountType,
+                discountValue:
+                  couponEdit.discountType === "percentage"
+                    ? Number(couponEdit.discountValue) || 0
+                    : Number(couponEdit.discountValue) || 0,
                 minOrderAmount: Number(couponEdit.minOrderAmount) || 0,
                 maxRedemptions: Number(couponEdit.maxRedemptions) || 0,
                 isActive: Boolean(couponEdit.isActive),
@@ -1596,7 +2891,7 @@ const AdminSellerDetailsPage = () => {
         }
       >
         {couponEdit ? (
-          <div className="space-y-3 text-sm text-slate-600">
+          <div className="space-y-4 text-sm text-slate-600">
             <label className="grid gap-1">
               <span className="text-xs text-slate-500">Description</span>
               <textarea
@@ -1607,43 +2902,85 @@ const AdminSellerDetailsPage = () => {
                     description: event.target.value,
                   }))
                 }
+                className="rounded-xl border border-slate-200 px-3 py-2 focus:border-blue-400 focus:outline-none"
                 rows={3}
-                className="rounded-xl border border-slate-200 px-3 py-2 focus:border-blue-400 focus:outline-none"
               />
             </label>
-            <label className="grid gap-1">
-              <span className="text-xs text-slate-500">
-                Minimum order (INR)
-              </span>
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                value={couponEdit.minOrderAmount ?? ""}
-                onChange={(event) =>
-                  setCouponEdit((prev) => ({
-                    ...prev,
-                    minOrderAmount: event.target.value,
-                  }))
-                }
-                className="rounded-xl border border-slate-200 px-3 py-2 focus:border-blue-400 focus:outline-none"
-              />
-            </label>
-            <label className="grid gap-1">
-              <span className="text-xs text-slate-500">Max redemptions</span>
-              <input
-                type="number"
-                min="1"
-                value={couponEdit.maxRedemptions ?? ""}
-                onChange={(event) =>
-                  setCouponEdit((prev) => ({
-                    ...prev,
-                    maxRedemptions: event.target.value,
-                  }))
-                }
-                className="rounded-xl border border-slate-200 px-3 py-2 focus:border-blue-400 focus:outline-none"
-              />
-            </label>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="grid gap-1">
+                <span className="text-xs text-slate-500">Discount type</span>
+                <select
+                  value={couponEdit.discountType || "percentage"}
+                  onChange={(event) =>
+                    setCouponEdit((prev) => ({
+                      ...prev,
+                      discountType: event.target.value,
+                      discountValue: prev.discountValue,
+                    }))
+                  }
+                  className="rounded-xl border border-slate-200 px-3 py-2 focus:border-blue-400 focus:outline-none"
+                >
+                  <option value="percentage">Percentage</option>
+                  <option value="amount">Flat amount</option>
+                </select>
+              </label>
+              <label className="grid gap-1">
+                <span className="text-xs text-slate-500">
+                  {couponEdit.discountType === "amount"
+                    ? "Discount amount (₹)"
+                    : "Discount percentage (%)"}
+                </span>
+                <input
+                  type="number"
+                  min="0"
+                  step={couponEdit.discountType === "amount" ? "0.01" : "1"}
+                  value={couponEdit.discountValue ?? ""}
+                  onChange={(event) =>
+                    setCouponEdit((prev) => ({
+                      ...prev,
+                      discountValue: event.target.value,
+                    }))
+                  }
+                  className="rounded-xl border border-slate-200 px-3 py-2 focus:border-blue-400 focus:outline-none"
+                />
+              </label>
+
+              <label className="grid gap-1">
+                <span className="text-xs text-slate-500">
+                  Minimum order amount (₹)
+                </span>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={couponEdit.minOrderAmount ?? ""}
+                  onChange={(event) =>
+                    setCouponEdit((prev) => ({
+                      ...prev,
+                      minOrderAmount: event.target.value,
+                    }))
+                  }
+                  className="rounded-xl border border-slate-200 px-3 py-2 focus:border-blue-400 focus:outline-none"
+                />
+              </label>
+              <label className="grid gap-1">
+                <span className="text-xs text-slate-500">Max redemptions</span>
+                <input
+                  type="number"
+                  min="1"
+                  value={couponEdit.maxRedemptions ?? ""}
+                  onChange={(event) =>
+                    setCouponEdit((prev) => ({
+                      ...prev,
+                      maxRedemptions: event.target.value,
+                    }))
+                  }
+                  className="rounded-xl border border-slate-200 px-3 py-2 focus:border-blue-400 focus:outline-none"
+                />
+              </label>
+            </div>
+
             <label className="inline-flex items-center gap-3 rounded-xl border border-slate-200 px-3 py-2">
               <input
                 type="checkbox"

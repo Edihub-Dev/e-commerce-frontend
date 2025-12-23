@@ -1,8 +1,11 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import { toast } from "react-hot-toast";
-import api, { fetchOrderById } from "../utils/api";
+import api, {
+  fetchOrderById,
+  sellerUpdateReplacementRequest,
+} from "../utils/api";
 import {
   ArrowLeft,
   Download,
@@ -12,7 +15,14 @@ import {
   Truck,
   CreditCard,
   Receipt,
+  RefreshCcw,
+  ClipboardList,
+  ClipboardCheck,
 } from "lucide-react";
+import {
+  REPLACEMENT_STATUS_OPTIONS,
+  STATUSES_REQUIRING_REASON,
+} from "../constants/replacementRequest";
 
 const STATUS_LABELS = {
   processing: {
@@ -38,6 +48,53 @@ const STATUS_LABELS = {
   returned: {
     label: "Return/Replace",
     badge: "bg-rose-100 text-rose-700",
+  },
+};
+
+const REPLACEMENT_STATUS_STYLES = {
+  pending: {
+    badge: "bg-amber-100 text-amber-700",
+    dot: "bg-amber-500",
+  },
+  approved: {
+    badge: "bg-emerald-100 text-emerald-700",
+    dot: "bg-emerald-500",
+  },
+  pickup_scheduled: {
+    badge: "bg-sky-100 text-sky-700",
+    dot: "bg-sky-500",
+  },
+  pickup_completed: {
+    badge: "bg-blue-100 text-blue-700",
+    dot: "bg-blue-500",
+  },
+  replacement_processing: {
+    badge: "bg-indigo-100 text-indigo-700",
+    dot: "bg-indigo-500",
+  },
+  replacement_shipped: {
+    badge: "bg-purple-100 text-purple-700",
+    dot: "bg-purple-500",
+  },
+  replacement_out_for_delivery: {
+    badge: "bg-cyan-100 text-cyan-700",
+    dot: "bg-cyan-500",
+  },
+  replacement_delivered: {
+    badge: "bg-emerald-100 text-emerald-700",
+    dot: "bg-emerald-500",
+  },
+  rejected: {
+    badge: "bg-rose-100 text-rose-700",
+    dot: "bg-rose-500",
+  },
+  cancelled: {
+    badge: "bg-slate-100 text-slate-600",
+    dot: "bg-slate-400",
+  },
+  default: {
+    badge: "bg-slate-200 text-slate-600",
+    dot: "bg-slate-500",
   },
 };
 
@@ -73,6 +130,14 @@ const SellerOrderDetailsPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [downloadingInvoice, setDownloadingInvoice] = useState(false);
+  const [replacementUpdate, setReplacementUpdate] = useState({
+    status: "approved",
+    notes: "",
+    courier: "",
+    trackingId: "",
+  });
+  const [savingReplacement, setSavingReplacement] = useState(false);
+  const notesRef = useRef(null);
 
   const loadOrder = useCallback(async () => {
     try {
@@ -84,6 +149,19 @@ const SellerOrderDetailsPage = () => {
         throw new Error("Order not found");
       }
       setOrder(data);
+      if (
+        data.replacementRequest &&
+        data.replacementRequest.status !== "none"
+      ) {
+        setReplacementUpdate((prev) => ({
+          ...prev,
+          status: "approved",
+          notes: "",
+          courier: data.replacementRequest.replacementShipment?.courier || "",
+          trackingId:
+            data.replacementRequest.replacementShipment?.trackingId || "",
+        }));
+      }
     } catch (fetchError) {
       console.error("Failed to load order", fetchError);
       const message =
@@ -186,6 +264,91 @@ const SellerOrderDetailsPage = () => {
   const coupon = order?.coupon;
 
   const items = Array.isArray(order?.items) ? order.items : [];
+  const replacementRequest = order?.replacementRequest || {};
+  const replacementStatusActive = Boolean(
+    replacementRequest?.status && replacementRequest.status !== "none"
+  );
+  const replacementHistory = useMemo(() => {
+    if (!Array.isArray(replacementRequest.history)) {
+      return [];
+    }
+
+    return replacementRequest.history.slice().sort((a, b) => {
+      const aTime = a?.at ? new Date(a.at).getTime() : 0;
+      const bTime = b?.at ? new Date(b.at).getTime() : 0;
+      return bTime - aTime;
+    });
+  }, [replacementRequest.history]);
+
+  const formatReplacementStatus = (value) => {
+    if (!value) return "--";
+    return String(value)
+      .replace(/_/g, " ")
+      .replace(/\b\w/g, (char) => char.toUpperCase());
+  };
+
+  const replacementTone = useMemo(() => {
+    const key = String(replacementRequest.status || "").toLowerCase();
+    return REPLACEMENT_STATUS_STYLES[key] || REPLACEMENT_STATUS_STYLES.default;
+  }, [replacementRequest.status]);
+
+  const handleReplacementFieldChange = (field, value) => {
+    setReplacementUpdate((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
+
+  useEffect(() => {
+    if (STATUSES_REQUIRING_REASON.has(replacementUpdate.status)) {
+      setReplacementUpdate((prev) => ({
+        ...prev,
+        notes: prev.notes || "",
+      }));
+      notesRef.current?.focus();
+    }
+  }, [replacementUpdate.status]);
+
+  const handleSubmitReplacementUpdate = async (event) => {
+    event.preventDefault();
+    if (!order?._id) return;
+
+    if (
+      STATUSES_REQUIRING_REASON.has(replacementUpdate.status) &&
+      !(replacementUpdate.notes && replacementUpdate.notes.trim())
+    ) {
+      toast.error("Please provide a reason for rejecting this request.");
+      notesRef.current?.focus();
+      return;
+    }
+
+    try {
+      setSavingReplacement(true);
+      const payload = {
+        status: replacementUpdate.status,
+        notes: replacementUpdate.notes?.trim() || undefined,
+        courier: replacementUpdate.courier?.trim() || undefined,
+        trackingId: replacementUpdate.trackingId?.trim() || undefined,
+      };
+
+      const response = await sellerUpdateReplacementRequest(order._id, payload);
+      if (!response?.success) {
+        throw new Error(response?.message || "Failed to update request");
+      }
+
+      toast.success("Replacement request updated");
+      await loadOrder();
+    } catch (updateError) {
+      console.error("Failed to update replacement request", updateError);
+      const message =
+        updateError?.response?.data?.message ||
+        updateError?.message ||
+        "Unable to update replacement request";
+      toast.error(message);
+    } finally {
+      setSavingReplacement(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -233,27 +396,24 @@ const SellerOrderDetailsPage = () => {
         >
           <ArrowLeft className="h-4 w-4" /> Back to orders
         </button>
-
-        <div className="flex flex-wrap items-center gap-3">
-          <button
-            type="button"
-            onClick={handleDownloadInvoice}
-            disabled={downloadingInvoice || !isPaymentPaid}
-            className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
-            title={
-              isPaymentPaid
-                ? undefined
-                : "Invoice will be available once the payment is successful."
-            }
-          >
-            {downloadingInvoice ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Download className="h-4 w-4" />
-            )}
-            {isPaymentPaid ? "Download invoice" : "Invoice locked"}
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={handleDownloadInvoice}
+          disabled={downloadingInvoice || !isPaymentPaid}
+          className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+          title={
+            isPaymentPaid
+              ? undefined
+              : "Invoice will be available once the payment is successful."
+          }
+        >
+          {downloadingInvoice ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Download className="h-4 w-4" />
+          )}
+          {isPaymentPaid ? "Download invoice" : "Invoice locked"}
+        </button>
       </div>
 
       <motion.div
@@ -357,43 +517,305 @@ const SellerOrderDetailsPage = () => {
             </div>
           ))}
           {items.length === 0 && (
-            <div className="py-8 text-center text-sm text-slate-500">
-              No items recorded for this order.
-            </div>
+            <p className="py-8 text-center text-sm text-slate-500">
+              No items available for this order.
+            </p>
           )}
         </div>
       </section>
 
-      <section className="grid gap-6 lg:grid-cols-2">
-        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-          <h3 className="text-lg font-semibold text-slate-900">
-            Delivery address
-          </h3>
-          <div className="mt-4 space-y-2 text-sm text-slate-600">
-            <div className="flex items-start gap-3">
-              <div className="mt-1 rounded-full bg-blue-50 p-2 text-blue-600">
-                <MapPin className="h-4 w-4" />
+      {replacementStatusActive && (
+        <section className="rounded-3xl border border-sky-100 bg-sky-50/60 p-6 shadow-sm">
+          <header className="flex flex-wrap items-center justify-between gap-4">
+            <div className="space-y-1">
+              <h2 className="flex items-center gap-2 text-xl font-semibold text-slate-900">
+                <RefreshCcw className="h-4 w-4 text-sky-500" /> Return & Replace
+                request
+              </h2>
+              <p className="text-xs text-slate-500">
+                Requested on{" "}
+                {replacementRequest.requestedAt
+                  ? new Date(replacementRequest.requestedAt).toLocaleString()
+                  : "--"}
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() =>
+                  handleReplacementFieldChange("status", "approved")
+                }
+                className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-xs font-semibold text-emerald-600 shadow-sm transition hover:bg-emerald-100"
+              >
+                Approve request
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  handleReplacementFieldChange("status", "rejected")
+                }
+                className="inline-flex items-center gap-2 rounded-full border border-rose-200 bg-rose-50 px-4 py-2 text-xs font-semibold text-rose-600 shadow-sm transition hover:bg-rose-100"
+              >
+                Reject request
+              </button>
+              <span
+                className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold ${replacementTone.badge}`}
+              >
+                <span
+                  className={`h-2 w-2 rounded-full ${replacementTone.dot}`}
+                />
+                {formatReplacementStatus(replacementRequest.status)}
+              </span>
+            </div>
+          </header>
+
+          <form
+            className="mt-6 grid gap-6 lg:grid-cols-2"
+            onSubmit={handleSubmitReplacementUpdate}
+          >
+            <div className="space-y-4">
+              <div>
+                <p className="text-sm font-semibold text-sky-700">
+                  Item details
+                </p>
+                <div className="mt-2 rounded-2xl border border-sky-100 bg-white p-4 shadow-sm">
+                  <p className="text-sm font-medium text-slate-900">
+                    {replacementRequest.itemName || "--"}
+                    {replacementRequest.itemSize && (
+                      <span className="text-xs text-slate-500">
+                        {` • Size ${replacementRequest.itemSize}`}
+                      </span>
+                    )}
+                  </p>
+                  <p className="mt-2 text-sm text-slate-600">
+                    Quantity: {replacementRequest.quantity || 1}
+                  </p>
+                </div>
               </div>
-              <div className="space-y-1">
-                <p className="text-sm font-semibold text-slate-900">
-                  {order.shippingAddress?.fullName}
+              <div>
+                <p className="text-sm font-semibold text-sky-700">
+                  Issue description
                 </p>
-                <p>{order.shippingAddress?.addressLine}</p>
-                <p>
-                  {order.shippingAddress?.city}, {order.shippingAddress?.state}{" "}
-                  - {order.shippingAddress?.pincode}
-                </p>
-                <p>Mobile: {order.shippingAddress?.mobile}</p>
-                {order.shippingAddress?.alternatePhone && (
-                  <p>Alternate: {order.shippingAddress.alternatePhone}</p>
-                )}
-                <p>Email: {order.shippingAddress?.email}</p>
+                <div className="mt-2 min-h-[72px] rounded-2xl border border-sky-100 bg-white p-4 text-sm text-slate-600 shadow-sm">
+                  {replacementRequest.issueDescription ||
+                    "No description provided."}
+                </div>
               </div>
             </div>
-          </div>
-        </div>
 
-        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+            <div className="space-y-4">
+              <div>
+                <p className="text-sm font-semibold text-sky-700">
+                  Replacement preferences
+                </p>
+                <div className="mt-2 rounded-2xl border border-sky-100 bg-white p-4 text-sm text-slate-600 shadow-sm">
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-500">Size</span>
+                    <span className="font-medium text-slate-900">
+                      {replacementRequest.replacementPreferences?.size || "--"}
+                    </span>
+                  </div>
+                  <div className="mt-2 flex items-center justify-between">
+                    <span className="text-slate-500">Color</span>
+                    <span className="font-medium text-slate-900">
+                      {replacementRequest.replacementPreferences?.color || "--"}
+                    </span>
+                  </div>
+                  <div className="mt-2">
+                    <span className="text-slate-500">Notes</span>
+                    <p className="mt-1 rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-sm text-slate-700">
+                      {replacementRequest.replacementPreferences?.remarks ||
+                        "--"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-sky-100 bg-white p-4 shadow-sm">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Update status
+                  </p>
+                  <select
+                    value={replacementUpdate.status}
+                    onChange={(event) =>
+                      handleReplacementFieldChange("status", event.target.value)
+                    }
+                    className="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-700 focus:border-sky-300 focus:outline-none"
+                    required
+                  >
+                    {REPLACEMENT_STATUS_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      Courier (optional)
+                    </p>
+                    <input
+                      value={replacementUpdate.courier}
+                      onChange={(event) =>
+                        handleReplacementFieldChange(
+                          "courier",
+                          event.target.value
+                        )
+                      }
+                      className="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700 focus:border-sky-300 focus:outline-none"
+                      placeholder="e.g. Delhivery"
+                    />
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      Tracking ID (optional)
+                    </p>
+                    <input
+                      value={replacementUpdate.trackingId}
+                      onChange={(event) =>
+                        handleReplacementFieldChange(
+                          "trackingId",
+                          event.target.value
+                        )
+                      }
+                      className="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700 focus:border-sky-300 focus:outline-none"
+                      placeholder="e.g. AWB123456"
+                    />
+                  </div>
+                </div>
+                <div className="mt-3">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Notes for customer
+                  </p>
+                  <textarea
+                    value={replacementUpdate.notes}
+                    onChange={(event) =>
+                      handleReplacementFieldChange("notes", event.target.value)
+                    }
+                    rows={3}
+                    ref={notesRef}
+                    required={STATUSES_REQUIRING_REASON.has(
+                      replacementUpdate.status
+                    )}
+                    className={`mt-1 w-full rounded-xl border px-3 py-3 text-sm text-slate-600 focus:border-sky-300 focus:outline-none ${
+                      STATUSES_REQUIRING_REASON.has(replacementUpdate.status)
+                        ? "border-rose-200"
+                        : "border-slate-200 bg-slate-50"
+                    }`}
+                    placeholder={
+                      STATUSES_REQUIRING_REASON.has(replacementUpdate.status)
+                        ? "Explain why you are rejecting this request."
+                        : "Optional message shared with the customer."
+                    }
+                  />
+                  {STATUSES_REQUIRING_REASON.has(replacementUpdate.status) ? (
+                    <p className="mt-1 text-xs text-rose-500">
+                      A reason is required when rejecting.
+                    </p>
+                  ) : (
+                    <p className="mt-1 text-xs text-slate-400">
+                      Optional message shared with the customer.
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="md:col-span-2">
+              <button
+                type="submit"
+                disabled={
+                  savingReplacement ||
+                  (STATUSES_REQUIRING_REASON.has(replacementUpdate.status) &&
+                    !(
+                      replacementUpdate.notes && replacementUpdate.notes.trim()
+                    ))
+                }
+                className="inline-flex items-center gap-2 rounded-xl bg-sky-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {savingReplacement ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" /> Saving...
+                  </>
+                ) : (
+                  <>
+                    <ClipboardCheck className="h-4 w-4" /> Update request
+                  </>
+                )}
+              </button>
+            </div>
+          </form>
+
+          {replacementHistory.length > 0 && (
+            <div className="mt-6 rounded-2xl border border-sky-100 bg-white p-4 shadow-sm">
+              <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-900">
+                <ClipboardList className="h-4 w-4 text-sky-500" /> Activity
+                timeline
+              </h3>
+              <ul className="space-y-3 text-xs text-slate-600">
+                {replacementHistory.map((entry, index) => (
+                  <li
+                    key={`${entry.at || index}-${entry.status}`}
+                    className="flex items-start gap-3"
+                  >
+                    <span
+                      className={`mt-1 inline-flex h-2.5 w-2.5 flex-shrink-0 rounded-full ${replacementTone.dot}`}
+                    />
+                    <div className="space-y-1">
+                      <p className="font-semibold text-slate-900">
+                        {formatReplacementStatus(entry.status)}
+                      </p>
+                      <p className="text-slate-500">
+                        {entry.at ? new Date(entry.at).toLocaleString() : "--"}
+                      </p>
+                      {entry.note && (
+                        <p className="rounded-lg bg-slate-50 p-2 text-slate-600">
+                          {entry.note}
+                        </p>
+                      )}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </section>
+      )}
+
+      <section className="grid gap-6 lg:grid-cols-2">
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm"
+        >
+          <div className="flex items-center gap-3 text-sm text-slate-500">
+            <MapPin className="h-4 w-4" /> Shipping information
+          </div>
+          <div className="mt-4 space-y-2 text-sm text-slate-600">
+            <p className="text-sm font-semibold text-slate-900">
+              {order.shippingAddress?.fullName || "--"}
+            </p>
+            <p>{order.shippingAddress?.addressLine || "--"}</p>
+            <p>
+              {order.shippingAddress?.city || "--"},{" "}
+              {order.shippingAddress?.state || "--"} -{" "}
+              {order.shippingAddress?.pincode || "--"}
+            </p>
+            <p>Mobile: {order.shippingAddress?.mobile || "--"}</p>
+            {order.shippingAddress?.alternatePhone && (
+              <p>Alternate: {order.shippingAddress.alternatePhone}</p>
+            )}
+            <p>Email: {order.shippingAddress?.email || "--"}</p>
+          </div>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm"
+        >
           <div className="mb-3 flex items-center justify-between gap-3">
             <h3 className="text-lg font-semibold text-slate-900">
               Payment summary
@@ -426,7 +848,7 @@ const SellerOrderDetailsPage = () => {
               <span>{formatCurrency(total)}</span>
             </div>
           </div>
-        </div>
+        </motion.div>
       </section>
     </motion.div>
   );

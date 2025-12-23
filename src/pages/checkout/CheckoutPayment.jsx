@@ -29,16 +29,16 @@ const isMobileViewport = () =>
   window.matchMedia("(max-width: 768px)").matches;
 
 const paymentOptions = [
-  {
-    id: "upi",
-    title: "PhonePe / UPI",
-    description: "Pay instantly using any UPI app linked to PhonePe.",
-  },
-  {
-    id: "qr",
-    title: "PhonePe QR Code",
-    description: "Scan and pay securely with the official PhonePe QR.",
-  },
+  // {
+  //   id: "upi",
+  //   title: "PhonePe / UPI",
+  //   description: "Pay instantly using any UPI app linked to PhonePe.",
+  // },
+  // {
+  //   id: "qr",
+  //   title: "PhonePe QR Code",
+  //   description: "Scan and pay securely with the official PhonePe QR.",
+  // },
   {
     id: "cod",
     title: "Cash on Delivery",

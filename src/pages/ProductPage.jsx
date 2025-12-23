@@ -217,15 +217,47 @@ const ProductPage = () => {
     return icons;
   };
 
-  // Product images - show only database-provided sources (gallery, thumbnail, fallback image)
-  const galleryImages = Array.isArray(product?.gallery)
-    ? product.gallery.filter(Boolean)
-    : [];
-  const fallbackImages = [product?.thumbnail, product?.image]
-    .filter(Boolean)
-    .filter((src) => !galleryImages.includes(src));
-  const productImages = product ? [...galleryImages, ...fallbackImages] : [];
-  const primaryImage = product?.thumbnail || product?.image || productImages[0];
+  // Product images - ensure thumbnail is first, followed by unique gallery entries and fallbacks
+  const productImages = useMemo(() => {
+    if (!product) {
+      return [];
+    }
+
+    const layeredSources = [];
+
+    if (product.thumbnail) {
+      layeredSources.push(product.thumbnail);
+    }
+
+    if (Array.isArray(product.gallery)) {
+      layeredSources.push(...product.gallery.filter(Boolean));
+    }
+
+    if (product.image) {
+      layeredSources.push(product.image);
+    }
+
+    if (Array.isArray(product.images)) {
+      layeredSources.push(...product.images.filter(Boolean));
+    }
+
+    const seen = new Set();
+    return layeredSources.filter((src) => {
+      if (!src) {
+        return false;
+      }
+
+      const key = typeof src === "string" ? src.trim() : src;
+      if (!key || seen.has(key)) {
+        return false;
+      }
+
+      seen.add(key);
+      return true;
+    });
+  }, [product]);
+
+  const primaryImage = productImages[0] || product?.thumbnail || product?.image;
 
   const buildImageAlt = (index = 0) => {
     const baseName = product?.name || "MST Blockchain merchandise";

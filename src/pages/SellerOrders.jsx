@@ -1,7 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { toast } from "react-hot-toast";
+import { utils as XLSXUtils, writeFile as writeXlsxFile } from "xlsx";
+import jsPDF from "jspdf";
 import {
   downloadOrderInvoice,
   fetchSellerOrders,
@@ -132,6 +134,7 @@ const SellerOrders = () => {
   const [viewingOrder, setViewingOrder] = useState(null);
   const [viewingOrderLoading, setViewingOrderLoading] = useState(false);
   const [viewingOrderError, setViewingOrderError] = useState("");
+  const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -172,7 +175,6 @@ const SellerOrders = () => {
         }
       }
     };
-
     load();
 
     return () => {
@@ -208,6 +210,214 @@ const SellerOrders = () => {
       return { key, label, value };
     });
   }, [meta.statusCounts, orders]);
+
+  const buildExportRows = useCallback(() => {
+    if (!Array.isArray(orders) || orders.length === 0) {
+      return [];
+    }
+
+    const formatShippingAddress = (address = {}) => {
+      const contactLine = [address.fullName, address.mobile]
+        .filter(Boolean)
+        .join(" • ");
+
+      const emailLine = address.email ? `Email: ${address.email}` : "";
+      const streetLine = [address.addressLine, address.landmark]
+        .filter(Boolean)
+        .join(", ");
+      const cityLine = [address.city, address.district]
+        .filter(Boolean)
+        .join(", ");
+      const stateLine = [address.state, address.pincode]
+        .filter(Boolean)
+        .join(" - ");
+
+      return [contactLine, emailLine, streetLine, cityLine, stateLine]
+        .filter(Boolean)
+        .join("\n");
+    };
+
+    return orders.map((order) => {
+      const items = Array.isArray(order.items) ? order.items : [];
+      const primaryItem = items[0] || {};
+      const address = order.shippingAddress || {};
+      const row = {};
+
+      row["Order ID"] = order.orderId || order.id || order._id;
+      row.Status = order.orderStatus || order.status || "processing";
+      row["Payment Status"] =
+        order.paymentStatus || order.payment?.status || "pending";
+      row["Payment Method"] =
+        order.paymentMethod || order.payment?.method || "";
+      row["Total Amount"] =
+        order.total ?? order.totalAmount ?? order.pricing?.total ?? 0;
+      row["Item Count"] = items.length;
+      row["Primary Item"] = primaryItem.name || primaryItem.productName || "";
+      row["Primary SKU"] = primaryItem.sku || "";
+      row["Buyer Name"] =
+        order.buyerName || order.customerName || address.fullName || "";
+      row["Buyer Email"] =
+        order.buyerEmail || order.customerEmail || address.email || "";
+      row["Buyer Phone"] = order.buyerPhone || address.mobile || "";
+      row["Created At"] = formatDate(order.createdAt);
+      row["Estimated Delivery"] = order.estimatedDeliveryDate
+        ? formatDate(order.estimatedDeliveryDate)
+        : "--";
+      row["Shipping Address"] = formatShippingAddress(address);
+
+      return row;
+    });
+  }, [orders]);
+
+  const handleExportCsv = useCallback(() => {
+    const rows = buildExportRows();
+    if (!rows.length) {
+      toast.error("No orders to export");
+      return;
+    }
+
+    const header = Object.keys(rows[0]);
+    const csvContent = [
+      header.join(","),
+      ...rows.map((row) =>
+        header
+          .map((key) => `"${String(row[key] ?? "").replace(/"/g, '""')}"`)
+          .join(",")
+      ),
+    ].join("\n");
+
+    const blob = new Blob(["\uFEFF" + csvContent], {
+      type: "text/csv;charset=utf-8;",
+    });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `seller-orders-${new Date()
+      .toISOString()
+      .slice(0, 10)}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+    toast.success("CSV exported");
+  }, [buildExportRows]);
+
+  const handleExportXlsx = useCallback(() => {
+    const rows = buildExportRows();
+    if (!rows.length) {
+      toast.error("No orders to export");
+      return;
+    }
+
+    const worksheet = XLSXUtils.json_to_sheet(rows);
+    const workbook = XLSXUtils.book_new();
+    XLSXUtils.book_append_sheet(workbook, worksheet, "Orders");
+    writeXlsxFile(
+      workbook,
+      `seller-orders-${new Date().toISOString().slice(0, 10)}.xlsx`
+    );
+    toast.success("XLSX exported");
+  }, [buildExportRows]);
+
+  const handleExportPdf = useCallback(() => {
+    const rows = buildExportRows();
+    if (!rows.length) {
+      toast.error("No orders to export");
+      return;
+    }
+
+    const doc = new jsPDF({ orientation: "landscape" });
+    doc.setFontSize(16);
+    doc.text("Seller Orders", doc.internal.pageSize.getWidth() / 2, 24, {
+      align: "center",
+    });
+
+    const headers = [
+      "Order ID",
+      "Status",
+      "Payment",
+      "Total",
+      "Primary Item",
+      "Buyer",
+      "Item Count",
+      "Shipping Address",
+    ];
+
+    const columnWidths = [42, 40, 68, 32, 90, 90, 32, 180];
+    const startX = 20;
+    let currentY = 36;
+
+    const drawRow = (values, { header = false } = {}) => {
+      const rowHeight = header ? 12 : 13;
+      let cursorX = startX;
+
+      values.forEach((value, index) => {
+        const cellWidth = columnWidths[index];
+        const text = Array.isArray(value)
+          ? value
+          : doc.splitTextToSize(String(value ?? ""), cellWidth - 6);
+
+        if (header) {
+          doc.setFillColor(15, 23, 42);
+          doc.setTextColor(255, 255, 255);
+          doc.rect(cursorX, currentY, cellWidth, rowHeight, "F");
+          doc.setFont("Helvetica", "bold");
+          doc.text(String(value), cursorX + 4, currentY + 8);
+        } else {
+          doc.setFillColor(248, 250, 252);
+          doc.rect(cursorX, currentY, cellWidth, rowHeight, "S");
+          doc.setTextColor(30, 41, 59);
+          doc.setFont("Helvetica", "normal");
+          doc.text(text, cursorX + 4, currentY + rowHeight / 2, {
+            baseline: "middle",
+          });
+        }
+
+        cursorX += cellWidth;
+      });
+
+      currentY += rowHeight;
+    };
+
+    drawRow(headers, { header: true });
+
+    rows.forEach((row) => {
+      const paymentLabel = `${row["Payment Status"] || ""}${
+        row["Payment Method"] ? ` (${row["Payment Method"]})` : ""
+      }`;
+      const buyerLabel = [
+        row["Buyer Name"],
+        row["Buyer Email"],
+        row["Buyer Phone"],
+      ]
+        .filter(Boolean)
+        .join(" • ");
+
+      const values = [
+        row["Order ID"],
+        row.Status,
+        paymentLabel,
+        row["Total Amount"],
+        `${row["Primary Item"]}${
+          row["Primary SKU"] ? ` (SKU: ${row["Primary SKU"]})` : ""
+        }`,
+        buyerLabel,
+        row["Item Count"],
+        row["Shipping Address"],
+      ];
+
+      if (currentY + 15 > doc.internal.pageSize.getHeight() - 20) {
+        doc.addPage({ orientation: "landscape" });
+        currentY = 36;
+        drawRow(headers, { header: true });
+      }
+
+      drawRow(values);
+    });
+
+    doc.save(`seller-orders-${new Date().toISOString().slice(0, 10)}.pdf`);
+    toast.success("PDF exported");
+  }, [buildExportRows]);
 
   const handleSearchSubmit = (event) => {
     event.preventDefault();
@@ -735,7 +945,7 @@ const SellerOrders = () => {
           <div>
             {meta.total > 0 ? (
               <>
-                Showing{" "}
+                Showing
                 <span className="font-semibold text-slate-700">
                   {startIndex}
                 </span>
@@ -752,6 +962,57 @@ const SellerOrders = () => {
             )}
           </div>
           <div className="flex flex-wrap items-center gap-3">
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setIsExportMenuOpen((prev) => !prev)}
+                className="inline-flex items-center gap-2 rounded-full border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:border-blue-200 hover:text-blue-600"
+              >
+                <Download size={14} /> Export
+              </button>
+              <AnimatePresence>
+                {isExportMenuOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -8 }}
+                    transition={{ duration: 0.18 }}
+                    className="absolute right-0 top-full z-20 mt-2 w-44 rounded-xl border border-slate-200 bg-white text-left shadow-xl origin-top-right"
+                  >
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleExportCsv();
+                        setIsExportMenuOpen(false);
+                      }}
+                      className="block w-full px-4 py-2 text-xs text-slate-600 hover:bg-slate-50"
+                    >
+                      Export as CSV
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleExportXlsx();
+                        setIsExportMenuOpen(false);
+                      }}
+                      className="block w-full px-4 py-2 text-xs text-slate-600 hover:bg-slate-50"
+                    >
+                      Export as XLSX
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleExportPdf();
+                        setIsExportMenuOpen(false);
+                      }}
+                      className="block w-full px-4 py-2 text-xs text-slate-600 hover:bg-slate-50"
+                    >
+                      Export as PDF
+                    </button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
             <button
               type="button"
               onClick={handleBulkDeleteSelected}

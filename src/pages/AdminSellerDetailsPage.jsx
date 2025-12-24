@@ -809,6 +809,29 @@ const AdminSellerDetailsPage = () => {
     [products, loadProducts]
   );
 
+  const handleOrderDelete = useCallback(
+    async (sellerOrderId) => {
+      const targetOrder = orders.find((item) => item._id === sellerOrderId);
+      const confirmed = confirmDeletion({
+        entity: "seller order",
+        name: targetOrder?.orderId,
+      });
+      if (!confirmed) {
+        return;
+      }
+
+      try {
+        await deleteAdminSellerOrder(sellerOrderId);
+        toast.success("Seller order removed");
+        await loadOrders({ silent: true });
+      } catch (error) {
+        console.error("Failed to delete seller order", error);
+        toast.error(error.message || "Unable to delete seller order");
+      }
+    },
+    [orders, loadOrders]
+  );
+
   const handleCloseViewProduct = useCallback(() => {
     setProductViewModal(defaultProductViewModalState);
   }, []);
@@ -912,6 +935,29 @@ const AdminSellerDetailsPage = () => {
       galleryInputRef.current.value = "";
     }
   }, []);
+
+  const handleProductDelete = useCallback(
+    async (productId) => {
+      const product = products.find((item) => item._id === productId);
+      const confirmed = confirmDeletion({
+        entity: "product",
+        name: product?.name,
+      });
+      if (!confirmed) {
+        return;
+      }
+
+      try {
+        await deleteAdminSellerProduct(productId);
+        toast.success("Product removed");
+        await loadProducts({ silent: true });
+      } catch (error) {
+        console.error("Failed to delete seller product", error);
+        toast.error(error.message || "Unable to delete seller product");
+      }
+    },
+    [products, loadProducts]
+  );
 
   const handleChangeProductDraft = useCallback(
     (field, value) => {

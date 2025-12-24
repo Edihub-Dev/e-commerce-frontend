@@ -20,7 +20,7 @@ const CheckoutOrder = () => {
     (state) => state.checkout
   );
   const couponState = useSelector((state) => state.coupon);
-  const [shippingFee] = useState(29);
+  const [shippingFee] = useState(0);
   const [couponCode, setCouponCode] = useState(appliedCoupon?.code || "");
   const computedTotals = useMemo(
     () =>

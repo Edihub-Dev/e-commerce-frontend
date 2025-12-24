@@ -5,6 +5,7 @@ import {
   updateSellerCoupon,
   deleteSellerCoupon,
   deleteSellerCouponsBulk,
+  importSellerCoupons,
 } from "../../services/sellerCouponsApi";
 
 export const fetchSellerCouponsThunk = createAsyncThunk(
@@ -66,6 +67,20 @@ export const deleteSellerCouponsBulkThunk = createAsyncThunk(
       return rejectWithValue(
         error.message || "Failed to delete selected coupons"
       );
+    }
+  }
+);
+
+export const importSellerCouponsThunk = createAsyncThunk(
+  "sellerCoupons/import",
+  async (rows, { rejectWithValue }) => {
+    try {
+      return await importSellerCoupons(rows);
+    } catch (error) {
+      return rejectWithValue({
+        message: error.message || "Failed to import coupons",
+        details: error.details || [],
+      });
     }
   }
 );

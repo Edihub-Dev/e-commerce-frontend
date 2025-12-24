@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { motion } from "framer-motion";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   Search,
   Plus,
@@ -16,6 +16,8 @@ import {
   ChevronDown,
   Download,
   RefreshCw,
+  Upload,
+  X,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { useAppDispatch, useAppSelector } from "../store/hooks";
@@ -25,10 +27,18 @@ import {
   updateSellerCouponThunk,
   deleteSellerCouponThunk,
   deleteSellerCouponsBulkThunk,
+  importSellerCouponsThunk,
 } from "../store/thunks/sellerCouponsThunks";
 import { generateSellerCouponCode } from "../services/sellerCouponsApi";
-import { setSellerCouponsPage } from "../store/slices/sellerCouponsSlice";
-import { utils as XLSXUtils, writeFile as writeXlsxFile } from "xlsx";
+import {
+  setSellerCouponsPage,
+  resetSellerCouponsImportState,
+} from "../store/slices/sellerCouponsSlice";
+import {
+  utils as XLSXUtils,
+  writeFile as writeXlsxFile,
+  read as readXlsx,
+} from "xlsx";
 
 const TYPE_FILTER_OPTIONS = [
   { value: "all", label: "All types" },
@@ -43,6 +53,218 @@ const STATUS_FILTER_OPTIONS = [
   { value: "redeemed", label: "Redeemed" },
   { value: "not-redeemed", label: "Not redeemed" },
 ];
+
+const IMPORT_FIELD_GUIDE = [
+  {
+    key: "code",
+    label: "code",
+    helper: "Optional. Leave empty to auto-generate unique code.",
+  },
+  {
+    key: "description",
+    label: "description",
+    helper: "Short text shown to sellers for context.",
+  },
+  {
+    key: "discountType",
+    label: "discountType",
+    helper: "Use 'percentage' or 'flat'. Defaults to percentage.",
+  },
+  {
+    key: "discountValue",
+    label: "discountValue",
+    helper: "Required. Positive number representing % or INR value.",
+  },
+  {
+    key: "maxDiscountAmount",
+    label: "maxDiscountAmount",
+    helper: "Optional. Cap flat or percentage discount (INR).",
+  },
+  {
+    key: "minOrderAmount",
+    label: "minOrderAmount",
+    helper: "Optional. Minimum order total to apply coupon (INR).",
+  },
+  {
+    key: "maxRedemptions",
+    label: "maxRedemptions",
+    helper:
+      "Optional. Total times coupon can be redeemed. Leave blank for unlimited (multi-use).",
+  },
+  {
+    key: "maxRedemptionsPerUser",
+    label: "maxRedemptionsPerUser",
+    helper:
+      "Optional. Times a single customer can redeem. Leave blank for unlimited (multi-use).",
+  },
+  {
+    key: "startDate",
+    label: "startDate",
+    helper: "Optional. Use YYYY-MM-DD or Excel date.",
+  },
+  {
+    key: "endDate",
+    label: "endDate",
+    helper: "Optional. Use YYYY-MM-DD or Excel date.",
+  },
+  {
+    key: "isActive",
+    label: "isActive",
+    helper: "Optional. true/false, yes/no, 1/0 to control activation.",
+  },
+  {
+    key: "type",
+    label: "type",
+    helper:
+      "Optional. 'single' for one-time coupons, otherwise treated as multi use.",
+  },
+];
+
+const IMPORT_LABEL_MAP = IMPORT_FIELD_GUIDE.reduce((accumulator, field) => {
+  accumulator[field.key] = field.label;
+  return accumulator;
+}, {});
+
+const IMPORT_PREVIEW_LIMIT = 5;
+
+const IMPORT_KEY_MAP = {
+  code: "code",
+  "coupon code": "code",
+  couponcode: "code",
+  description: "description",
+  details: "description",
+  "discount type": "discountType",
+  discounttype: "discountType",
+  "discount category": "discountType",
+  "discount value": "discountValue",
+  discountvalue: "discountValue",
+  "discount amount": "discountValue",
+  discount: "discountValue",
+  "max discount amount": "maxDiscountAmount",
+  "max discount": "maxDiscountAmount",
+  maxdiscountamount: "maxDiscountAmount",
+  "min order amount": "minOrderAmount",
+  "minimum order": "minOrderAmount",
+  minorderamount: "minOrderAmount",
+  "max redemptions": "maxRedemptions",
+  maxredemptions: "maxRedemptions",
+  "total redemptions": "maxRedemptions",
+  "max redemptions per user": "maxRedemptionsPerUser",
+  maxredemptionsperuser: "maxRedemptionsPerUser",
+  "per user limit": "maxRedemptionsPerUser",
+  "start date": "startDate",
+  startdate: "startDate",
+  "valid from": "startDate",
+  "end date": "endDate",
+  enddate: "endDate",
+  "valid to": "endDate",
+  "is active": "isActive",
+  active: "isActive",
+  status: "isActive",
+  isactive: "isActive",
+  type: "type",
+  "coupon type": "type",
+};
+
+const IMPORT_ALLOWED_KEYS = IMPORT_FIELD_GUIDE.map(({ key }) => key);
+const IMPORT_ALLOWED_KEY_SET = new Set(IMPORT_ALLOWED_KEYS);
+
+const normalizeImportHeaderKey = (rawKey) => {
+  const trimmed = String(rawKey ?? "").trim();
+  if (!trimmed) return null;
+
+  if (IMPORT_ALLOWED_KEY_SET.has(trimmed)) {
+    return trimmed;
+  }
+
+  const lower = trimmed.toLowerCase();
+  if (IMPORT_KEY_MAP[lower]) {
+    return IMPORT_KEY_MAP[lower];
+  }
+
+  const normalized = lower.replace(/[\s._-]+/g, " ").trim();
+  if (IMPORT_KEY_MAP[normalized]) {
+    return IMPORT_KEY_MAP[normalized];
+  }
+
+  const collapsed = normalized.replace(/\s+/g, "");
+  for (const allowed of IMPORT_ALLOWED_KEYS) {
+    const allowedLower = allowed.toLowerCase();
+    if (
+      allowedLower === lower ||
+      allowedLower === normalized ||
+      allowedLower.replace(/\s+/g, "") === collapsed
+    ) {
+      return allowed;
+    }
+  }
+
+  return null;
+};
+
+const sanitizeImportValue = (value) => {
+  if (typeof value === "string") {
+    return value.trim();
+  }
+  if (value instanceof Date) {
+    if (Number.isNaN(value.getTime())) {
+      return "";
+    }
+    return value.toISOString().slice(0, 10);
+  }
+  return value;
+};
+
+const normalizeImportRows = (rows = []) => {
+  if (!Array.isArray(rows)) {
+    return { rows: [], ignoredHeaders: [] };
+  }
+
+  const normalizedRows = [];
+  const ignoredHeaderSet = new Set();
+
+  rows.forEach((rawRow) => {
+    if (!rawRow || typeof rawRow !== "object") return;
+
+    const normalizedRow = {};
+    Object.entries(rawRow).forEach(([rawKey, rawValue]) => {
+      const mappedKey = normalizeImportHeaderKey(rawKey);
+      if (!mappedKey) {
+        if (
+          rawValue !== null &&
+          rawValue !== undefined &&
+          String(rawValue).trim() !== ""
+        ) {
+          const label = String(rawKey || "").trim();
+          if (label) {
+            ignoredHeaderSet.add(label);
+          }
+        }
+        return;
+      }
+
+      const sanitizedValue = sanitizeImportValue(rawValue);
+      if (
+        sanitizedValue === "" ||
+        sanitizedValue === null ||
+        sanitizedValue === undefined
+      ) {
+        return;
+      }
+
+      normalizedRow[mappedKey] = sanitizedValue;
+    });
+
+    if (Object.keys(normalizedRow).length > 0) {
+      normalizedRows.push(normalizedRow);
+    }
+  });
+
+  return {
+    rows: normalizedRows,
+    ignoredHeaders: Array.from(ignoredHeaderSet),
+  };
+};
 
 const formatCurrency = (value) => {
   if (value === null || value === undefined || value === "") return "--";
@@ -109,6 +331,22 @@ const formatLimit = (value) => {
     return "Unlimited";
   }
   return numeric;
+};
+
+const formatFileSize = (bytes) => {
+  const value = Number(bytes);
+  if (!Number.isFinite(value) || value <= 0) {
+    return "0 B";
+  }
+
+  const units = ["B", "KB", "MB", "GB", "TB"];
+  const exponent = Math.min(
+    Math.floor(Math.log(value) / Math.log(1024)),
+    units.length - 1
+  );
+  const size = value / 1024 ** exponent;
+
+  return `${size % 1 === 0 ? size : size.toFixed(1)} ${units[exponent]}`;
 };
 
 const formatDateTime = (value) => {
@@ -280,6 +518,10 @@ const SellerCoupons = () => {
     error,
     mutationStatus,
     mutationError,
+    importStatus,
+    importErrors,
+    importSummary,
+    importMessage,
   } = useAppSelector((state) => state.sellerCoupons);
 
   const [formState, setFormState] = useState(buildDefaultFormState());
@@ -292,6 +534,22 @@ const SellerCoupons = () => {
   const [filterDiscountMin, setFilterDiscountMin] = useState("");
   const [filterDiscountMax, setFilterDiscountMax] = useState("");
   const [selectedIds, setSelectedIds] = useState([]);
+  const fileInputRef = useRef(null);
+  const [importRows, setImportRows] = useState([]);
+  const [importPreviewRows, setImportPreviewRows] = useState([]);
+  const [importColumns, setImportColumns] = useState([]);
+  const [importSheetName, setImportSheetName] = useState("");
+  const [importFileMeta, setImportFileMeta] = useState({
+    name: "",
+    size: 0,
+    lastModified: 0,
+    totalRows: 0,
+    processedRows: 0,
+  });
+  const [importParseError, setImportParseError] = useState("");
+  const [isParsingImport, setIsParsingImport] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [importWarnings, setImportWarnings] = useState([]);
 
   const isLoadingList = status === "loading";
   const isMutating = mutationStatus === "loading";
@@ -302,6 +560,61 @@ const SellerCoupons = () => {
   const countValue = Number(formState.count || "1");
   const isBulkCreate =
     !isEditing && Number.isFinite(countValue) && countValue > 1;
+  const isImportProcessing = isParsingImport || importStatus === "loading";
+  const readyImportRowCount = importRows.length;
+  const importErrorsList = useMemo(
+    () => (Array.isArray(importErrors) ? importErrors : []),
+    [importErrors]
+  );
+
+  const fetchCurrentCoupons = useCallback(() => {
+    const isActiveParam =
+      statusFilter === "active"
+        ? "true"
+        : statusFilter === "inactive"
+        ? "false"
+        : undefined;
+
+    dispatch(
+      fetchSellerCouponsThunk({
+        page,
+        limit,
+        search: debouncedSearch || undefined,
+        isActive: isActiveParam,
+      })
+    );
+  }, [dispatch, page, limit, debouncedSearch, statusFilter]);
+
+  const resetImportState = useCallback(() => {
+    setImportRows([]);
+    setImportPreviewRows([]);
+    setImportColumns([]);
+    setImportSheetName("");
+    setImportFileMeta({
+      name: "",
+      size: 0,
+      lastModified: 0,
+      totalRows: 0,
+      processedRows: 0,
+    });
+    setImportParseError("");
+    setImportWarnings([]);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+    dispatch(resetSellerCouponsImportState());
+  }, [dispatch]);
+
+  const openImportModal = useCallback(() => {
+    resetImportState();
+    setIsImportModalOpen(true);
+  }, [resetImportState]);
+
+  const closeImportModal = useCallback(() => {
+    setIsImportModalOpen(false);
+    setImportParseError("");
+    resetImportState();
+  }, [resetImportState]);
 
   const summary = useMemo(() => {
     const total = coupons.length;
@@ -460,22 +773,8 @@ const SellerCoupons = () => {
   }, [searchValue, dispatch]);
 
   useEffect(() => {
-    const isActiveParam =
-      statusFilter === "active"
-        ? "true"
-        : statusFilter === "inactive"
-        ? "false"
-        : undefined;
-
-    dispatch(
-      fetchSellerCouponsThunk({
-        page,
-        limit,
-        search: debouncedSearch || undefined,
-        isActive: isActiveParam,
-      })
-    );
-  }, [dispatch, page, limit, debouncedSearch, statusFilter]);
+    fetchCurrentCoupons();
+  }, [fetchCurrentCoupons]);
 
   useEffect(() => {
     setSelectedIds((prev) => prev.filter((id) => selectableIds.includes(id)));
@@ -486,6 +785,72 @@ const SellerCoupons = () => {
       toast.error(mutationError);
     }
   }, [mutationStatus, mutationError]);
+
+  useEffect(() => {
+    if (!isImportModalOpen || typeof document === "undefined") {
+      return undefined;
+    }
+
+    const { body } = document;
+    const previousOverflow = body.style.overflow;
+    body.style.overflow = "hidden";
+
+    return () => {
+      body.style.overflow = previousOverflow;
+    };
+  }, [isImportModalOpen]);
+
+  useEffect(() => {
+    if (importStatus === "succeeded") {
+      const summary = importSummary || {};
+      const createdCountCandidate = Number(summary.createdCount);
+      const createdCount = Number.isFinite(createdCountCandidate)
+        ? createdCountCandidate
+        : Array.isArray(summary.created)
+        ? summary.created.length
+        : readyImportRowCount;
+      const errorCountCandidate = Number(summary.errorCount);
+      const errorCount = Number.isFinite(errorCountCandidate)
+        ? errorCountCandidate
+        : Array.isArray(summary.errors)
+        ? summary.errors.length
+        : 0;
+      const totalRowsCandidate = Number(summary.totalRows);
+      const totalRows = Number.isFinite(totalRowsCandidate)
+        ? totalRowsCandidate
+        : createdCount + errorCount;
+
+      const parts = [];
+      parts.push(
+        `${createdCount} coupon${
+          createdCount === 1 ? "" : "s"
+        } imported successfully`
+      );
+      if (errorCount > 0) {
+        parts.push(
+          `${errorCount} row${
+            errorCount === 1 ? "" : "s"
+          } skipped due to validation`
+        );
+      }
+      if (totalRows > createdCount && totalRows > 0) {
+        parts.push(`Processed ${createdCount}/${totalRows} rows`);
+      }
+
+      toast.success(parts.join(". "));
+      fetchCurrentCoupons();
+      closeImportModal();
+    } else if (importStatus === "failed") {
+      toast.error(importMessage || "Failed to import coupons");
+    }
+  }, [
+    importStatus,
+    importSummary,
+    importMessage,
+    readyImportRowCount,
+    closeImportModal,
+    fetchCurrentCoupons,
+  ]);
 
   const handleToggleSelectAll = () => {
     if (isAllSelected) {
@@ -538,6 +903,168 @@ const SellerCoupons = () => {
   const resetForm = () => {
     setFormState(buildDefaultFormState());
     setEditingCoupon(null);
+  };
+
+  const handleTriggerImportFileDialog = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
+  const handleDownloadImportTemplate = () => {
+    const templateRows = [
+      {
+        code: "WELCOME100",
+        description: "₹100 off on first order",
+        discountType: "flat",
+        discountValue: 100,
+        minOrderAmount: 999,
+        maxRedemptions: 1,
+        maxRedemptionsPerUser: 1,
+        startDate: new Date().toISOString().slice(0, 10),
+        endDate: "",
+        isActive: true,
+        type: "single",
+      },
+      {
+        code: "FESTIVE20",
+        description: "20% off on festive collection",
+        discountType: "percentage",
+        discountValue: 20,
+        maxDiscountAmount: 500,
+        minOrderAmount: 1500,
+        maxRedemptions: 200,
+        maxRedemptionsPerUser: 2,
+        startDate: "",
+        endDate: "",
+        isActive: true,
+        type: "multi",
+      },
+    ];
+
+    try {
+      const worksheet = XLSXUtils.json_to_sheet(templateRows);
+      const workbook = XLSXUtils.book_new();
+      XLSXUtils.book_append_sheet(workbook, worksheet, "Coupons");
+      writeXlsxFile(workbook, "seller-coupons-template.xlsx");
+      toast.success("Downloaded template");
+    } catch (error) {
+      console.error("Failed to download template", error);
+      toast.error("Unable to download template");
+    }
+  };
+
+  const handleImportFileSelected = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    setIsParsingImport(true);
+    setImportParseError("");
+    setImportWarnings([]);
+    setImportRows([]);
+    setImportPreviewRows([]);
+    setImportColumns([]);
+    setImportSheetName("");
+    setImportFileMeta((prev) => ({
+      ...prev,
+      name: file.name,
+      size: file.size,
+      lastModified: file.lastModified || Date.now(),
+      totalRows: 0,
+      processedRows: 0,
+    }));
+
+    try {
+      const buffer = await file.arrayBuffer();
+      const workbook = readXlsx(buffer, {
+        type: "array",
+        cellDates: true,
+        cellText: false,
+      });
+
+      const sheetName = workbook.SheetNames?.[0];
+      if (!sheetName) {
+        throw new Error("No worksheets found in file");
+      }
+
+      const worksheet = workbook.Sheets[sheetName];
+      const rawRows = XLSXUtils.sheet_to_json(worksheet, {
+        defval: "",
+        raw: false,
+      });
+
+      if (!rawRows.length) {
+        throw new Error("The selected sheet does not contain any rows");
+      }
+
+      const { rows: normalizedRows, ignoredHeaders } =
+        normalizeImportRows(rawRows);
+
+      if (!normalizedRows.length) {
+        throw new Error(
+          "No valid coupon rows were detected. Check required fields and try again."
+        );
+      }
+
+      const detectedColumns = IMPORT_ALLOWED_KEYS.filter((key) =>
+        normalizedRows.some((row) => row[key] !== undefined)
+      );
+
+      const warnings = [];
+      if (ignoredHeaders.length) {
+        warnings.push(
+          `Ignored columns: ${ignoredHeaders
+            .map((header) => `"${header}"`)
+            .join(", ")}`
+        );
+      }
+      if (normalizedRows.length < rawRows.length) {
+        warnings.push(
+          `${
+            rawRows.length - normalizedRows.length
+          } row(s) were skipped because they were empty or missing values.`
+        );
+      }
+
+      setImportRows(normalizedRows);
+      setImportPreviewRows(normalizedRows.slice(0, IMPORT_PREVIEW_LIMIT));
+      setImportColumns(detectedColumns);
+      setImportSheetName(sheetName);
+      setImportWarnings(warnings);
+      setImportFileMeta({
+        name: file.name,
+        size: file.size,
+        lastModified: file.lastModified || Date.now(),
+        totalRows: rawRows.length,
+        processedRows: normalizedRows.length,
+      });
+    } catch (error) {
+      console.error("Failed to parse import file", error);
+      setImportParseError(error.message || "Unable to read the selected file");
+    } finally {
+      setIsParsingImport(false);
+    }
+  };
+
+  const handleClearImportData = () => {
+    setImportParseError("");
+    resetImportState();
+  };
+
+  const handleImportSubmit = async (event) => {
+    event.preventDefault();
+    if (!readyImportRowCount) {
+      toast.error("Upload a valid coupon sheet before importing");
+      return;
+    }
+
+    try {
+      await dispatch(importSellerCouponsThunk(importRows)).unwrap();
+    } catch (error) {
+      console.error("Failed to import seller coupons", error);
+    }
   };
 
   const handleTypeChange = (nextType) => {
@@ -828,6 +1355,13 @@ const SellerCoupons = () => {
       transition={{ duration: 0.4 }}
       className="space-y-8"
     >
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".xlsx,.xls"
+        onChange={handleImportFileSelected}
+        className="hidden"
+      />
       <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-xs uppercase tracking-[0.32em] text-slate-500">
@@ -837,6 +1371,22 @@ const SellerCoupons = () => {
           <p className="mt-1 text-sm text-slate-500">
             Manage discount codes for your products.
           </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={handleDownloadImportTemplate}
+            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 transition hover:border-slate-300 hover:text-slate-700"
+          >
+            <Download size={14} /> Template
+          </button>
+          <button
+            type="button"
+            onClick={openImportModal}
+            className="inline-flex items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-600 transition hover:border-blue-300 hover:bg-blue-100"
+          >
+            <Upload size={14} /> Import XLSX
+          </button>
         </div>
       </header>
 
@@ -1715,6 +2265,289 @@ const SellerCoupons = () => {
           </div>
         </footer>
       </section>
+
+      <AnimatePresence>
+        {isImportModalOpen && (
+          <motion.div
+            key="import-modal"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/50 px-4 py-8"
+          >
+            <motion.form
+              onSubmit={handleImportSubmit}
+              initial={{ scale: 0.95, opacity: 0, y: 16 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 16 }}
+              transition={{ type: "spring", stiffness: 240, damping: 28 }}
+              className="relative flex w-full max-w-4xl max-h-[calc(100vh-3rem)] flex-col gap-5 overflow-hidden rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl"
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h2 className="text-xl font-semibold text-slate-900">
+                    Import coupons from spreadsheet
+                  </h2>
+                  <p className="mt-1 text-sm text-slate-500">
+                    Upload an XLSX file with coupon details. You can download
+                    the template for the exact column structure.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleDownloadImportTemplate}
+                    className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 transition hover:border-slate-300 hover:text-slate-700"
+                  >
+                    <Download size={14} /> Template
+                  </button>
+                  <button
+                    type="button"
+                    onClick={closeImportModal}
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-500 transition hover:border-slate-300 hover:text-slate-700"
+                    aria-label="Close import modal"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-4 overflow-y-auto">
+                <div className="grid gap-4 rounded-2xl border border-slate-200 bg-slate-50/60 p-4 text-sm text-slate-600 md:grid-cols-[2fr,1fr]">
+                  <div className="space-y-4">
+                    <div className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      <span className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-[11px] font-semibold text-slate-600">
+                        <Upload size={14} className="text-blue-500" />
+                        {importFileMeta.name
+                          ? importFileMeta.name
+                          : "No file selected"}
+                      </span>
+                      {importFileMeta.size > 0 && (
+                        <span className="inline-flex items-center rounded-full bg-white px-3 py-1 text-[11px] font-semibold text-slate-500">
+                          {formatFileSize(importFileMeta.size)}
+                        </span>
+                      )}
+                      {importSheetName && (
+                        <span className="inline-flex items-center rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-500">
+                          Sheet: {importSheetName}
+                        </span>
+                      )}
+                      {importFileMeta.totalRows > 0 && (
+                        <span className="inline-flex items-center rounded-full bg-white px-3 py-1 text-[11px] font-semibold text-slate-500">
+                          Rows: {importFileMeta.processedRows}/
+                          {importFileMeta.totalRows}
+                        </span>
+                      )}
+                    </div>
+
+                    {importParseError && (
+                      <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-600">
+                        {importParseError}
+                      </div>
+                    )}
+
+                    {!!importWarnings.length && (
+                      <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-700">
+                        <p className="font-semibold uppercase tracking-wide">
+                          Warnings
+                        </p>
+                        <ul className="mt-2 space-y-1">
+                          {importWarnings.map((warning, index) => (
+                            <li key={index}>● {warning}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {importErrorsList.length > 0 && (
+                      <div className="rounded-2xl border border-rose-200 bg-white px-4 py-3 text-xs text-rose-600">
+                        <p className="font-semibold uppercase tracking-wide">
+                          Backend validation issues
+                        </p>
+                        <ul className="mt-2 space-y-1">
+                          {importErrorsList.slice(0, 10).map((err, index) => (
+                            <li key={index}>
+                              Row{" "}
+                              {typeof err.index === "number"
+                                ? err.index + 1
+                                : "?"}
+                              : {err.message || "Invalid data"}
+                            </li>
+                          ))}
+                        </ul>
+                        {importErrorsList.length > 10 && (
+                          <p className="mt-2 text-[11px] text-slate-500">
+                            Showing first 10 errors. Check the downloaded error
+                            log for the full list.
+                          </p>
+                        )}
+                      </div>
+                    )}
+
+                    <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <h3 className="text-sm font-semibold text-slate-900">
+                          Preview
+                        </h3>
+                        <p className="text-xs text-slate-500">
+                          Showing up to {IMPORT_PREVIEW_LIMIT} rows from the
+                          file
+                        </p>
+                      </div>
+                      {isImportProcessing ? (
+                        <div className="mt-6 flex items-center justify-center text-sm text-slate-500">
+                          <Loader2
+                            size={18}
+                            className="mr-2 animate-spin text-blue-500"
+                          />
+                          Reading file...
+                        </div>
+                      ) : readyImportRowCount > 0 ? (
+                        <div className="mt-4 overflow-x-auto rounded-2xl border border-slate-100">
+                          <table className="min-w-full divide-y divide-slate-100 text-sm">
+                            <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+                              <tr>
+                                {importColumns.map((column) => (
+                                  <th
+                                    key={column}
+                                    className="px-4 py-3 text-left"
+                                  >
+                                    {IMPORT_LABEL_MAP[column] || column}
+                                  </th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100 bg-white text-xs text-slate-600">
+                              {importPreviewRows.map((row, rowIndex) => (
+                                <tr key={rowIndex}>
+                                  {importColumns.map((column) => (
+                                    <td key={column} className="px-4 py-2">
+                                      {row[column] !== undefined &&
+                                      row[column] !== ""
+                                        ? String(row[column])
+                                        : "--"}
+                                    </td>
+                                  ))}
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      ) : (
+                        <div className="mt-6 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
+                          Upload an XLSX file to preview coupon rows.
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                      <h3 className="text-sm font-semibold text-slate-900">
+                        Import status
+                      </h3>
+                      <div className="mt-3 grid gap-3 text-xs text-slate-500">
+                        <div className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2">
+                          <span className="font-semibold text-slate-600">
+                            Loaded rows
+                          </span>
+                          <span className="text-slate-900">
+                            {readyImportRowCount}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2">
+                          <span className="font-semibold text-slate-600">
+                            Detected columns
+                          </span>
+                          <span className="text-slate-900">
+                            {importColumns.length}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2">
+                          <span className="font-semibold text-slate-600">
+                            API errors
+                          </span>
+                          <span className="text-slate-900">
+                            {importErrorsList.length}
+                          </span>
+                        </div>
+                        {importStatus === "loading" && (
+                          <div className="flex items-center justify-center gap-2 rounded-xl bg-blue-50 px-3 py-2 text-blue-600">
+                            <Loader2 size={16} className="animate-spin" />{" "}
+                            Importing...
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                      <h3 className="text-sm font-semibold text-slate-900">
+                        Field reference
+                      </h3>
+                      <ul className="mt-3 space-y-2 text-xs text-slate-600">
+                        {IMPORT_FIELD_GUIDE.map((field) => (
+                          <li
+                            key={field.key}
+                            className="rounded-xl bg-slate-50 px-3 py-2"
+                          >
+                            <span className="font-semibold text-slate-700">
+                              {field.label}
+                            </span>
+                            <span className="mx-2 text-slate-300">•</span>
+                            {field.helper}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                  <button
+                    type="button"
+                    onClick={handleTriggerImportFileDialog}
+                    disabled={isImportProcessing}
+                    className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 font-semibold text-slate-600 transition hover:border-slate-300 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    <Upload size={14} /> Choose file
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleClearImportData}
+                    disabled={isImportProcessing}
+                    className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 font-semibold text-slate-600 transition hover:border-rose-200 hover:text-rose-600 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    Clear
+                  </button>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={closeImportModal}
+                    className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 transition hover:border-slate-300 hover:text-slate-700"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isImportProcessing || readyImportRowCount === 0}
+                    className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-md transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {isImportProcessing ? (
+                      <Loader2 size={16} className="animate-spin" />
+                    ) : (
+                      <Upload size={16} />
+                    )}
+                    Import coupons
+                  </button>
+                </div>
+              </div>
+            </motion.form>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 };

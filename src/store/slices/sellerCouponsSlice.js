@@ -5,6 +5,7 @@ import {
   updateSellerCouponThunk,
   deleteSellerCouponThunk,
   deleteSellerCouponsBulkThunk,
+  importSellerCouponsThunk,
 } from "../thunks/sellerCouponsThunks";
 
 const sortCoupons = (list = []) =>
@@ -26,6 +27,10 @@ const initialState = {
   error: "",
   mutationStatus: "idle",
   mutationError: "",
+  importErrors: [],
+  importStatus: "idle",
+  importSummary: null,
+  importMessage: "",
 };
 
 const sellerCouponsSlice = createSlice({
@@ -35,6 +40,12 @@ const sellerCouponsSlice = createSlice({
     resetSellerCouponsState: () => ({ ...initialState }),
     setSellerCouponsPage: (state, action) => {
       state.meta.page = Number(action.payload) || 1;
+    },
+    resetSellerCouponsImportState: (state) => {
+      state.importStatus = "idle";
+      state.importErrors = [];
+      state.importSummary = null;
+      state.importMessage = "";
     },
   },
   extraReducers: (builder) => {
@@ -142,11 +153,49 @@ const sellerCouponsSlice = createSlice({
           action.payload ||
           action.error?.message ||
           "Failed to delete selected coupons";
+      })
+      .addCase(importSellerCouponsThunk.pending, (state) => {
+        state.importStatus = "loading";
+        state.importErrors = [];
+        state.importSummary = null;
+        state.importMessage = "";
+      })
+      .addCase(importSellerCouponsThunk.fulfilled, (state, action) => {
+        state.importStatus = "succeeded";
+        const payload = action.payload || {};
+        const created = Array.isArray(payload.created) ? payload.created : [];
+        const errors = Array.isArray(payload.errors) ? payload.errors : [];
+        if (created.length) {
+          state.items = sortCoupons([...created, ...state.items]);
+          state.meta.total = Math.max(state.meta.total + created.length, 0);
+        }
+        state.importErrors = errors;
+        state.importSummary = {
+          totalRows: Number(payload.totalRows) || created.length,
+          createdCount: Number(payload.createdCount) || created.length,
+          errorCount: Number(payload.errorCount) || errors.length,
+        };
+        state.importMessage = payload.message || "";
+      })
+      .addCase(importSellerCouponsThunk.rejected, (state, action) => {
+        state.importStatus = "failed";
+        const payload = action.payload || {};
+        const details = Array.isArray(payload.details)
+          ? payload.details
+          : action.error?.details || [];
+        state.importErrors = details;
+        state.importMessage =
+          payload.message ||
+          action.error?.message ||
+          "Failed to import coupons";
       });
   },
 });
 
-export const { resetSellerCouponsState, setSellerCouponsPage } =
-  sellerCouponsSlice.actions;
+export const {
+  resetSellerCouponsState,
+  setSellerCouponsPage,
+  resetSellerCouponsImportState,
+} = sellerCouponsSlice.actions;
 
 export default sellerCouponsSlice.reducer;

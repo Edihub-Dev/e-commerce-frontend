@@ -8,6 +8,7 @@ const initialState = {
   paymentStatus: "pending",
   orderId: null,
   appliedCoupon: null,
+  qrfolioUpload: null,
   totals: {
     subtotal: 0,
     shippingFee: 0,
@@ -123,6 +124,9 @@ const checkoutSlice = createSlice({
         ...(baseTotal !== undefined ? { baseTotal: baseTotal } : {}),
       };
     },
+    setQrfolioUpload: (state, action) => {
+      state.qrfolioUpload = action.payload || null;
+    },
     setOrderId: (state, action) => {
       state.orderId = action.payload;
     },
@@ -143,6 +147,7 @@ export const {
   setPaymentMethod,
   setPaymentStatus,
   setCheckoutTotals,
+  setQrfolioUpload,
   setOrderId,
   setAppliedCoupon,
   clearAppliedCoupon,

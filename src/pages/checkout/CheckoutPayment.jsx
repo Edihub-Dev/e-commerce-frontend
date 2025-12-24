@@ -63,6 +63,7 @@ const CheckoutPayment = () => {
     totals,
     orderId: checkoutOrderId,
     appliedCoupon,
+    qrfolioUpload,
   } = useSelector((state) => state.checkout);
   const { clearCart } = useCart();
   const [selectedMethod, setSelectedMethod] = useState("cod");
@@ -544,6 +545,14 @@ const CheckoutPayment = () => {
             },
           }
         : {}),
+      ...(qrfolioUpload
+        ? {
+            qrfolio: {
+              image: qrfolioUpload.dataUrl || undefined,
+              imageUrl: qrfolioUpload.imageUrl || undefined,
+            },
+          }
+        : {}),
     };
 
     const response = await createOrder(payload);
@@ -630,7 +639,7 @@ const CheckoutPayment = () => {
       return;
     }
 
-    if (!(resolvedTotals.total > 0)) {
+    if (!(resolvedTotals.total > 0) && selectedMethod !== "cod") {
       toast.error("Order total must be greater than zero before paying");
       return;
     }
@@ -671,7 +680,22 @@ const CheckoutPayment = () => {
         metadata: {
           checkoutSubtotal: resolvedTotals.subtotal,
           checkoutTotal: resolvedTotals.total,
+          ...(qrfolioUpload
+            ? {
+                qrfolio: {
+                  image: qrfolioUpload.dataUrl || undefined,
+                  imageUrl: qrfolioUpload.imageUrl || undefined,
+                },
+              }
+            : {}),
         },
+        ...(appliedCoupon?.code
+          ? {
+              coupon: {
+                code: appliedCoupon.code,
+              },
+            }
+          : {}),
       };
 
       const response = await createPhonePePayment(paymentPayload);

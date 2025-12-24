@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -7,6 +7,7 @@ import {
   setCheckoutTotals,
   setAppliedCoupon,
   clearAppliedCoupon,
+  setQrfolioUpload,
 } from "../../store/slices/checkoutSlice";
 import { calculateTotals } from "../../store/slices/checkoutSlice";
 import { Loader2 } from "lucide-react";
@@ -16,12 +17,26 @@ import { validateCouponThunk } from "../../store/thunks/couponThunks";
 const CheckoutOrder = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const { items, totals, appliedCoupon } = useSelector(
+  const { items, totals, appliedCoupon, qrfolioUpload } = useSelector(
     (state) => state.checkout
   );
   const couponState = useSelector((state) => state.coupon);
   const [shippingFee] = useState(0);
   const [couponCode, setCouponCode] = useState(appliedCoupon?.code || "");
+  const [qrfolioPreview, setQrfolioPreview] = useState(() => {
+    if (!qrfolioUpload) {
+      return null;
+    }
+    if (qrfolioUpload.previewUrl) {
+      return qrfolioUpload.previewUrl;
+    }
+    if (qrfolioUpload.imageUrl) {
+      return qrfolioUpload.imageUrl;
+    }
+    return null;
+  });
+  const [qrfolioError, setQrfolioError] = useState("");
+  const [qrfolioUploading, setQrfolioUploading] = useState(false);
   const computedTotals = useMemo(
     () =>
       calculateTotals(items, {
@@ -61,6 +76,67 @@ const CheckoutOrder = () => {
     dispatch(setCheckoutStep("address"));
     navigate("/checkout/address");
   };
+
+  const resetQrfolioState = useCallback(() => {
+    setQrfolioPreview(null);
+    setQrfolioError("");
+    dispatch(setQrfolioUpload(null));
+  }, [dispatch]);
+
+  const handleQrfolioFileChange = useCallback(
+    (event) => {
+      const file = event.target.files?.[0];
+      if (!file) {
+        return;
+      }
+
+      if (!file.type.startsWith("image/")) {
+        setQrfolioError("Please upload a valid image file");
+        return;
+      }
+
+      if (file.size > 3 * 1024 * 1024) {
+        setQrfolioError("Image must be smaller than 3MB");
+        return;
+      }
+
+      setQrfolioUploading(true);
+      setQrfolioError("");
+
+      const reader = new FileReader();
+      reader.onload = () => {
+        const dataUrl = reader.result;
+        if (typeof dataUrl !== "string") {
+          setQrfolioError("Failed to read image. Please try again.");
+          setQrfolioUploading(false);
+          return;
+        }
+
+        setQrfolioPreview(dataUrl);
+        dispatch(
+          setQrfolioUpload({
+            fileName: file.name,
+            mimeType: file.type,
+            dataUrl,
+            previewUrl: dataUrl,
+          })
+        );
+        setQrfolioUploading(false);
+      };
+
+      reader.onerror = () => {
+        setQrfolioError("Unable to read the selected file");
+        setQrfolioUploading(false);
+      };
+
+      reader.readAsDataURL(file);
+    },
+    [dispatch]
+  );
+
+  const handleQrfolioRemove = useCallback(() => {
+    resetQrfolioState();
+  }, [resetQrfolioState]);
 
   const handleApplyCoupon = async () => {
     const code = couponCode.trim().toUpperCase();
@@ -235,7 +311,8 @@ const CheckoutOrder = () => {
                   Redeem Coupon
                 </h4>
                 <p className="mt-1 text-xs text-medium-text">
-                  Apply a coupon before reviewing price details.
+                  {/* Apply a coupon before reviewing price details. */}
+                  Apply your Qrfolio Referral code as a coupon code
                 </p>
               </div>
               {appliedCoupon?.code && (
@@ -300,6 +377,92 @@ const CheckoutOrder = () => {
                 </p>
               </div>
             )}
+          </section>
+
+          <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="space-y-2">
+              <h4 className="text-base font-semibold text-secondary">
+                QRfolio QR Code
+              </h4>
+              <p className="text-xs text-medium-text">
+                Upload your QRfolio QR code image
+              </p>
+            </div>
+
+            <div className="mt-4 space-y-4">
+              <label
+                htmlFor="checkout-qrfolio-upload"
+                className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/60 p-6 text-center transition hover:border-primary/40 hover:bg-primary/5"
+              >
+                <div className="rounded-full bg-white p-3 shadow-sm">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    className="h-9 w-9 text-primary"
+                  >
+                    <path
+                      d="M12 5v14M5 12h14"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-secondary">
+                    {qrfolioPreview ? "Replace QR code" : "Upload QR code"}
+                  </p>
+                  <p className="mt-1 text-xs text-medium-text">
+                    PNG, JPG, or WEBP up to 3MB.
+                  </p>
+                </div>
+                <input
+                  id="checkout-qrfolio-upload"
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleQrfolioFileChange}
+                  disabled={qrfolioUploading}
+                />
+              </label>
+
+              {qrfolioUploading && (
+                <div className="flex items-center gap-2 text-sm text-secondary">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>Processing image…</span>
+                </div>
+              )}
+
+              {qrfolioError && (
+                <p className="text-xs text-rose-600">{qrfolioError}</p>
+              )}
+
+              {qrfolioPreview && (
+                <div className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50/80 p-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-primary">
+                      Preview
+                    </p>
+                    <button
+                      type="button"
+                      onClick={handleQrfolioRemove}
+                      className="text-xs font-semibold text-rose-600 hover:underline"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                  <div className="flex items-center justify-center">
+                    <img
+                      src={qrfolioPreview}
+                      alt="QRfolio preview"
+                      className="h-36 w-36 rounded-xl border border-slate-200 object-contain bg-white p-2"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
           </section>
 
           <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">

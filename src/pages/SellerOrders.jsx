@@ -241,6 +241,35 @@ const SellerOrders = () => {
       const items = Array.isArray(order.items) ? order.items : [];
       const primaryItem = items[0] || {};
       const address = order.shippingAddress || {};
+      const qrfolio = order.qrfolio || {};
+      const resolveQrfolioFallback = () => {
+        if (qrfolio.imageKey) {
+          return qrfolio.imageKey;
+        }
+
+        const source = qrfolio.imageUrl || "";
+        if (!source) {
+          return "";
+        }
+
+        try {
+          const url = new URL(source, window.location.origin);
+          const pathname = url.pathname || "";
+          const trimmed = pathname.endsWith("/")
+            ? pathname.slice(0, -1)
+            : pathname;
+          const segments = trimmed.split("/").filter(Boolean);
+          return segments.length ? segments[segments.length - 1] : "";
+        } catch (error) {
+          const sanitized = source.split("?")[0];
+          const fallbackSegments = sanitized.split("/").filter(Boolean);
+          return fallbackSegments.length
+            ? fallbackSegments[fallbackSegments.length - 1]
+            : sanitized;
+        }
+      };
+      const qrfolioUrl =
+        typeof qrfolio.imageUrl === "string" ? qrfolio.imageUrl.trim() : "";
       const row = {};
 
       row["Order ID"] = order.orderId || order.id || order._id;
@@ -264,6 +293,12 @@ const SellerOrders = () => {
         ? formatDate(order.estimatedDeliveryDate)
         : "--";
       row["Shipping Address"] = formatShippingAddress(address);
+      row["QR Folio Image"] = qrfolioUrl || resolveQrfolioFallback();
+
+      Object.defineProperty(row, "__qrfolioLink", {
+        value: qrfolioUrl,
+        enumerable: false,
+      });
 
       return row;
     });
@@ -312,6 +347,39 @@ const SellerOrders = () => {
     const worksheet = XLSXUtils.json_to_sheet(rows);
     const workbook = XLSXUtils.book_new();
     XLSXUtils.book_append_sheet(workbook, worksheet, "Orders");
+
+    const header = Object.keys(rows[0]);
+    const qrColumnIndex = header.indexOf("QR Folio Image");
+
+    if (qrColumnIndex !== -1) {
+      rows.forEach((row, rowIndex) => {
+        const qrLink = row.__qrfolioLink;
+        if (!qrLink) {
+          return;
+        }
+
+        const cellAddress = XLSXUtils.encode_cell({
+          r: rowIndex + 1,
+          c: qrColumnIndex,
+        });
+        const cell = worksheet[cellAddress];
+        if (!cell) {
+          return;
+        }
+
+        cell.t = "s";
+        if (qrLink === row["QR Folio Image"]) {
+          cell.v = qrLink;
+        } else {
+          cell.v = row["QR Folio Image"] || "View QR Image";
+        }
+        cell.l = {
+          Target: qrLink,
+          Tooltip: "Open QR folio image",
+        };
+      });
+    }
+
     writeXlsxFile(
       workbook,
       `seller-orders-${new Date().toISOString().slice(0, 10)}.xlsx`

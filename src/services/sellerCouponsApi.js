@@ -68,3 +68,16 @@ export const deleteSellerCouponsBulk = async (ids) => {
 
   return data.data || { deletedCount: 0 };
 };
+
+export const importSellerCoupons = async (rows) => {
+  const response = await api.post("/sellers/coupons/import", { rows });
+  const data = response.data || {};
+
+  if (data.success === false) {
+    const error = new Error(data.message || "Failed to import coupons");
+    error.details = data.errors || [];
+    throw error;
+  }
+
+  return data.data || { created: [], errors: [] };
+};

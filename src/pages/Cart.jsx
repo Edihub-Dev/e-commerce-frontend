@@ -393,7 +393,17 @@ const Cart = () => {
                         onClick={() =>
                           updateQuantity(item.id, item.quantity + 1, item.size)
                         }
-                        className="rounded-full p-1.5 transition hover:bg-slate-100"
+                        disabled={
+                          item?.maxPurchaseQuantity
+                            ? item.quantity >= item.maxPurchaseQuantity
+                            : false
+                        }
+                        className={`rounded-full p-1.5 transition ${
+                          item?.maxPurchaseQuantity &&
+                          item.quantity >= item.maxPurchaseQuantity
+                            ? "cursor-not-allowed bg-slate-100 text-slate-300"
+                            : "hover:bg-slate-100"
+                        }`}
                         aria-label="Increase quantity"
                       >
                         <Plus size={16} />

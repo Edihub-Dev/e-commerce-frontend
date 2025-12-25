@@ -265,6 +265,12 @@ const mapProductCard = (product = {}) => {
     : 0;
   const normalizedRating = normalizedReviews > 0 ? Number(rawRating) || 0 : 0;
 
+  const rawMaxPurchase = Number(product.maxPurchaseQuantity ?? 0);
+  const maxPurchaseQuantity =
+    Number.isFinite(rawMaxPurchase) && rawMaxPurchase > 0
+      ? Math.floor(rawMaxPurchase)
+      : undefined;
+
   return {
     id: normalizedId,
     slug: product.slug || "",
@@ -288,6 +294,7 @@ const mapProductCard = (product = {}) => {
     categoryPriority: product.categoryPriority || "P5",
     currency: product.currency || "INR",
     keyFeatures,
+    maxPurchaseQuantity,
     sizes: normalizeSizes(product.sizes),
     showSizes: Boolean(product.showSizes),
     hsnCode:
@@ -346,6 +353,7 @@ const mapProductDetail = (product = {}) => {
       average: card.rating ?? 0,
       totalScore: (card.reviews ?? 0) * ((card.rating ?? 0) || 0),
     },
+    maxPurchaseQuantity: card.maxPurchaseQuantity,
     hsnCode:
       product.hsnCode !== undefined && product.hsnCode !== null
         ? String(product.hsnCode).trim()

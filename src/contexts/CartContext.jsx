@@ -130,6 +130,14 @@ export const CartProvider = ({ children }) => {
     return Number.POSITIVE_INFINITY;
   };
 
+  const computeMaxPerOrder = (entity) => {
+    const raw = Number(entity?.maxPurchaseQuantity ?? 0);
+    if (!Number.isFinite(raw) || raw <= 0) {
+      return null;
+    }
+    return Math.floor(raw);
+  };
+
   const formatLimitedQuantityMessage = (product, available, sizeToken) => {
     const productName = product?.name || "This item";
     const sizeLabel = sizeToken ? ` (size ${sizeToken})` : "";
@@ -159,6 +167,7 @@ export const CartProvider = ({ children }) => {
     const normalizedSizeToken = normalizeSizeToken(variantSize);
     const requestedQuantity = sanitizeQuantity(quantity);
     const maxAvailable = computeAvailableQuantity(product, normalizedSizeToken);
+    const perOrderLimit = computeMaxPerOrder(product);
 
     if (Number.isFinite(maxAvailable) && maxAvailable <= 0) {
       toast.error(
@@ -194,10 +203,23 @@ export const CartProvider = ({ children }) => {
         const desiredQuantity = existingQuantity + requestedQuantity;
         let nextQuantity = desiredQuantity;
 
-        if (Number.isFinite(maxAvailable) && desiredQuantity > maxAvailable) {
-          nextQuantity = Math.max(maxAvailable, existingQuantity);
+        let effectiveMax = maxAvailable;
+        const existingPerOrder = computeMaxPerOrder(existingItem);
+        const orderLimit = existingPerOrder ?? perOrderLimit;
+        if (orderLimit != null) {
+          effectiveMax = Number.isFinite(effectiveMax)
+            ? Math.min(effectiveMax, orderLimit)
+            : orderLimit;
+        }
+
+        if (
+          Number.isFinite(effectiveMax) &&
+          desiredQuantity > Math.max(1, effectiveMax)
+        ) {
+          const limit = Math.max(1, effectiveMax);
+          nextQuantity = Math.max(limit, existingQuantity);
           wasClamped = nextQuantity !== desiredQuantity;
-          clampLimit = maxAvailable;
+          clampLimit = limit;
         }
 
         if (nextQuantity === existingQuantity) {
@@ -220,19 +242,26 @@ export const CartProvider = ({ children }) => {
         );
       }
 
-      const initialQuantity = Number.isFinite(maxAvailable)
-        ? Math.min(requestedQuantity, Math.max(1, maxAvailable))
+      let effectiveMax = maxAvailable;
+      if (perOrderLimit != null) {
+        effectiveMax = Number.isFinite(effectiveMax)
+          ? Math.min(effectiveMax, perOrderLimit)
+          : perOrderLimit;
+      }
+
+      const initialQuantity = Number.isFinite(effectiveMax)
+        ? Math.min(requestedQuantity, Math.max(1, effectiveMax))
         : requestedQuantity;
 
-      if (Number.isFinite(maxAvailable) && initialQuantity <= 0) {
+      if (Number.isFinite(effectiveMax) && initialQuantity <= 0) {
         wasClamped = true;
-        clampLimit = maxAvailable;
+        clampLimit = effectiveMax;
         return prevItems;
       }
 
       if (initialQuantity < requestedQuantity) {
         wasClamped = true;
-        clampLimit = maxAvailable;
+        clampLimit = effectiveMax;
       }
 
       const nextItem = {
@@ -376,6 +405,7 @@ export const CartProvider = ({ children }) => {
       existingItem,
       normalizedSizeToken
     );
+    const perOrderLimit = computeMaxPerOrder(existingItem);
 
     if (Number.isFinite(maxAvailable) && maxAvailable <= 0) {
       removeItem(productId, size);
@@ -392,8 +422,15 @@ export const CartProvider = ({ children }) => {
       return;
     }
 
-    const nextQuantity = Number.isFinite(maxAvailable)
-      ? Math.min(requestedQuantity, Math.max(1, maxAvailable))
+    let effectiveMax = maxAvailable;
+    if (perOrderLimit != null) {
+      effectiveMax = Number.isFinite(effectiveMax)
+        ? Math.min(effectiveMax, perOrderLimit)
+        : perOrderLimit;
+    }
+
+    const nextQuantity = Number.isFinite(effectiveMax)
+      ? Math.min(requestedQuantity, Math.max(1, effectiveMax))
       : requestedQuantity;
 
     setCartItems((prevItems) =>
@@ -408,7 +445,7 @@ export const CartProvider = ({ children }) => {
       toast.info(
         formatLimitedQuantityMessage(
           existingItem,
-          maxAvailable,
+          effectiveMax,
           normalizedSizeToken || ""
         ),
         {

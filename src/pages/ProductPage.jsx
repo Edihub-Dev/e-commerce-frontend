@@ -111,6 +111,14 @@ const ProductPage = () => {
     return Number.isFinite(rawStock) ? Math.max(rawStock, 0) : 0;
   }, [product]);
 
+  const maxPerProduct = useMemo(() => {
+    const raw = Number(product?.maxPurchaseQuantity ?? 0);
+    if (!Number.isFinite(raw) || raw <= 0) {
+      return null;
+    }
+    return Math.floor(raw);
+  }, [product?.maxPurchaseQuantity]);
+
   const mstSeoEntry = useMemo(() => {
     if (!product?.name) return null;
     return findMstSeoConfigForName(product.name);
@@ -302,6 +310,10 @@ const ProductPage = () => {
   }, [normalizedSizes, selectedSize]);
 
   const isQuantityExceeded = useMemo(() => {
+    if (maxPerProduct != null && quantity > maxPerProduct) {
+      return true;
+    }
+
     if (product?.showSizes) {
       return (
         Boolean(selectedSizeInfo) &&
@@ -311,7 +323,13 @@ const ProductPage = () => {
     }
 
     return productStock > 0 && quantity > productStock;
-  }, [product?.showSizes, selectedSizeInfo, quantity, productStock]);
+  }, [
+    product?.showSizes,
+    selectedSizeInfo,
+    quantity,
+    productStock,
+    maxPerProduct,
+  ]);
 
   useEffect(() => {
     if (!normalizedSizes.length) {
@@ -341,8 +359,13 @@ const ProductPage = () => {
         return;
       }
 
-      if (selectedSizeInfo.stock > 0 && quantity > selectedSizeInfo.stock) {
-        const capped = Math.max(selectedSizeInfo.stock || 1, 1);
+      let limit = selectedSizeInfo.stock > 0 ? selectedSizeInfo.stock : 1;
+      if (maxPerProduct != null) {
+        limit = Math.min(limit, maxPerProduct);
+      }
+
+      if (quantity > limit) {
+        const capped = Math.max(limit || 1, 1);
         setQuantity(capped);
         setSizeError(`Quantity unavailable.`);
       } else {
@@ -351,14 +374,33 @@ const ProductPage = () => {
       return;
     }
 
-    if (productStock > 0 && quantity > productStock) {
-      const capped = Math.max(productStock || 1, 1);
+    let hasLimit = false;
+    let limit = quantity;
+
+    if (productStock > 0) {
+      limit = productStock;
+      hasLimit = true;
+    }
+
+    if (maxPerProduct != null) {
+      limit = hasLimit ? Math.min(limit, maxPerProduct) : maxPerProduct;
+      hasLimit = true;
+    }
+
+    if (hasLimit && quantity > limit) {
+      const capped = Math.max(limit || 1, 1);
       setQuantity(capped);
       setSizeError(`Quantity unavailable.`);
     } else {
       setSizeError("");
     }
-  }, [product?.showSizes, productStock, selectedSizeInfo, quantity]);
+  }, [
+    product?.showSizes,
+    productStock,
+    selectedSizeInfo,
+    quantity,
+    maxPerProduct,
+  ]);
 
   const handleQuantityChange = (nextQuantity) => {
     setQuantity((prevQuantity) => {
@@ -368,20 +410,39 @@ const ProductPage = () => {
         if (
           selectedSizeInfo &&
           selectedSizeInfo.isAvailable &&
-          selectedSizeInfo.stock > 0 &&
-          sanitized > selectedSizeInfo.stock
+          selectedSizeInfo.stock > 0
         ) {
-          setSizeError(`Quantity unavailable.`);
-          return Math.max(selectedSizeInfo.stock, 1);
+          let limit = selectedSizeInfo.stock;
+          if (maxPerProduct != null) {
+            limit = Math.min(limit, maxPerProduct);
+          }
+
+          if (sanitized > limit) {
+            setSizeError(`Quantity unavailable.`);
+            return Math.max(limit || 1, 1);
+          }
         }
 
         setSizeError("");
         return sanitized;
       }
 
-      if (productStock > 0 && sanitized > productStock) {
+      let hasLimit = false;
+      let limit = sanitized;
+
+      if (productStock > 0) {
+        limit = productStock;
+        hasLimit = true;
+      }
+
+      if (maxPerProduct != null) {
+        limit = hasLimit ? Math.min(limit, maxPerProduct) : maxPerProduct;
+        hasLimit = true;
+      }
+
+      if (hasLimit && sanitized > limit) {
         setSizeError(`Quantity unavailable.`);
-        return Math.max(productStock || 1, 1);
+        return Math.max(limit || 1, 1);
       }
 
       setSizeError("");
@@ -396,6 +457,15 @@ const ProductPage = () => {
 
     if (product?.showSizes && !selectedSize) {
       setSizeError("Please select a size before adding to cart.");
+      return;
+    }
+
+    if (maxPerProduct != null && quantity > maxPerProduct) {
+      setSizeError(
+        `You can only buy up to ${maxPerProduct} unit${
+          maxPerProduct === 1 ? "" : "s"
+        } of this product per order.`
+      );
       return;
     }
 
@@ -456,6 +526,15 @@ const ProductPage = () => {
     if (product?.showSizes) {
       if (!selectedSize) {
         setSizeError("Please select a size before continuing to checkout.");
+        return;
+      }
+
+      if (maxPerProduct != null && quantity > maxPerProduct) {
+        setSizeError(
+          `You can only buy up to ${maxPerProduct} unit${
+            maxPerProduct === 1 ? "" : "s"
+          } of this product per order.`
+        );
         return;
       }
 
@@ -907,11 +986,12 @@ const ProductPage = () => {
                           type="button"
                           onClick={() =>
                             !isPurchaseDisabled &&
+                            !isQuantityExceeded &&
                             handleQuantityChange(quantity + 1)
                           }
-                          disabled={isPurchaseDisabled}
+                          disabled={isPurchaseDisabled || isQuantityExceeded}
                           className={`h-9 w-9 rounded-full border text-lg font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 ${
-                            isPurchaseDisabled
+                            isPurchaseDisabled || isQuantityExceeded
                               ? "cursor-not-allowed border-slate-200 text-slate-300"
                               : "border-slate-300 text-slate-700 hover:border-blue-500 hover:text-blue-600"
                           }`}
@@ -920,6 +1000,11 @@ const ProductPage = () => {
                           +
                         </button>
                       </div>
+                      {maxPerProduct != null && (
+                        <p className="text-xs text-slate-500">
+                          Max {maxPerProduct} per customer
+                        </p>
+                      )}
                     </div>
 
                     {normalizedSizes.length > 0 && (

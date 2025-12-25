@@ -55,6 +55,11 @@ const mapApiProductToFormState = (product = {}) => {
       product.stock !== undefined && product.stock !== null
         ? String(product.stock)
         : fallback.stock,
+    maxPurchaseQuantity:
+      product.maxPurchaseQuantity !== undefined &&
+      product.maxPurchaseQuantity !== null
+        ? String(product.maxPurchaseQuantity)
+        : fallback.maxPurchaseQuantity,
     lowStockThreshold:
       product.lowStockThreshold !== undefined &&
       product.lowStockThreshold !== null

@@ -69,6 +69,7 @@ const defaultForm = {
   discountPercentage: "",
   saveAmount: "",
   stock: "",
+  maxPurchaseQuantity: "",
   lowStockThreshold: "",
   thumbnail: "",
   gallery: [],
@@ -378,6 +379,13 @@ const SellerProductForm = ({
       }
     }
 
+    if (formState.maxPurchaseQuantity) {
+      const numeric = Number(formState.maxPurchaseQuantity);
+      if (!Number.isFinite(numeric) || numeric <= 0) {
+        return "Max units per customer must be a positive number";
+      }
+    }
+
     return "";
   };
 
@@ -424,6 +432,13 @@ const SellerProductForm = ({
       gstRate: formState.gstRate ? Number(formState.gstRate) : undefined,
       isFeatured: Boolean(formState.isFeatured),
     };
+
+    if (formState.maxPurchaseQuantity) {
+      const numeric = Number(formState.maxPurchaseQuantity);
+      if (Number.isFinite(numeric) && numeric > 0) {
+        payload.maxPurchaseQuantity = Math.floor(numeric);
+      }
+    }
 
     if (formState.discountPercentage) {
       payload.discountPercentage = Number(formState.discountPercentage);
@@ -590,6 +605,22 @@ const SellerProductForm = ({
                     Total from size quantities: {sizeStockTotal}
                   </span>
                 )}
+              </label>
+              <label className="flex flex-col gap-1 text-xs font-medium text-slate-500">
+                Max units per customer
+                <input
+                  name="maxPurchaseQuantity"
+                  type="number"
+                  min="1"
+                  step="1"
+                  value={formState.maxPurchaseQuantity}
+                  onChange={handleInputChange}
+                  placeholder="5"
+                  className="rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none"
+                />
+                <span className="text-[11px] text-slate-500">
+                  Leave blank to use the global default limit.
+                </span>
               </label>
               <label className="flex flex-col gap-1 text-xs font-medium text-slate-500">
                 Status

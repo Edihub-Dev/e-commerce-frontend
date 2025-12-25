@@ -639,6 +639,26 @@ const CheckoutPayment = () => {
       return;
     }
 
+    const violatingItem = items.find((item) => {
+      const rawLimit = Number(item?.maxPurchaseQuantity ?? 0);
+      if (!Number.isFinite(rawLimit) || rawLimit <= 0) {
+        return false;
+      }
+      const limit = Math.floor(rawLimit);
+      return Number(item.quantity || 0) > limit;
+    });
+
+    if (violatingItem) {
+      const rawLimit = Number(violatingItem.maxPurchaseQuantity || 0);
+      const limit = Math.max(1, Math.floor(rawLimit || 0));
+      toast.error(
+        `You can only buy up to ${limit} unit${limit === 1 ? "" : "s"} of ${
+          violatingItem.name
+        } per order.`
+      );
+      return;
+    }
+
     if (!(resolvedTotals.total > 0) && selectedMethod !== "cod") {
       toast.error("Order total must be greater than zero before paying");
       return;

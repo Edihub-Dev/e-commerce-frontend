@@ -112,12 +112,16 @@ const ProductPage = () => {
   }, [product]);
 
   const maxPerProduct = useMemo(() => {
+    if (!product?.isSellerProduct) {
+      return null;
+    }
+
     const raw = Number(product?.maxPurchaseQuantity ?? 0);
     if (!Number.isFinite(raw) || raw <= 0) {
       return null;
     }
     return Math.floor(raw);
-  }, [product?.maxPurchaseQuantity]);
+  }, [product?.isSellerProduct, product?.maxPurchaseQuantity]);
 
   const mstSeoEntry = useMemo(() => {
     if (!product?.name) return null;

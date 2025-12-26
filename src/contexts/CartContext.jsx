@@ -131,6 +131,10 @@ export const CartProvider = ({ children }) => {
   };
 
   const computeMaxPerOrder = (entity) => {
+    if (!entity?.isSellerProduct) {
+      return null;
+    }
+
     const raw = Number(entity?.maxPurchaseQuantity ?? 0);
     if (!Number.isFinite(raw) || raw <= 0) {
       return null;

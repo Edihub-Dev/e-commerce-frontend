@@ -243,6 +243,7 @@ const mapProductCard = (product = {}) => {
 
   const mongoId = normalizeObjectId(product._id);
   const sellerId = normalizeObjectId(product.sellerProductId);
+  const isSellerProduct = Boolean(sellerId);
   const normalizedId = product.slug || mongoId || sellerId || product.id;
 
   const gallery = Array.isArray(product.gallery)
@@ -267,7 +268,7 @@ const mapProductCard = (product = {}) => {
 
   const rawMaxPurchase = Number(product.maxPurchaseQuantity ?? 0);
   const maxPurchaseQuantity =
-    Number.isFinite(rawMaxPurchase) && rawMaxPurchase > 0
+    isSellerProduct && Number.isFinite(rawMaxPurchase) && rawMaxPurchase > 0
       ? Math.floor(rawMaxPurchase)
       : undefined;
 
@@ -277,6 +278,7 @@ const mapProductCard = (product = {}) => {
     mongoId,
     productId: mongoId,
     sellerProductId: sellerId,
+    isSellerProduct,
     sku: product.sku || "",
     name: product.name || "Unnamed Product",
     description: product.shortDescription || "",

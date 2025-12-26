@@ -640,6 +640,10 @@ const CheckoutPayment = () => {
     }
 
     const violatingItem = items.find((item) => {
+      if (!item?.isSellerProduct) {
+        return false;
+      }
+
       const rawLimit = Number(item?.maxPurchaseQuantity ?? 0);
       if (!Number.isFinite(rawLimit) || rawLimit <= 0) {
         return false;

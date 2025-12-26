@@ -9,7 +9,7 @@ const initialState = {
   orderId: null,
   appliedCoupon: null,
   qrfolioUpload: null,
-  qrfolioRequired: false,
+  qrfolioRequired: true,
   totals: {
     subtotal: 0,
     shippingFee: 0,

@@ -134,19 +134,6 @@ const SellerProductForm = ({
     [formState.sizes]
   );
 
-  useEffect(() => {
-    if (!formState.showSizes) {
-      return;
-    }
-    setFormState((prev) => {
-      const nextTotal = computeSizeStockTotal(prev.sizes).toString();
-      if (prev.stock === nextTotal) {
-        return prev;
-      }
-      return { ...prev, stock: nextTotal };
-    });
-  }, [formState.showSizes, sizeStockTotal]);
-
   const updatePricingDerivedFields = (nextState) => {
     const priceValue = Number(nextState.price);
     const originalValue = Number(nextState.originalPrice);
@@ -202,9 +189,6 @@ const SellerProductForm = ({
       };
 
       if (name === "showSizes") {
-        if (checked) {
-          nextState.stock = computeSizeStockTotal(prev.sizes).toString();
-        }
         return nextState;
       }
 
@@ -401,9 +385,7 @@ const SellerProductForm = ({
     setError("");
     setIsSubmitting(true);
 
-    const sizeTotal = formState.showSizes
-      ? computeSizeStockTotal(formState.sizes)
-      : Number(formState.stock || 0);
+    const totalStock = Number(formState.stock || 0);
 
     const payload = {
       name: formState.name.trim(),
@@ -413,7 +395,7 @@ const SellerProductForm = ({
       brand: formState.brand.trim(),
       price: Number(formState.price),
       originalPrice: Number(formState.originalPrice),
-      stock: sizeTotal,
+      stock: totalStock,
       availabilityStatus: formState.availabilityStatus,
       status: formState.status,
       thumbnail: formState.thumbnail,
@@ -582,23 +564,8 @@ const SellerProductForm = ({
                   step="1"
                   value={formState.stock}
                   onChange={handleInputChange}
-                  disabled={formState.showSizes}
-                  readOnly={formState.showSizes}
-                  title={
-                    formState.showSizes
-                      ? "Auto-calculated from size quantities"
-                      : undefined
-                  }
-                  className={`rounded-xl border px-3 py-2 text-sm focus:border-blue-400 focus:outline-none ${
-                    formState.showSizes
-                      ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-500"
-                      : "border-slate-200"
-                  }`}
-                  placeholder={
-                    formState.showSizes
-                      ? `Total from sizes: ${sizeStockTotal}`
-                      : "40"
-                  }
+                  className="rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none"
+                  placeholder="40"
                 />
                 {formState.showSizes && (
                   <span className="text-[11px] text-slate-500">

@@ -347,13 +347,8 @@ const AdminAddProductPage = () => {
     setFormState((prev) => {
       const next = { ...prev, [field]: value };
 
-      if (field === "availabilityStatus") {
-        if (isStockLockedForStatus(value)) {
-          next.stock = "0";
-        } else {
-          const totalStock = computeSizeStockTotal(normalizeSizes(prev.sizes));
-          next.stock = totalStock.toString();
-        }
+      if (field === "availabilityStatus" && isStockLockedForStatus(value)) {
+        next.stock = "0";
       }
 
       if (field === "category") {
@@ -400,18 +395,6 @@ const AdminAddProductPage = () => {
   const handleToggleChange = (field) => (event) => {
     const { checked } = event.target;
     setFormState((prev) => {
-      if (field === "showSizes") {
-        const totalStock = computeSizeStockTotal(normalizeSizes(prev.sizes));
-        return {
-          ...prev,
-          [field]: checked,
-          stock:
-            checked && !isStockLockedForStatus(prev.availabilityStatus)
-              ? totalStock.toString()
-              : prev.stock,
-        };
-      }
-
       return { ...prev, [field]: checked };
     });
   };
@@ -540,13 +523,9 @@ const AdminAddProductPage = () => {
           ? { ...size, isAvailable: !size.isAvailable }
           : size
       );
-      const totalStock = computeSizeStockTotal(updated);
       return {
         ...prev,
         sizes: updated,
-        stock: isStockLockedForStatus(prev.availabilityStatus)
-          ? prev.stock
-          : totalStock.toString(),
       };
     });
   };
@@ -566,13 +545,9 @@ const AdminAddProductPage = () => {
             }
           : size
       );
-      const totalStock = computeSizeStockTotal(updated);
       return {
         ...prev,
         sizes: updated,
-        stock: isStockLockedForStatus(prev.availabilityStatus)
-          ? prev.stock
-          : totalStock.toString(),
       };
     });
   };
@@ -580,13 +555,9 @@ const AdminAddProductPage = () => {
   const handleResetSizes = () => {
     setFormState((prev) => {
       const defaults = buildDefaultSizes();
-      const totalStock = computeSizeStockTotal(defaults);
       return {
         ...prev,
         sizes: defaults,
-        stock: isStockLockedForStatus(prev.availabilityStatus)
-          ? prev.stock
-          : totalStock.toString() || "0",
       };
     });
   };
@@ -1355,7 +1326,6 @@ const AdminAddProductPage = () => {
                           value={formState.stock}
                           onChange={handleChange("stock")}
                           disabled={isStockLocked}
-                          readOnly={formState.showSizes && !isStockLocked}
                           title={
                             formState.showSizes && !isStockLocked
                               ? "Auto-calculated from per-size stock"
@@ -1366,8 +1336,10 @@ const AdminAddProductPage = () => {
                               ? "border-rose-300"
                               : "border-slate-200"
                           } ${
-                            isStockLocked || formState.showSizes
-                              ? "bg-slate-100 text-slate-500"
+                            isStockLocked ? "bg-slate-100 text-slate-500" : ""
+                          } ${
+                            !isStockLocked && formState.showSizes
+                              ? "bg-white"
                               : ""
                           }`}
                           placeholder={

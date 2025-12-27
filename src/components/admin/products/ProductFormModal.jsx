@@ -230,9 +230,6 @@ const ProductFormModal = ({
       if (field === "availabilityStatus") {
         if (LOCKED_AVAILABILITY_STATUSES.includes(value)) {
           next.stock = "0";
-        } else {
-          const totalStock = computeSizeStockTotal(normalizeSizes(prev.sizes));
-          next.stock = totalStock.toString();
         }
       }
 
@@ -269,16 +266,7 @@ const ProductFormModal = ({
     const { checked } = event.target;
     setFormState((prev) => {
       if (field === "showSizes") {
-        const totalStock = computeSizeStockTotal(normalizeSizes(prev.sizes));
-        return {
-          ...prev,
-          [field]: checked,
-          stock:
-            checked &&
-            !LOCKED_AVAILABILITY_STATUSES.includes(prev.availabilityStatus)
-              ? totalStock.toString()
-              : prev.stock,
-        };
+        return { ...prev, [field]: checked };
       }
 
       return { ...prev, [field]: checked };
@@ -415,13 +403,9 @@ const ProductFormModal = ({
           ? { ...size, isAvailable: !size.isAvailable }
           : size
       );
-      const totalStock = computeSizeStockTotal(updated);
       return {
         ...prev,
         sizes: updated,
-        stock: LOCKED_AVAILABILITY_STATUSES.includes(prev.availabilityStatus)
-          ? prev.stock
-          : totalStock.toString(),
       };
     });
   };
@@ -429,13 +413,9 @@ const ProductFormModal = ({
   const handleResetSizes = () => {
     setFormState((prev) => {
       const defaults = buildDefaultSizes();
-      const totalStock = computeSizeStockTotal(defaults);
       return {
         ...prev,
         sizes: defaults,
-        stock: LOCKED_AVAILABILITY_STATUSES.includes(prev.availabilityStatus)
-          ? prev.stock
-          : totalStock.toString(),
       };
     });
   };
@@ -448,13 +428,9 @@ const ProductFormModal = ({
       const updated = normalizeSizes(prev.sizes).map((size) =>
         size.label === label ? { ...size, stock: numericValue } : size
       );
-      const totalStock = computeSizeStockTotal(updated);
       return {
         ...prev,
         sizes: updated,
-        stock: LOCKED_AVAILABILITY_STATUSES.includes(prev.availabilityStatus)
-          ? prev.stock
-          : totalStock.toString(),
       };
     });
   };
@@ -855,24 +831,12 @@ const ProductFormModal = ({
                     value={formState.stock}
                     onChange={handleChange("stock")}
                     disabled={isStockLocked}
-                    readOnly={formState.showSizes && !isStockLocked}
-                    title={
-                      formState.showSizes && !isStockLocked
-                        ? "Auto-calculated from per-size stock"
-                        : undefined
-                    }
                     className={`rounded-xl border px-3 py-2 text-sm focus:border-blue-400 focus:outline-none ${
-                      isStockLocked || formState.showSizes
+                      isStockLocked
                         ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-500"
                         : "border-slate-200"
                     }`}
-                    placeholder={
-                      isStockLocked
-                        ? "Managed automatically"
-                        : formState.showSizes
-                        ? "Calculated from sizes"
-                        : "40"
-                    }
+                    placeholder={isStockLocked ? "Managed automatically" : "40"}
                   />
                   {isStockLocked && (
                     <span className="text-[11px] text-slate-500">

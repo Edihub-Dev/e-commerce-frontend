@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect } from "react";
 import { Routes, Route, useLocation } from "react-router-dom";
 import { SearchProvider } from "./contexts/SearchContext";
 import Layout from "./components/Layout";
+import Maintenance from "./pages/Maintenance";
 const Home = lazy(() => import("./pages/Home"));
 const Shop = lazy(() => import("./pages/Shop"));
 const ProductPage = lazy(() => import("./pages/ProductPage"));
@@ -79,6 +80,21 @@ const ScrollToTop = () => {
 };
 
 function App() {
+  const maintenanceMode = (() => {
+    const flag = import.meta.env.VITE_MAINTENANCE_MODE;
+    if (typeof flag === "string") {
+      return flag.trim().toLowerCase() === "true";
+    }
+    if (typeof flag === "boolean") {
+      return flag;
+    }
+    return false;
+  })();
+
+  if (maintenanceMode) {
+    return <Maintenance />;
+  }
+
   return (
     <SearchProvider>
       <ScrollToTop />

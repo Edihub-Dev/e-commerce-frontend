@@ -15,6 +15,7 @@ const SellerSection = () => {
   const [sellerProducts, setSellerProducts] = useState([]);
   const [sellerLoading, setSellerLoading] = useState(true);
   const [sellerError, setSellerError] = useState("");
+  const SHOW_ADMIN_FIRST = false;
 
   const SKELETON_COUNT = 6;
 
@@ -155,6 +156,140 @@ const SellerSection = () => {
     };
   }, []);
 
+  const renderOfficialSection = (isSecond = false) => (
+    <div
+      className={`container mx-auto px-2 sm:px-4 ${isSecond ? "mt-10" : ""}`}
+    >
+      <SectionHeader
+        title={
+          <>
+            MST Blockchain Official{" "}
+            <span style={{ color: "#008ECC" }}>Products</span>
+          </>
+        }
+        linkTo="/shop"
+        linkText="Shop Collection"
+      />
+      <motion.div
+        className="w-full overflow-hidden flex flex-col"
+        variants={staggerContainer}
+      >
+        <div className="flex flex-col sm:grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4 sm:gap-4 min-h-[360px]">
+          {loading
+            ? Array.from({ length: SKELETON_COUNT }).map((_, index) => (
+                <div
+                  key={`mst-skeleton-${index}`}
+                  className="w-full min-w-0 animate-pulse rounded-2xl border border-slate-200/60 bg-slate-100/40 px-4 py-5"
+                  aria-hidden
+                >
+                  <div className="h-40 w-full rounded-xl bg-slate-200" />
+                  <div className="mt-4 h-3 w-3/4 rounded-full bg-slate-200" />
+                  <div className="mt-2 h-3 w-1/2 rounded-full bg-slate-200" />
+                  <div className="mt-5 h-9 w-full rounded-full bg-slate-300/80" />
+                </div>
+              ))
+            : products.map((product) => (
+                <motion.div
+                  key={product.id || product._id}
+                  variants={staggerItem}
+                  className="w-full min-w-0"
+                >
+                  <ProductCard product={product} />
+                </motion.div>
+              ))}
+        </div>
+
+        {error && !loading && (
+          <div className="py-6 text-center text-sm text-red-500">{error}</div>
+        )}
+
+        {!loading && !error && products.length === 0 && (
+          <div className="py-6 text-center text-sm text-slate-500">
+            No featured products yet. Check back soon!
+          </div>
+        )}
+
+        {/* View All Button - Only visible on small screens */}
+        <div className="sm:hidden mt-4 w-full">
+          <a
+            href="/shop"
+            className="w-full block text-center bg-gray-100 hover:bg-gray-200 text-gray-800 font-medium py-3 px-4 rounded-lg transition-colors duration-200"
+          >
+            View All
+          </a>
+        </div>
+      </motion.div>
+    </div>
+  );
+
+  const renderSellerSection = (isSecond = false) => (
+    <div
+      className={`container mx-auto px-2 sm:px-4 ${isSecond ? "mt-10" : ""}`}
+    >
+      <SectionHeader
+        title={
+          <>
+            Seller Hub Spotlight{" "}
+            <span style={{ color: "#008ECC" }}>Combo pack</span>
+          </>
+        }
+        description="Fresh drops from our verified sellers"
+        linkTo="/shop?seller=true"
+        linkText="Browse Seller Products"
+      />
+
+      <motion.div
+        className="w-full overflow-hidden"
+        variants={staggerContainer}
+      >
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+          {sellerLoading
+            ? Array.from({ length: 6 }).map((_, index) => (
+                <div
+                  key={`seller-skeleton-${index}`}
+                  className="w-full min-w-0 animate-pulse rounded-2xl border border-slate-200/60 bg-white px-4 py-5 shadow-sm"
+                >
+                  <div className="h-40 w-full rounded-xl bg-slate-200" />
+                  <div className="mt-4 h-3 w-3/4 rounded-full bg-slate-200" />
+                  <div className="mt-2 h-3 w-1/2 rounded-full bg-slate-200" />
+                  <div className="mt-5 h-9 w-full rounded-full bg-slate-200/80" />
+                </div>
+              ))
+            : sellerProducts.map((product) => (
+                <motion.div
+                  key={product.id || product._id}
+                  variants={staggerItem}
+                  className="w-full min-w-0"
+                >
+                  <ProductCard product={product} variant="seller" />
+                </motion.div>
+              ))}
+        </div>
+
+        {sellerError && !sellerLoading && (
+          <div className="py-6 text-center text-sm text-red-500">
+            {sellerError}
+          </div>
+        )}
+
+        {!sellerLoading && !sellerError && sellerProducts.length === 0 && (
+          <div className="py-6 text-center text-sm text-slate-500">
+            Seller products will appear here once published.
+          </div>
+        )}
+
+        <div className="mt-4 flex justify-center sm:hidden">
+          <a
+            href="/shop?seller=true"
+            className="block w-full rounded-lg bg-gray-100 px-4 py-3 text-center text-gray-800 font-medium transition-colors hover:bg-gray-200"
+          >
+            View All Seller Products
+          </a>
+        </div>
+      </motion.div>
+    </div>
+  );
+
   return (
     <motion.section
       className="w-full"
@@ -162,131 +297,17 @@ const SellerSection = () => {
       whileInView="animate"
       viewport={{ once: true, margin: "-100px" }}
     >
-      <div className="container mx-auto px-2 sm:px-4">
-        <SectionHeader
-          title={
-            <>
-              MST Blockchain Official{" "}
-              <span style={{ color: "#008ECC" }}>Products</span>
-            </>
-          }
-          linkTo="/shop"
-          linkText="Shop Collection"
-        />
-        <motion.div
-          className="w-full overflow-hidden flex flex-col"
-          variants={staggerContainer}
-        >
-          <div className="flex flex-col sm:grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4 sm:gap-4 min-h-[360px]">
-            {loading
-              ? Array.from({ length: SKELETON_COUNT }).map((_, index) => (
-                  <div
-                    key={`mst-skeleton-${index}`}
-                    className="w-full min-w-0 animate-pulse rounded-2xl border border-slate-200/60 bg-slate-100/40 px-4 py-5"
-                    aria-hidden
-                  >
-                    <div className="h-40 w-full rounded-xl bg-slate-200" />
-                    <div className="mt-4 h-3 w-3/4 rounded-full bg-slate-200" />
-                    <div className="mt-2 h-3 w-1/2 rounded-full bg-slate-200" />
-                    <div className="mt-5 h-9 w-full rounded-full bg-slate-300/80" />
-                  </div>
-                ))
-              : products.map((product) => (
-                  <motion.div
-                    key={product.id || product._id}
-                    variants={staggerItem}
-                    className="w-full min-w-0"
-                  >
-                    <ProductCard product={product} />
-                  </motion.div>
-                ))}
-          </div>
-
-          {error && !loading && (
-            <div className="py-6 text-center text-sm text-red-500">{error}</div>
-          )}
-
-          {!loading && !error && products.length === 0 && (
-            <div className="py-6 text-center text-sm text-slate-500">
-              No featured products yet. Check back soon!
-            </div>
-          )}
-
-          {/* View All Button - Only visible on small screens */}
-          <div className="sm:hidden mt-4 w-full">
-            <a
-              href="/shop"
-              className="w-full block text-center bg-gray-100 hover:bg-gray-200 text-gray-800 font-medium py-3 px-4 rounded-lg transition-colors duration-200"
-            >
-              View All
-            </a>
-          </div>
-        </motion.div>
-      </div>
-
-      <div className="container mx-auto px-2 sm:px-4 mt-10">
-        <SectionHeader
-          title={
-            <>
-              Seller Hub Spotlight{" "}
-              <span style={{ color: "#008ECC" }}>Latest Listings</span>
-            </>
-          }
-          description="Fresh drops from our verified sellers"
-          linkTo="/shop?seller=true"
-          linkText="Browse Seller Products"
-        />
-
-        <motion.div
-          className="w-full overflow-hidden"
-          variants={staggerContainer}
-        >
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
-            {sellerLoading
-              ? Array.from({ length: 6 }).map((_, index) => (
-                  <div
-                    key={`seller-skeleton-${index}`}
-                    className="w-full min-w-0 animate-pulse rounded-2xl border border-slate-200/60 bg-white px-4 py-5 shadow-sm"
-                  >
-                    <div className="h-40 w-full rounded-xl bg-slate-200" />
-                    <div className="mt-4 h-3 w-3/4 rounded-full bg-slate-200" />
-                    <div className="mt-2 h-3 w-1/2 rounded-full bg-slate-200" />
-                    <div className="mt-5 h-9 w-full rounded-full bg-slate-200/80" />
-                  </div>
-                ))
-              : sellerProducts.map((product) => (
-                  <motion.div
-                    key={product.id || product._id}
-                    variants={staggerItem}
-                    className="w-full min-w-0"
-                  >
-                    <ProductCard product={product} variant="seller" />
-                  </motion.div>
-                ))}
-          </div>
-
-          {sellerError && !sellerLoading && (
-            <div className="py-6 text-center text-sm text-red-500">
-              {sellerError}
-            </div>
-          )}
-
-          {!sellerLoading && !sellerError && sellerProducts.length === 0 && (
-            <div className="py-6 text-center text-sm text-slate-500">
-              Seller products will appear here once published.
-            </div>
-          )}
-
-          <div className="mt-4 flex justify-center sm:hidden">
-            <a
-              href="/shop?seller=true"
-              className="block w-full rounded-lg bg-gray-100 px-4 py-3 text-center text-gray-800 font-medium transition-colors hover:bg-gray-200"
-            >
-              View All Seller Products
-            </a>
-          </div>
-        </motion.div>
-      </div>
+      {SHOW_ADMIN_FIRST ? (
+        <>
+          {renderOfficialSection(false)}
+          {renderSellerSection(true)}
+        </>
+      ) : (
+        <>
+          {renderSellerSection(false)}
+          {renderOfficialSection(true)}
+        </>
+      )}
     </motion.section>
   );
 };

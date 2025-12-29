@@ -1000,10 +1000,10 @@ const SellerProducts = () => {
         <div className="hidden md:block">
           <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
             <div className="pb-2">
-              <table className="w-full table-auto text-sm text-slate-600">
+              <table className="w-full table-fixed text-sm text-slate-600">
                 <thead className="bg-slate-50/80 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
                   <tr>
-                    <th className="px-4 py-4 w-10">
+                    <th className="w-12 px-4 py-4">
                       <input
                         type="checkbox"
                         className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-400"
@@ -1085,8 +1085,11 @@ const SellerProducts = () => {
                                   />
                                 ) : null}
                               </div>
-                              <div className="min-w-0 space-y-1">
-                                <p className="truncate text-sm font-semibold text-slate-900">
+                              <div className="min-w-0 flex-1 space-y-1">
+                                <p
+                                  className="block max-w-[18rem] truncate text-sm font-semibold text-slate-900"
+                                  title={row.name}
+                                >
                                   {row.name}
                                 </p>
                                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
@@ -1109,7 +1112,7 @@ const SellerProducts = () => {
                           </td>
                           <td className="px-4 py-4">
                             <span
-                              className="block break-all text-xs font-medium text-slate-500"
+                              className="block max-w-[12rem] truncate font-mono text-xs font-medium text-slate-500"
                               title={row.id}
                             >
                               {row.id}
@@ -1117,7 +1120,7 @@ const SellerProducts = () => {
                           </td>
                           <td className="px-4 py-4 text-sm font-medium text-slate-600">
                             <span
-                              className="block truncate"
+                              className="block max-w-[12rem] truncate"
                               title={row.category}
                             >
                               {row.category}

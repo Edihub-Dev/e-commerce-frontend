@@ -448,6 +448,21 @@ const CheckoutAddress = () => {
     [addresses, selectedId]
   );
 
+  const fieldClasses =
+    "w-full rounded-2xl border border-slate-200 bg-white/95 px-3.5 py-3 text-sm sm:text-[15px] text-secondary placeholder:text-slate-400 focus:border-primary/60 focus:outline-none focus:ring-2 focus:ring-primary/40 transition disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400 disabled:opacity-60";
+  const textareaClasses = `${fieldClasses} min-h-[132px] resize-none leading-6`;
+  const subtleButtonClasses =
+    "w-full sm:w-auto inline-flex h-12 items-center justify-center rounded-full border border-slate-200 px-5 text-sm font-semibold text-secondary transition hover:border-primary/40 hover:bg-primary/5 hover:text-primary";
+  const primaryButtonClasses =
+    "w-full sm:w-auto inline-flex h-12 items-center justify-center rounded-full bg-primary px-6 text-sm font-semibold text-white shadow-sm shadow-primary/25 transition hover:bg-primary-dark disabled:cursor-not-allowed disabled:opacity-60";
+  const addressCardBaseClasses =
+    "group block rounded-2xl border border-slate-200 bg-white/80 p-4 sm:p-5 shadow-sm transition hover:border-primary/50 hover:shadow-md";
+  const formSectionClasses =
+    "rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-sm shadow-slate-200/40 sm:p-5 space-y-4";
+  const twoColumnGridClasses = "grid gap-4 min-[480px]:grid-cols-2 sm:gap-5";
+  const labelClasses =
+    "flex flex-col gap-1.5 text-sm font-medium text-secondary/80";
+
   const handleFormChange = (event) => {
     const { name, value, type, checked } = event.target;
     const resolvedValue = type === "checkbox" ? checked : value;
@@ -680,324 +695,384 @@ const CheckoutAddress = () => {
     navigate("/checkout/payment");
   };
 
+  const toggleFormLabel = showForm
+    ? editingAddressId
+      ? "Cancel editing"
+      : "Close form"
+    : "+ Add New Address";
+
   return (
-    <div className="grid lg:grid-cols-[2fr,1fr] gap-0">
-      <div className="p-6 lg:p-10 space-y-8">
-        <header className="flex items-center justify-between">
-          <div>
-            <h2 className="text-xl font-semibold text-secondary">
-              Delivery Address
-            </h2>
-            <p className="text-sm text-medium-text mt-1">
-              Choose an existing address or add a new one.
-            </p>
-          </div>
-          <span className="text-sm text-primary bg-primary/10 px-3 py-1 rounded-full">
-            Step 2 of 4
-          </span>
-        </header>
+    <div className="min-h-screen bg-slate-50">
+      <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-10">
+        <div className="grid gap-8 lg:grid-cols-[2fr,1fr]">
+          <div className="space-y-6">
+            <section className="rounded-3xl border border-slate-200 bg-white/80 px-5 py-5 shadow-sm backdrop-blur sm:p-6">
+              <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="space-y-1">
+                  <h2 className="text-xl font-semibold text-secondary">
+                    Delivery Address
+                  </h2>
+                  <p className="text-sm text-medium-text">
+                    Choose an existing address or add a new one.
+                  </p>
+                </div>
+                <span className="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-4 py-1 text-sm font-semibold text-primary">
+                  Step 2 of 4
+                </span>
+              </header>
+            </section>
 
-        {loading ? (
-          <div className="border border-slate-200 rounded-2xl p-6 text-center text-medium-text">
-            Loading your saved addresses...
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {addresses.map((address, index) => {
-              const addressKey = address._id || address.id || index;
-              const isSelected =
-                selectedId === address._id || selectedId === address.id;
-
-              return (
-                <label
-                  key={addressKey}
-                  className={`block border rounded-2xl p-4 cursor-pointer transition-colors ${
-                    isSelected
-                      ? "border-primary bg-primary/5"
-                      : "border-slate-200 bg-white hover:border-primary/50"
-                  }`}
-                >
-                  <div className="flex items-start gap-4">
-                    <input
-                      type="radio"
-                      name="selectedAddress"
-                      checked={isSelected}
-                      onChange={() => setSelectedId(address._id || address.id)}
-                      className="mt-1 h-4 w-4 text-primary focus:ring-primary"
-                    />
-                    <div className="flex-1 space-y-2">
-                      <div className="flex flex-wrap items-center gap-3 justify-between">
-                        <div className="flex items-center gap-3">
-                          <h3 className="text-base font-semibold text-secondary">
-                            {address.fullName}
-                          </h3>
-                          {address.isDefault && (
-                            <span className="text-xs font-medium px-2 py-1 rounded-full bg-primary/10 text-primary">
-                              Default
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex gap-2">
-                          <button
-                            type="button"
-                            onClick={(event) => {
-                              event.preventDefault();
-                              event.stopPropagation();
-                              handleEditAddress(address);
-                            }}
-                            className="text-xs font-medium text-primary hover:text-primary-dark"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            type="button"
-                            onClick={(event) => {
-                              event.preventDefault();
-                              event.stopPropagation();
-                              handleDeleteAddress(address);
-                            }}
-                            className="text-xs font-medium text-rose-500 hover:text-rose-600"
-                          >
-                            Remove
-                          </button>
-                        </div>
-                      </div>
-                      <p className="text-sm text-medium-text">
-                        {address.addressLine}, {address.city}, {address.state} -{" "}
-                        {address.pincode}
-                      </p>
-                      <p className="text-sm text-medium-text">
-                        Mobile: {address.mobile}
-                      </p>
-                      {address.alternatePhone && (
-                        <p className="text-sm text-medium-text">
-                          Alternate: {address.alternatePhone}
-                        </p>
-                      )}
-                      <p className="text-xs text-slate-400">
-                        Email: {address.email}
-                      </p>
-                    </div>
+            {loading ? (
+              <div className="rounded-3xl border border-slate-200 bg-white p-6 text-center text-medium-text shadow-sm">
+                Loading your saved addresses...
+              </div>
+            ) : (
+              <section className={formSectionClasses}>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="space-y-1">
+                    <h3 className="text-base font-semibold text-secondary">
+                      Saved Addresses
+                    </h3>
+                    <p className="text-xs text-medium-text">
+                      Tap an address to use it for this order.
+                    </p>
                   </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (showForm) {
+                        handleCancelForm();
+                      } else {
+                        setEditingAddressId(null);
+                        setFormState(buildInitialFormState());
+                        setShowForm(true);
+                        clearDraft();
+                      }
+                    }}
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-primary/30 bg-primary/5 px-4 py-2 text-sm font-semibold text-primary transition hover:border-primary/60 hover:bg-primary/10 sm:w-auto"
+                  >
+                    {toggleFormLabel}
+                  </button>
+                </div>
+
+                <div className="mt-4 space-y-4">
+                  {!addresses.length ? (
+                    <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-6 text-center text-sm text-medium-text">
+                      You have not added any delivery addresses yet.
+                    </div>
+                  ) : (
+                    addresses.map((address, index) => {
+                      const addressKey = address._id || address.id || index;
+                      const isSelected =
+                        selectedId === address._id || selectedId === address.id;
+
+                      return (
+                        <label
+                          key={addressKey}
+                          className={`${addressCardBaseClasses} ${
+                            isSelected
+                              ? "border-primary bg-primary/5 ring-2 ring-primary/30"
+                              : ""
+                          }`}
+                        >
+                          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                            <div className="flex items-start gap-3">
+                              <input
+                                type="radio"
+                                name="selectedAddress"
+                                checked={isSelected}
+                                onChange={() =>
+                                  setSelectedId(address._id || address.id)
+                                }
+                                className="mt-1 h-4 w-4 text-primary focus:ring-primary"
+                              />
+                              <div className="space-y-2">
+                                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+                                  <h3 className="text-base font-semibold text-secondary">
+                                    {address.fullName}
+                                  </h3>
+                                  {address.isDefault && (
+                                    <span className="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary">
+                                      Default
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-sm leading-6 text-medium-text">
+                                  {address.addressLine}, {address.city},{" "}
+                                  {address.state} - {address.pincode}
+                                </p>
+                                <div className="flex flex-wrap gap-3 text-xs text-medium-text">
+                                  <span className="font-semibold text-secondary">
+                                    Mobile:
+                                  </span>
+                                  <span>{address.mobile}</span>
+                                  {address.alternatePhone ? (
+                                    <span>
+                                      <span className="font-semibold text-secondary">
+                                        Alternate:
+                                      </span>{" "}
+                                      {address.alternatePhone}
+                                    </span>
+                                  ) : null}
+                                </div>
+                                <p className="text-xs text-slate-400">
+                                  Email: {address.email}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex gap-2 sm:pr-1">
+                              <button
+                                type="button"
+                                onClick={(event) => {
+                                  event.preventDefault();
+                                  event.stopPropagation();
+                                  handleEditAddress(address);
+                                }}
+                                className="inline-flex items-center rounded-full border border-primary/30 px-3 py-1.5 text-xs font-semibold text-primary transition hover:border-primary/60 hover:bg-primary/10"
+                              >
+                                Edit
+                              </button>
+                              <button
+                                type="button"
+                                onClick={(event) => {
+                                  event.preventDefault();
+                                  event.stopPropagation();
+                                  handleDeleteAddress(address);
+                                }}
+                                className="inline-flex items-center rounded-full border border-rose-200 px-3 py-1.5 text-xs font-semibold text-rose-500 transition hover:border-rose-300 hover:bg-rose-50"
+                              >
+                                Remove
+                              </button>
+                            </div>
+                          </div>
+                        </label>
+                      );
+                    })
+                  )}
+                </div>
+              </section>
+            )}
+
+            {showForm && (
+              <motion.form
+                onSubmit={handleSaveAddress}
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                className={`${formSectionClasses} shadow-lg`}
+              >
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <h3 className="text-lg font-semibold text-secondary">
+                    {editingAddressId ? "Update Address" : "Add New Address"}
+                  </h3>
+                  {editingAddressId ? (
+                    <span className="text-xs text-medium-text">
+                      Editing existing address
+                    </span>
+                  ) : null}
+                </div>
+
+                <div className={`mt-5 ${twoColumnGridClasses}`}>
+                  <label className={labelClasses}>
+                    Full Name
+                    <input
+                      type="text"
+                      name="fullName"
+                      value={formState.fullName}
+                      onChange={handleFormChange}
+                      required
+                      className={fieldClasses}
+                    />
+                  </label>
+                  <label className={labelClasses}>
+                    Mobile Number
+                    <input
+                      type="tel"
+                      name="mobile"
+                      value={formState.mobile}
+                      onChange={handleFormChange}
+                      required
+                      className={fieldClasses}
+                    />
+                  </label>
+                  <label className={labelClasses}>
+                    Email
+                    <input
+                      type="email"
+                      name="email"
+                      value={formState.email}
+                      onChange={handleFormChange}
+                      required
+                      className={fieldClasses}
+                    />
+                  </label>
+                  <label className={labelClasses}>
+                    Pincode
+                    <input
+                      type="text"
+                      name="pincode"
+                      value={formState.pincode}
+                      onChange={handleFormChange}
+                      required
+                      className={fieldClasses}
+                    />
+                  </label>
+                  <label className={labelClasses}>
+                    State
+                    <select
+                      name="state"
+                      value={formState.state}
+                      onChange={handleFormChange}
+                      required
+                      className={`${fieldClasses} appearance-none`}
+                    >
+                      <option value="">Select state</option>
+                      {STATE_OPTIONS.map((state) => (
+                        <option key={state} value={state}>
+                          {state}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className={labelClasses}>
+                    City
+                    <select
+                      name="city"
+                      value={formState.city}
+                      onChange={handleFormChange}
+                      required
+                      disabled={!formState.state && !cityOptions.length}
+                      className={`${fieldClasses} appearance-none`}
+                    >
+                      <option value="">
+                        {formState.state || cityOptions.length
+                          ? "Select city"
+                          : "Select state first"}
+                      </option>
+                      {cityOptions.map((city) => (
+                        <option key={city} value={city}>
+                          {city}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+
+                <label className={`${labelClasses} mt-4`}>
+                  Address Line
+                  <textarea
+                    name="addressLine"
+                    value={formState.addressLine}
+                    onChange={handleFormChange}
+                    required
+                    className={textareaClasses}
+                  />
                 </label>
-              );
-            })}
 
-            <button
-              type="button"
-              onClick={() => {
-                setShowForm((prev) => !prev);
-                setEditingAddressId(null);
-                setFormState(buildInitialFormState());
-                clearDraft();
-              }}
-              className="text-sm font-medium text-primary hover:text-primary-dark"
-            >
-              {showForm && !editingAddressId
-                ? "Cancel adding new address"
-                : showForm && editingAddressId
-                ? "Cancel editing"
-                : "+ Add New Address"}
-            </button>
+                {formState.isGeoVerified ? (
+                  <p className="mt-2 text-xs text-emerald-600">
+                    Address verified via map service.
+                  </p>
+                ) : null}
+
+                <p className="mt-2 text-xs text-medium-text">
+                  Enter the full delivery address as it should appear on the
+                  package. Our team will review it before shipping.
+                </p>
+
+                <div className={`mt-4 ${twoColumnGridClasses}`}>
+                  <label className={labelClasses}>
+                    Alternate Phone (optional)
+                    <input
+                      type="tel"
+                      name="alternatePhone"
+                      value={formState.alternatePhone}
+                      onChange={handleFormChange}
+                      className={fieldClasses}
+                    />
+                  </label>
+                  <label className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-secondary">
+                    <input
+                      type="checkbox"
+                      name="isDefault"
+                      checked={formState.isDefault}
+                      onChange={handleFormChange}
+                      className="h-4 w-4 text-primary focus:ring-primary"
+                    />
+                    Set as default delivery address
+                  </label>
+                </div>
+
+                <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                  <button
+                    type="button"
+                    onClick={handleResetForm}
+                    className={subtleButtonClasses}
+                  >
+                    Reset
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleCancelForm}
+                    className={subtleButtonClasses}
+                  >
+                    Cancel
+                  </button>
+                  <motion.button
+                    type="submit"
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    disabled={submitting}
+                    className={primaryButtonClasses}
+                  >
+                    {submitting
+                      ? editingAddressId
+                        ? "Updating..."
+                        : "Saving..."
+                      : editingAddressId
+                      ? "Save Changes"
+                      : "Save Address"}
+                    {submitting && (
+                      <Loader2 className="ml-2 h-4 w-4 animate-spin" />
+                    )}
+                  </motion.button>
+                </div>
+              </motion.form>
+            )}
+
+            <section className={formSectionClasses}>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="text-sm text-medium-text">
+                  {selectedAddress
+                    ? `Delivering to ${selectedAddress.fullName}`
+                    : "Select or add an address to proceed."}
+                </div>
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={handleContinue}
+                  className={primaryButtonClasses}
+                >
+                  Continue to Payment
+                </motion.button>
+              </div>
+            </section>
           </div>
-        )}
 
-        {showForm && (
-          <motion.form
-            onSubmit={handleSaveAddress}
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="border border-slate-200 rounded-2xl p-6 space-y-4 bg-white"
-          >
-            <h3 className="text-lg font-semibold text-secondary">
-              {editingAddressId ? "Update Address" : "Add New Address"}
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <label className="space-y-2 text-sm font-medium text-secondary/80">
-                Full Name
-                <input
-                  type="text"
-                  name="fullName"
-                  value={formState.fullName}
-                  onChange={handleFormChange}
-                  required
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
-                />
-              </label>
-              <label className="space-y-2 text-sm font-medium text-secondary/80">
-                Mobile Number
-                <input
-                  type="tel"
-                  name="mobile"
-                  value={formState.mobile}
-                  onChange={handleFormChange}
-                  required
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
-                />
-              </label>
-              <label className="space-y-2 text-sm font-medium text-secondary/80">
-                Email
-                <input
-                  type="email"
-                  name="email"
-                  value={formState.email}
-                  onChange={handleFormChange}
-                  required
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
-                />
-              </label>
-              <label className="space-y-2 text-sm font-medium text-secondary/80">
-                Pincode
-                <input
-                  type="text"
-                  name="pincode"
-                  value={formState.pincode}
-                  onChange={handleFormChange}
-                  required
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
-                />
-              </label>
-              <label className="space-y-2 text-sm font-medium text-secondary/80">
-                State
-                <select
-                  name="state"
-                  value={formState.state}
-                  onChange={handleFormChange}
-                  required
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
-                >
-                  <option value="">Select state</option>
-                  {STATE_OPTIONS.map((state) => (
-                    <option key={state} value={state}>
-                      {state}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="space-y-2 text-sm font-medium text-secondary/80">
-                City
-                <select
-                  name="city"
-                  value={formState.city}
-                  onChange={handleFormChange}
-                  required
-                  disabled={!formState.state && !cityOptions.length}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary disabled:cursor-not-allowed disabled:bg-slate-100"
-                >
-                  <option value="">
-                    {formState.state || cityOptions.length
-                      ? "Select city"
-                      : "Select state first"}
-                  </option>
-                  {cityOptions.map((city) => (
-                    <option key={city} value={city}>
-                      {city}
-                    </option>
-                  ))}
-                </select>
-              </label>
+          <aside className="space-y-4">
+            <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6 lg:sticky lg:top-8">
+              <h3 className="text-lg font-semibold text-secondary">
+                Why we need this?
+              </h3>
+              <ul className="mt-4 space-y-3 text-sm text-medium-text">
+                <li>• Ensure accurate delivery of your order.</li>
+                <li>• Provide updates on shipping and delivery status.</li>
+                <li>• Offer faster checkout for future purchases.</li>
+              </ul>
             </div>
-            <label className="space-y-2 text-sm font-medium text-secondary/80 block">
-              Address Line
-              <textarea
-                name="addressLine"
-                value={formState.addressLine}
-                onChange={handleFormChange}
-                required
-                rows={3}
-                className="w-full rounded-lg border border-slate-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
-              />
-            </label>
-            {formState.isGeoVerified ? (
-              <p className="text-xs text-emerald-600">
-                Address verified via map service.
-              </p>
-            ) : null}
-            <p className="text-xs text-medium-text">
-              Enter the full delivery address as it should appear on the
-              package. Our team will review it before shipping.
-            </p>
-            <label className="space-y-2 text-sm font-medium text-secondary/80 block">
-              Alternate Phone (optional)
-              <input
-                type="tel"
-                name="alternatePhone"
-                value={formState.alternatePhone}
-                onChange={handleFormChange}
-                className="w-full rounded-lg border border-slate-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
-              />
-            </label>
-            <label className="flex items-center gap-2 text-sm text-medium-text">
-              <input
-                type="checkbox"
-                name="isDefault"
-                checked={formState.isDefault}
-                onChange={handleFormChange}
-                className="h-4 w-4 text-primary focus:ring-primary"
-              />
-              Set as default delivery address
-            </label>
-            <div className="flex justify-end gap-3">
-              <button
-                type="button"
-                onClick={handleCancelForm}
-                className="px-4 py-2 rounded-lg border border-slate-200 text-secondary hover:bg-slate-50"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleResetForm}
-                className="px-4 py-2 rounded-lg border border-slate-200 text-secondary hover:bg-slate-50"
-              >
-                Reset
-              </button>
-              <motion.button
-                type="submit"
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                disabled={submitting}
-                className="px-4 py-2 rounded-lg bg-primary text-white font-medium shadow-md shadow-primary/20 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {submitting
-                  ? editingAddressId
-                    ? "Updating..."
-                    : "Saving..."
-                  : editingAddressId
-                  ? "Save Changes"
-                  : "Save Address"}
-                {submitting && (
-                  <Loader2 className="ml-2 inline h-4 w-4 animate-spin" />
-                )}
-              </motion.button>
-            </div>
-          </motion.form>
-        )}
-
-        <div className="flex justify-end">
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={handleContinue}
-            className="px-6 py-3 rounded-xl bg-primary text-white font-semibold shadow-md shadow-primary/20 hover:bg-primary-dark transition"
-          >
-            Continue to Payment
-          </motion.button>
+          </aside>
         </div>
       </div>
-
-      <aside className="bg-white border-l border-slate-100 p-6 lg:p-8">
-        <h3 className="text-lg font-semibold text-secondary">
-          Why we need this?
-        </h3>
-        <ul className="mt-4 space-y-3 text-sm text-medium-text">
-          <li>• Ensure accurate delivery of your order.</li>
-          <li>• Provide updates on shipping and delivery status.</li>
-          <li>• Offer faster checkout for future purchases.</li>
-        </ul>
-      </aside>
     </div>
   );
 };
-
 export default CheckoutAddress;

@@ -43,6 +43,15 @@ html {
   background: #9aa7ff;
 }
 
+.scrollbar-hidden {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.scrollbar-hidden::-webkit-scrollbar {
+  display: none;
+}
+
 body {
   font-family: "Manrope", sans-serif;
   @apply bg-white text-dark-text;

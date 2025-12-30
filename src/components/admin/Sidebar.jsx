@@ -52,52 +52,54 @@ const Sidebar = ({ active, className, onNavigate }) => {
 
   return (
     <aside className={`${baseClasses} ${className}`}>
-      <div className="flex flex-col w-full h-full px-6 py-8 space-y-12">
-        <div className="flex items-center gap-2 text-xl font-semibold text-slate-900">
-          <div className="h-10 w-10 rounded-xl bg-blue-100 text-blue-600 grid place-items-center font-bold">
-            P
+      <div className="flex h-full w-full flex-col">
+        <div className="flex-1 overflow-y-auto scrollbar-hidden px-6 py-8 space-y-12">
+          <div className="flex items-center gap-2 text-xl font-semibold text-slate-900">
+            <div className="grid h-10 w-10 place-items-center rounded-xl bg-blue-100 text-blue-600 font-bold">
+              P
+            </div>
+            <span>p2pdeal Admin</span>
           </div>
-          <span>p2pdeal Admin</span>
-        </div>
 
-        <nav className="flex-1 space-y-2">
-          {navItems.map(({ label, icon: Icon, to }) => {
-            const isActive = label === currentItem;
-            return (
+          <nav className="flex-1 space-y-2">
+            {navItems.map(({ label, icon: Icon, to }) => {
+              const isActive = label === currentItem;
+              return (
+                <MotionLink
+                  key={label}
+                  whileHover={{ x: 6 }}
+                  to={to}
+                  onClick={() => {
+                    setCurrentItem(label);
+                    onNavigate?.();
+                  }}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-150 cursor-pointer ${
+                    isActive
+                      ? "bg-blue-100 text-blue-700 shadow-sm"
+                      : "text-slate-500 hover:text-blue-600 hover:bg-blue-50"
+                  }`}
+                >
+                  <Icon size={20} />
+                  {label}
+                </MotionLink>
+              );
+            })}
+            <div className="pt-4 mt-6 border-t border-slate-100">
               <MotionLink
-                key={label}
+                to="/"
                 whileHover={{ x: 6 }}
-                to={to}
-                onClick={() => {
-                  setCurrentItem(label);
-                  onNavigate?.();
-                }}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-150 cursor-pointer ${
-                  isActive
-                    ? "bg-blue-100 text-blue-700 shadow-sm"
-                    : "text-slate-500 hover:text-blue-600 hover:bg-blue-50"
-                }`}
+                onClick={() => onNavigate?.()}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-500 transition-colors hover:text-blue-600 hover:bg-blue-50"
               >
-                <Icon size={20} />
-                {label}
+                <Home size={20} />
+                User Dashboard
               </MotionLink>
-            );
-          })}
-          <div className="pt-4 mt-6 border-t border-slate-100">
-            <MotionLink
-              to="/"
-              whileHover={{ x: 6 }}
-              onClick={() => onNavigate?.()}
-              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-500 transition-colors hover:text-blue-600 hover:bg-blue-50"
-            >
-              <Home size={20} />
-              User Dashboard
-            </MotionLink>
-          </div>
-        </nav>
+            </div>
+          </nav>
 
-        <div className="hidden lg:block text-xs text-slate-400">
-          © {new Date().getFullYear()} p2pdeal. All rights reserved.
+          <div className="hidden lg:block text-xs text-slate-400">
+            © {new Date().getFullYear()} p2pdeal. All rights reserved.
+          </div>
         </div>
       </div>
     </aside>

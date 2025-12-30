@@ -279,16 +279,24 @@ const AdminDashboard = () => {
   }, [orderFilters]);
 
   useEffect(() => {
-    if (isSidebarOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
+    const html = document.documentElement;
+    const previousBodyOverflow = document.body.style.overflow;
+    const previousHtmlOverflow = html.style.overflow;
+    const previousBodyHeight = document.body.style.height;
+    const previousHtmlHeight = html.style.height;
+
+    document.body.style.overflow = "hidden";
+    document.body.style.height = "100vh";
+    html.style.overflow = "hidden";
+    html.style.height = "100vh";
 
     return () => {
-      document.body.style.overflow = "";
+      document.body.style.overflow = previousBodyOverflow;
+      document.body.style.height = previousBodyHeight;
+      html.style.overflow = previousHtmlOverflow;
+      html.style.height = previousHtmlHeight;
     };
-  }, [isSidebarOpen]);
+  }, []);
 
   const handleOrderDeleted = useCallback((orderId) => {
     setOrders((prev) => {
@@ -316,8 +324,8 @@ const AdminDashboard = () => {
   }, []);
 
   return (
-    <div className="min-h-screen md:h-screen bg-slate-50 text-slate-900 overflow-x-hidden">
-      <div className="flex md:h-screen">
+    <div className="h-screen bg-slate-50 text-slate-900 overflow-hidden">
+      <div className="flex h-full">
         <Sidebar
           active="Dashboard"
           className="hidden md:flex md:w-64 md:flex-none"
@@ -355,7 +363,7 @@ const AdminDashboard = () => {
           )}
         </AnimatePresence>
 
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex flex-1 flex-col h-full overflow-hidden">
           <Navbar
             onToggleSidebar={() => setIsSidebarOpen((prev) => !prev)}
             activeRange={activeRange}
@@ -366,7 +374,7 @@ const AdminDashboard = () => {
             onLogout={logout}
           />
 
-          <main className="flex-1 overflow-y-auto px-4 py-6 md:px-8 space-y-6">
+          <main className="flex-1 h-full overflow-y-auto overflow-x-hidden scrollbar-hidden px-4 py-6 md:px-8 space-y-6">
             <DashboardHeader metrics={metrics} isLoading={overviewLoading} />
 
             {overviewError && (

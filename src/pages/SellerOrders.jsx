@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { toast } from "react-hot-toast";
@@ -135,6 +136,13 @@ const SellerOrders = () => {
   const [viewingOrderLoading, setViewingOrderLoading] = useState(false);
   const [viewingOrderError, setViewingOrderError] = useState("");
   const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
+  const [portalTarget, setPortalTarget] = useState(null);
+
+  const isViewingOverlayOpen = Boolean(
+    viewingOrderLoading || viewingOrderError || viewingOrder
+  );
+  const isEditingOverlayOpen = Boolean(editingOrder);
+  const isAnyModalOpen = isViewingOverlayOpen || isEditingOverlayOpen;
 
   useEffect(() => {
     let isMounted = true;
@@ -193,6 +201,40 @@ const SellerOrders = () => {
     pageSize,
     refreshToken,
   ]);
+
+  useEffect(() => {
+    if (typeof document === "undefined") {
+      return;
+    }
+
+    setPortalTarget(document.body);
+  }, []);
+
+  useEffect(() => {
+    if (!isAnyModalOpen) {
+      return;
+    }
+
+    if (typeof document === "undefined" || typeof window === "undefined") {
+      return;
+    }
+
+    const { body, documentElement } = document;
+    const previousOverflow = body.style.overflow;
+    const previousPaddingRight = body.style.paddingRight;
+    const scrollBarWidth = window.innerWidth - documentElement.clientWidth;
+
+    if (scrollBarWidth > 0) {
+      body.style.paddingRight = `${scrollBarWidth}px`;
+    }
+
+    body.style.overflow = "hidden";
+
+    return () => {
+      body.style.overflow = previousOverflow;
+      body.style.paddingRight = previousPaddingRight;
+    };
+  }, [isAnyModalOpen]);
 
   const summaryCards = useMemo(() => {
     const counts = meta.statusCounts || {};
@@ -1561,340 +1603,359 @@ const SellerOrders = () => {
         </div>
       </footer>
 
-      <AnimatePresence>
-        {(viewingOrder || viewingOrderLoading || viewingOrderError) && (
-          <motion.div
-            className="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/40 px-4"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={handleCloseView}
-          >
-            <motion.div
-              initial={{ y: 24, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ y: 24, opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="w-full max-w-2xl rounded-2xl bg-white p-5 shadow-xl"
-              onClick={(event) => event.stopPropagation()}
-            >
-              <div className="mb-4 flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-xs uppercase tracking-[0.22em] text-slate-400">
-                    Order details
-                  </p>
-                  {viewingOrder && (
-                    <h2 className="mt-1 text-lg font-semibold text-slate-900">
-                      #{viewingOrder._id}
-                    </h2>
-                  )}
-                </div>
-                <button
-                  type="button"
+      {portalTarget &&
+        createPortal(
+          <>
+            <AnimatePresence>
+              {(viewingOrder || viewingOrderLoading || viewingOrderError) && (
+                <motion.div
+                  className="fixed inset-0 z-[1200] flex h-screen w-screen items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
                   onClick={handleCloseView}
-                  className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 text-slate-500 hover:border-slate-300 hover:text-slate-800"
-                  aria-label="Close order details"
                 >
-                  ×
-                </button>
-              </div>
-
-              {viewingOrderLoading && (
-                <div className="flex items-center justify-center gap-2 py-10 text-sm text-slate-500">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  <span>Loading order details...</span>
-                </div>
-              )}
-
-              {!viewingOrderLoading && viewingOrderError && !viewingOrder && (
-                <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-600">
-                  {viewingOrderError}
-                </div>
-              )}
-
-              {!viewingOrderLoading && viewingOrder && (
-                <div className="space-y-4 text-sm text-slate-700">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                      <p className="text-xs text-slate-500">
-                        Placed on {formatDate(viewingOrder.createdAt)}
-                      </p>
-                      <p className="text-xs text-slate-500">
-                        Payment status: {viewingOrder.payment?.status || "--"}
-                      </p>
-                    </div>
-                    <div className="text-right text-sm text-slate-600">
-                      <p>
-                        Buyer: {viewingOrder.shippingAddress?.fullName || "--"}
-                      </p>
-                      {viewingOrder.shippingAddress?.mobile && (
-                        <p className="flex items-center justify-end gap-1 text-xs text-slate-500">
-                          <Phone size={12} className="text-slate-400" />
-                          {viewingOrder.shippingAddress.mobile}
+                  <motion.div
+                    initial={{ y: 24, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    exit={{ y: 24, opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="w-full max-w-2xl rounded-2xl bg-white p-5 shadow-xl"
+                    onClick={(event) => event.stopPropagation()}
+                  >
+                    <div className="mb-4 flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-xs uppercase tracking-[0.22em] text-slate-400">
+                          Order details
                         </p>
-                      )}
-                      {viewingOrder.shippingAddress?.email && (
-                        <p className="flex items-center justify-end gap-1 text-xs text-slate-500">
-                          <Mail size={12} className="text-slate-400" />
-                          {viewingOrder.shippingAddress.email}
-                        </p>
-                      )}
+                        {viewingOrder && (
+                          <h2 className="mt-1 text-lg font-semibold text-slate-900">
+                            #{viewingOrder._id}
+                          </h2>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleCloseView}
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 text-slate-500 hover:border-slate-300 hover:text-slate-800"
+                        aria-label="Close order details"
+                      >
+                        ×
+                      </button>
                     </div>
-                  </div>
 
-                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
-                      Items
-                    </p>
-                    <div className="mt-3 space-y-3">
-                      {Array.isArray(viewingOrder.items) &&
-                      viewingOrder.items.length > 0 ? (
-                        viewingOrder.items.map((item, index) => (
-                          <div
-                            key={`${item.product || item.name}-${index}`}
-                            className="flex flex-wrap items-center justify-between gap-3 text-sm"
-                          >
-                            <div className="flex items-center gap-3">
-                              <div className="h-10 w-10 overflow-hidden rounded-xl bg-slate-100">
-                                {item.image ? (
-                                  <img
-                                    src={item.image}
-                                    alt={item.name || "Product"}
-                                    className="h-full w-full object-cover"
-                                  />
-                                ) : (
-                                  <div className="flex h-full w-full items-center justify-center text-[10px] text-slate-400">
-                                    <Package size={14} />
+                    {viewingOrderLoading && (
+                      <div className="flex items-center justify-center gap-2 py-10 text-sm text-slate-500">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <span>Loading order details...</span>
+                      </div>
+                    )}
+
+                    {!viewingOrderLoading &&
+                      viewingOrderError &&
+                      !viewingOrder && (
+                        <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-600">
+                          {viewingOrderError}
+                        </div>
+                      )}
+
+                    {!viewingOrderLoading && viewingOrder && (
+                      <div className="space-y-4 text-sm text-slate-700">
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                          <div>
+                            <p className="text-xs text-slate-500">
+                              Placed on {formatDate(viewingOrder.createdAt)}
+                            </p>
+                            <p className="text-xs text-slate-500">
+                              Payment status:{" "}
+                              {viewingOrder.payment?.status || "--"}
+                            </p>
+                          </div>
+                          <div className="text-right text-sm text-slate-600">
+                            <p>
+                              Buyer:{" "}
+                              {viewingOrder.shippingAddress?.fullName || "--"}
+                            </p>
+                            {viewingOrder.shippingAddress?.mobile && (
+                              <p className="flex items-center justify-end gap-1 text-xs text-slate-500">
+                                <Phone size={12} className="text-slate-400" />
+                                {viewingOrder.shippingAddress.mobile}
+                              </p>
+                            )}
+                            {viewingOrder.shippingAddress?.email && (
+                              <p className="flex items-center justify-end gap-1 text-xs text-slate-500">
+                                <Mail size={12} className="text-slate-400" />
+                                {viewingOrder.shippingAddress.email}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+                            Items
+                          </p>
+                          <div className="mt-3 space-y-3">
+                            {Array.isArray(viewingOrder.items) &&
+                            viewingOrder.items.length > 0 ? (
+                              viewingOrder.items.map((item, index) => (
+                                <div
+                                  key={`${item.product || item.name}-${index}`}
+                                  className="flex flex-wrap items-center justify-between gap-3 text-sm"
+                                >
+                                  <div className="flex items-center gap-3">
+                                    <div className="h-10 w-10 overflow-hidden rounded-xl bg-slate-100">
+                                      {item.image ? (
+                                        <img
+                                          src={item.image}
+                                          alt={item.name || "Product"}
+                                          className="h-full w-full object-cover"
+                                        />
+                                      ) : (
+                                        <div className="flex h-full w-full items-center justify-center text-[10px] text-slate-400">
+                                          <Package size={14} />
+                                        </div>
+                                      )}
+                                    </div>
+                                    <div>
+                                      <p className="font-medium text-slate-900">
+                                        {item.name || "Product"}
+                                      </p>
+                                      <p className="text-xs text-slate-500">
+                                        Qty: {item.quantity || 0}
+                                      </p>
+                                    </div>
                                   </div>
-                                )}
-                              </div>
-                              <div>
-                                <p className="font-medium text-slate-900">
-                                  {item.name || "Product"}
-                                </p>
-                                <p className="text-xs text-slate-500">
-                                  Qty: {item.quantity || 0}
-                                </p>
-                              </div>
+                                  <div className="text-right text-sm text-slate-700">
+                                    <p>{formatCurrency(item.price || 0)}</p>
+                                    <p className="text-xs text-slate-500">
+                                      Total:{" "}
+                                      {formatCurrency(
+                                        (item.price || 0) * (item.quantity || 0)
+                                      )}
+                                    </p>
+                                  </div>
+                                </div>
+                              ))
+                            ) : (
+                              <p className="py-4 text-sm text-slate-500">
+                                No items recorded for this order.
+                              </p>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="grid gap-3 md:grid-cols-2">
+                          <div className="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-700">
+                            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+                              Shipping address
+                            </p>
+                            <div className="mt-2 space-y-1">
+                              <p>{viewingOrder.shippingAddress?.addressLine}</p>
+                              <p>
+                                {viewingOrder.shippingAddress?.city},{" "}
+                                {viewingOrder.shippingAddress?.state} -{" "}
+                                {viewingOrder.shippingAddress?.pincode}
+                              </p>
                             </div>
-                            <div className="text-right text-sm text-slate-700">
-                              <p>{formatCurrency(item.price || 0)}</p>
-                              <p className="text-xs text-slate-500">
+                          </div>
+                          <div className="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-700">
+                            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+                              Payment summary
+                            </p>
+                            <div className="mt-2 space-y-1">
+                              <p>
+                                Subtotal:{" "}
+                                {formatCurrency(
+                                  viewingOrder.pricing?.subtotal || 0
+                                )}
+                              </p>
+                              <p>
+                                Shipping:{" "}
+                                {formatCurrency(
+                                  viewingOrder.pricing?.shippingFee || 0
+                                )}
+                              </p>
+                              <p>
+                                Tax:{" "}
+                                {formatCurrency(
+                                  viewingOrder.pricing?.taxAmount || 0
+                                )}
+                              </p>
+                              <p className="font-semibold text-slate-900">
                                 Total:{" "}
                                 {formatCurrency(
-                                  (item.price || 0) * (item.quantity || 0)
+                                  viewingOrder.pricing?.total || 0
                                 )}
                               </p>
                             </div>
                           </div>
-                        ))
-                      ) : (
-                        <p className="py-4 text-sm text-slate-500">
-                          No items recorded for this order.
-                        </p>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="grid gap-3 md:grid-cols-2">
-                    <div className="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-700">
-                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
-                        Shipping address
-                      </p>
-                      <div className="mt-2 space-y-1">
-                        <p>{viewingOrder.shippingAddress?.addressLine}</p>
-                        <p>
-                          {viewingOrder.shippingAddress?.city},{" "}
-                          {viewingOrder.shippingAddress?.state} -{" "}
-                          {viewingOrder.shippingAddress?.pincode}
-                        </p>
+                        </div>
                       </div>
-                    </div>
-                    <div className="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-700">
-                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
-                        Payment summary
-                      </p>
-                      <div className="mt-2 space-y-1">
-                        <p>
-                          Subtotal:{" "}
-                          {formatCurrency(viewingOrder.pricing?.subtotal || 0)}
-                        </p>
-                        <p>
-                          Shipping:{" "}
-                          {formatCurrency(
-                            viewingOrder.pricing?.shippingFee || 0
-                          )}
-                        </p>
-                        <p>
-                          Tax:{" "}
-                          {formatCurrency(viewingOrder.pricing?.taxAmount || 0)}
-                        </p>
-                        <p className="font-semibold text-slate-900">
-                          Total:{" "}
-                          {formatCurrency(viewingOrder.pricing?.total || 0)}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                    )}
+                  </motion.div>
+                </motion.div>
               )}
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            </AnimatePresence>
 
-      <AnimatePresence>
-        {editingOrder && (
-          <motion.div
-            className="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/40 px-4"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={handleCloseEdit}
-          >
-            <motion.div
-              initial={{ y: 24, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ y: 24, opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl"
-              onClick={(event) => event.stopPropagation()}
-            >
-              <div className="mb-4 flex items-start justify-between">
-                <div>
-                  <h2 className="text-xl font-semibold text-slate-900">
-                    Edit Order
-                  </h2>
-                  <p className="text-xs text-slate-500">
-                    Order #{editingOrder._id}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  className="rounded-full p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+            <AnimatePresence>
+              {editingOrder && (
+                <motion.div
+                  className="fixed inset-0 z-[1200] flex h-screen w-screen items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
                   onClick={handleCloseEdit}
-                  aria-label="Close edit order"
-                  disabled={isSavingEdit}
                 >
-                  <X size={18} />
-                </button>
-              </div>
-
-              <div className="space-y-4">
-                <label className="block text-sm font-medium text-slate-700">
-                  Order Status
-                  <select
-                    value={editForm.status}
-                    onChange={handleStatusFieldChange}
-                    className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  <motion.div
+                    initial={{ y: 24, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    exit={{ y: 24, opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl"
+                    onClick={(event) => event.stopPropagation()}
                   >
-                    <option value="confirmed">Order Confirmed</option>
-                    <option value="processing">Processing</option>
-                    <option value="picked_up">Picked Up</option>
-                    <option value="shipped">Shipped</option>
-                    <option value="out_for_delivery">Out for Delivery</option>
-                    <option value="delivered">Delivered</option>
-                    <option value="returned">Returned</option>
-                  </select>
-                </label>
+                    <div className="mb-4 flex items-start justify-between">
+                      <div>
+                        <h2 className="text-xl font-semibold text-slate-900">
+                          Edit Order
+                        </h2>
+                        <p className="text-xs text-slate-500">
+                          Order #{editingOrder._id}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        className="rounded-full p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                        onClick={handleCloseEdit}
+                        aria-label="Close edit order"
+                        disabled={isSavingEdit}
+                      >
+                        <X size={18} />
+                      </button>
+                    </div>
 
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <label className="block text-sm font-medium text-slate-700">
-                    Payment Status
-                    <select
-                      value={editForm.paymentStatus}
-                      disabled={isPaymentStatusLocked}
-                      onChange={(event) =>
-                        handleEditFieldChange(
-                          "paymentStatus",
-                          event.target.value
-                        )
-                      }
-                      className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    >
-                      <option value="">Keep unchanged</option>
-                      <option value="pending">Pending</option>
-                      <option value="paid">Successful</option>
-                      <option value="failed">Failed</option>
-                    </select>
-                    {isPaymentStatusLocked ? (
-                      <p className="mt-1 text-xs text-slate-500">
-                        Payment is already marked successful and cannot be
-                        changed.
-                      </p>
-                    ) : null}
-                  </label>
-                  <label className="block text-sm font-medium text-slate-700">
-                    Payment Method
-                    <select
-                      value={editForm.paymentMethod}
-                      onChange={(event) =>
-                        handleEditFieldChange(
-                          "paymentMethod",
-                          event.target.value
-                        )
-                      }
-                      className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    >
-                      <option value="">Keep unchanged</option>
-                      <option value="cod">Cash on Delivery</option>
-                      <option value="upi">UPI</option>
-                      <option value="qr">QR Code</option>
-                      <option value="card">Card</option>
-                      <option value="netbanking">Net Banking</option>
-                    </select>
-                  </label>
-                </div>
+                    <div className="space-y-4">
+                      <label className="block text-sm font-medium text-slate-700">
+                        Order Status
+                        <select
+                          value={editForm.status}
+                          onChange={handleStatusFieldChange}
+                          className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        >
+                          <option value="confirmed">Order Confirmed</option>
+                          <option value="processing">Processing</option>
+                          <option value="picked_up">Picked Up</option>
+                          <option value="shipped">Shipped</option>
+                          <option value="out_for_delivery">
+                            Out for Delivery
+                          </option>
+                          <option value="delivered">Delivered</option>
+                          <option value="returned">Returned</option>
+                        </select>
+                      </label>
 
-                <label className="block text-sm font-medium text-slate-700">
-                  Estimated Delivery Date
-                  <input
-                    type="date"
-                    value={editForm.estimatedDeliveryDate}
-                    disabled={isDeliveryDateLocked}
-                    onChange={handleEstimatedDeliveryChange}
-                    className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  />
-                  {isDeliveryDateLocked ? (
-                    <p className="mt-1 text-xs text-slate-500">
-                      Delivery date is locked because the order has already been{" "}
-                      {editingOrder?.status === "returned"
-                        ? "been resolved"
-                        : "been delivered"}
-                      .
-                    </p>
-                  ) : null}
-                </label>
-              </div>
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        <label className="block text-sm font-medium text-slate-700">
+                          Payment Status
+                          <select
+                            value={editForm.paymentStatus}
+                            disabled={isPaymentStatusLocked}
+                            onChange={(event) =>
+                              handleEditFieldChange(
+                                "paymentStatus",
+                                event.target.value
+                              )
+                            }
+                            className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                          >
+                            <option value="">Keep unchanged</option>
+                            <option value="pending">Pending</option>
+                            <option value="paid">Successful</option>
+                            <option value="failed">Failed</option>
+                          </select>
+                          {isPaymentStatusLocked ? (
+                            <p className="mt-1 text-xs text-slate-500">
+                              Payment is already marked successful and cannot be
+                              changed.
+                            </p>
+                          ) : null}
+                        </label>
+                        <label className="block text-sm font-medium text-slate-700">
+                          Payment Method
+                          <select
+                            value={editForm.paymentMethod}
+                            onChange={(event) =>
+                              handleEditFieldChange(
+                                "paymentMethod",
+                                event.target.value
+                              )
+                            }
+                            className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                          >
+                            <option value="">Keep unchanged</option>
+                            <option value="cod">Cash on Delivery</option>
+                            <option value="upi">UPI</option>
+                            <option value="qr">QR Code</option>
+                            <option value="card">Card</option>
+                            <option value="netbanking">Net Banking</option>
+                          </select>
+                        </label>
+                      </div>
 
-              <div className="mt-6 flex flex-wrap items-center justify-end gap-3">
-                {requiresPaymentSuccess && !isPaymentSuccessful ? (
-                  <p className="mr-auto text-xs text-rose-500">
-                    Mark payment as successful before setting the order to
-                    Delivered.
-                  </p>
-                ) : null}
-                <button
-                  type="button"
-                  className="rounded-xl border border-slate-200 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50"
-                  onClick={handleCloseEdit}
-                  disabled={isSavingEdit}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  className="rounded-xl bg-blue-600 px-5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
-                  onClick={handleSaveEdit}
-                  disabled={isSavingEdit || !canSaveEdit}
-                >
-                  {isSavingEdit ? "Saving..." : "Save Changes"}
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
+                      <label className="block text-sm font-medium text-slate-700">
+                        Estimated Delivery Date
+                        <input
+                          type="date"
+                          value={editForm.estimatedDeliveryDate}
+                          disabled={isDeliveryDateLocked}
+                          onChange={handleEstimatedDeliveryChange}
+                          className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        />
+                        {isDeliveryDateLocked ? (
+                          <p className="mt-1 text-xs text-slate-500">
+                            Delivery date is locked because the order has
+                            already been{" "}
+                            {editingOrder?.status === "returned"
+                              ? "been resolved"
+                              : "been delivered"}
+                            .
+                          </p>
+                        ) : null}
+                      </label>
+                    </div>
+
+                    <div className="mt-6 flex flex-wrap items-center justify-end gap-3">
+                      {requiresPaymentSuccess && !isPaymentSuccessful ? (
+                        <p className="mr-auto text-xs text-rose-500">
+                          Mark payment as successful before setting the order to
+                          Delivered.
+                        </p>
+                      ) : null}
+                      <button
+                        type="button"
+                        className="rounded-xl border border-slate-200 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50"
+                        onClick={handleCloseEdit}
+                        disabled={isSavingEdit}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        className="rounded-xl bg-blue-600 px-5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+                        onClick={handleSaveEdit}
+                        disabled={isSavingEdit || !canSaveEdit}
+                      >
+                        {isSavingEdit ? "Saving..." : "Save Changes"}
+                      </button>
+                    </div>
+                  </motion.div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </>,
+          portalTarget
         )}
-      </AnimatePresence>
     </motion.div>
   );
 };

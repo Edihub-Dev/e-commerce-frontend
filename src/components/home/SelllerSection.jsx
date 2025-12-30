@@ -123,6 +123,7 @@ const SellerSection = () => {
           {
             onlySellerProducts: true,
             status: "published",
+            isFeatured: true,
             sortBy: "createdAt",
             sortOrder: "desc",
             limit: 8,
@@ -133,9 +134,12 @@ const SellerSection = () => {
         if (!isMounted) return;
 
         const list = Array.isArray(payload?.data) ? payload.data : [];
-        const sorted = sortSellerListings(list);
+        const featured = list.filter((item) => Boolean(item?.isFeatured));
+        const sorted = sortSellerListings(featured);
         setSellerProducts(sorted.slice(0, 8));
-        setSellerError("");
+        setSellerError(
+          featured.length ? "" : "No featured seller products yet."
+        );
       } catch (err) {
         console.error("Failed to load seller spotlight", err);
         if (isMounted) {

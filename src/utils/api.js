@@ -279,6 +279,7 @@ const mapProductCard = (product = {}) => {
     productId: mongoId,
     sellerProductId: sellerId,
     isSellerProduct,
+    isFeatured: Boolean(product.isFeatured),
     sku: product.sku || "",
     name: product.name || "Unnamed Product",
     description: product.shortDescription || "",

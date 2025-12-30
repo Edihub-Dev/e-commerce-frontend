@@ -127,14 +127,37 @@ const toDateInputValue = (value) => {
   return adjusted.toISOString().slice(0, 10);
 };
 
+const formatShippingAddress = (address = {}) => {
+  if (!address || typeof address !== "object") {
+    return "";
+  }
+
+  const contactLine = [address.fullName, address.mobile]
+    .filter(Boolean)
+    .join(" • ");
+
+  const emailLine = address.email ? `Email: ${address.email}` : "";
+  const streetLine = [address.addressLine, address.landmark]
+    .filter(Boolean)
+    .join(", ");
+  const cityLine = [address.city, address.district].filter(Boolean).join(", ");
+  const stateLine = [address.state, address.pincode]
+    .filter(Boolean)
+    .join(" - ");
+
+  return [contactLine, emailLine, streetLine, cityLine, stateLine]
+    .filter(Boolean)
+    .join("\n");
+};
+
 const transformOrdersForExport = (orders = []) =>
   orders.map((order) => {
     const firstItem = order.items?.[0];
+    const shippingAddress = order.shippingAddress || {};
     return {
       "Order ID": order._id,
-      Customer:
-        order.customerName || order.shippingAddress?.fullName || "Customer",
-      Email: order.customerEmail || order.shippingAddress?.email || "",
+      Customer: order.customerName || shippingAddress.fullName || "Customer",
+      Email: order.customerEmail || shippingAddress.email || "",
       Status:
         STATUS_LABELS[String(order.status || "").toLowerCase()]?.label || "--",
       "Primary Product": firstItem?.name || "--",
@@ -143,6 +166,7 @@ const transformOrdersForExport = (orders = []) =>
       Created: order.createdAt
         ? new Date(order.createdAt).toLocaleString()
         : "--",
+      "Shipping Address": formatShippingAddress(shippingAddress),
     };
   });
 

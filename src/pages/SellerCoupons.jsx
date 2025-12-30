@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   Search,
@@ -1348,12 +1349,16 @@ const SellerCoupons = () => {
     );
   };
 
+  const portalTarget =
+    typeof document !== "undefined" ? document.body : undefined;
+
   return (
     <motion.div
-      initial={{ opacity: 0, y: 16 }}
+      initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4 }}
-      className="space-y-8"
+      exit={{ opacity: 0, y: 20 }}
+      transition={{ type: "spring", stiffness: 120, damping: 18 }}
+      className="flex min-h-screen w-full flex-col gap-6 bg-slate-50 px-4 py-6 text-slate-900 sm:px-6 lg:px-8"
     >
       <input
         ref={fileInputRef}
@@ -1910,7 +1915,7 @@ const SellerCoupons = () => {
                       colSpan={8}
                       className="px-4 py-6 text-center text-slate-500 sm:px-5"
                     >
-                      <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 px-4 py-2 text-sm">
+                      <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 px-4 py-2 text-sm text-slate-500">
                         <Loader2
                           size={16}
                           className="animate-spin text-blue-500"
@@ -2266,288 +2271,241 @@ const SellerCoupons = () => {
         </footer>
       </section>
 
-      <AnimatePresence>
-        {isImportModalOpen && (
-          <motion.div
-            key="import-modal"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/50 px-4 py-8"
-          >
-            <motion.form
-              onSubmit={handleImportSubmit}
-              initial={{ scale: 0.95, opacity: 0, y: 16 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.95, opacity: 0, y: 16 }}
-              transition={{ type: "spring", stiffness: 240, damping: 28 }}
-              className="relative flex w-full max-w-4xl max-h-[calc(100vh-3rem)] flex-col gap-5 overflow-hidden rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl"
-            >
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <h2 className="text-xl font-semibold text-slate-900">
-                    Import coupons from spreadsheet
-                  </h2>
-                  <p className="mt-1 text-sm text-slate-500">
-                    Upload an XLSX file with coupon details. You can download
-                    the template for the exact column structure.
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={handleDownloadImportTemplate}
-                    className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 transition hover:border-slate-300 hover:text-slate-700"
-                  >
-                    <Download size={14} /> Template
-                  </button>
-                  <button
-                    type="button"
-                    onClick={closeImportModal}
-                    className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-500 transition hover:border-slate-300 hover:text-slate-700"
-                    aria-label="Close import modal"
-                  >
-                    <X size={18} />
-                  </button>
-                </div>
-              </div>
-
-              <div className="flex flex-col gap-4 overflow-y-auto">
-                <div className="grid gap-4 rounded-2xl border border-slate-200 bg-slate-50/60 p-4 text-sm text-slate-600 md:grid-cols-[2fr,1fr]">
-                  <div className="space-y-4">
-                    <div className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                      <span className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-[11px] font-semibold text-slate-600">
-                        <Upload size={14} className="text-blue-500" />
-                        {importFileMeta.name
-                          ? importFileMeta.name
-                          : "No file selected"}
-                      </span>
-                      {importFileMeta.size > 0 && (
-                        <span className="inline-flex items-center rounded-full bg-white px-3 py-1 text-[11px] font-semibold text-slate-500">
-                          {formatFileSize(importFileMeta.size)}
-                        </span>
-                      )}
-                      {importSheetName && (
-                        <span className="inline-flex items-center rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-500">
-                          Sheet: {importSheetName}
-                        </span>
-                      )}
-                      {importFileMeta.totalRows > 0 && (
-                        <span className="inline-flex items-center rounded-full bg-white px-3 py-1 text-[11px] font-semibold text-slate-500">
-                          Rows: {importFileMeta.processedRows}/
-                          {importFileMeta.totalRows}
-                        </span>
-                      )}
+      {portalTarget &&
+        createPortal(
+          <AnimatePresence>
+            {isImportModalOpen && (
+              <motion.div
+                key="import-modal"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 z-[999] flex items-center justify-center bg-slate-900/60 px-4 py-8"
+              >
+                <motion.form
+                  onSubmit={handleImportSubmit}
+                  initial={{ scale: 0.95, opacity: 0, y: 16 }}
+                  animate={{ scale: 1, opacity: 1, y: 0 }}
+                  exit={{ scale: 0.95, opacity: 0, y: 16 }}
+                  transition={{ type: "spring", stiffness: 240, damping: 28 }}
+                  className="relative flex w-full max-w-5xl max-h-[calc(100vh-3rem)] flex-col gap-5 overflow-hidden rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl"
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <h2 className="text-xl font-semibold text-slate-900">
+                        Import coupons from spreadsheet
+                      </h2>
+                      <p className="mt-1 text-sm text-slate-500">
+                        Upload an XLSX file with coupon details. You can
+                        download the template for the exact column structure.
+                      </p>
                     </div>
-
-                    {importParseError && (
-                      <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-600">
-                        {importParseError}
-                      </div>
-                    )}
-
-                    {!!importWarnings.length && (
-                      <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-700">
-                        <p className="font-semibold uppercase tracking-wide">
-                          Warnings
-                        </p>
-                        <ul className="mt-2 space-y-1">
-                          {importWarnings.map((warning, index) => (
-                            <li key={index}>● {warning}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-
-                    {importErrorsList.length > 0 && (
-                      <div className="rounded-2xl border border-rose-200 bg-white px-4 py-3 text-xs text-rose-600">
-                        <p className="font-semibold uppercase tracking-wide">
-                          Backend validation issues
-                        </p>
-                        <ul className="mt-2 space-y-1">
-                          {importErrorsList.slice(0, 10).map((err, index) => (
-                            <li key={index}>
-                              Row{" "}
-                              {typeof err.index === "number"
-                                ? err.index + 1
-                                : "?"}
-                              : {err.message || "Invalid data"}
-                            </li>
-                          ))}
-                        </ul>
-                        {importErrorsList.length > 10 && (
-                          <p className="mt-2 text-[11px] text-slate-500">
-                            Showing first 10 errors. Check the downloaded error
-                            log for the full list.
-                          </p>
-                        )}
-                      </div>
-                    )}
-
-                    <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <h3 className="text-sm font-semibold text-slate-900">
-                          Preview
-                        </h3>
-                        <p className="text-xs text-slate-500">
-                          Showing up to {IMPORT_PREVIEW_LIMIT} rows from the
-                          file
-                        </p>
-                      </div>
-                      {isImportProcessing ? (
-                        <div className="mt-6 flex items-center justify-center text-sm text-slate-500">
-                          <Loader2
-                            size={18}
-                            className="mr-2 animate-spin text-blue-500"
-                          />
-                          Reading file...
-                        </div>
-                      ) : readyImportRowCount > 0 ? (
-                        <div className="mt-4 overflow-x-auto rounded-2xl border border-slate-100">
-                          <table className="min-w-full divide-y divide-slate-100 text-sm">
-                            <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
-                              <tr>
-                                {importColumns.map((column) => (
-                                  <th
-                                    key={column}
-                                    className="px-4 py-3 text-left"
-                                  >
-                                    {IMPORT_LABEL_MAP[column] || column}
-                                  </th>
-                                ))}
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100 bg-white text-xs text-slate-600">
-                              {importPreviewRows.map((row, rowIndex) => (
-                                <tr key={rowIndex}>
-                                  {importColumns.map((column) => (
-                                    <td key={column} className="px-4 py-2">
-                                      {row[column] !== undefined &&
-                                      row[column] !== ""
-                                        ? String(row[column])
-                                        : "--"}
-                                    </td>
-                                  ))}
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      ) : (
-                        <div className="mt-6 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
-                          Upload an XLSX file to preview coupon rows.
-                        </div>
-                      )}
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={handleDownloadImportTemplate}
+                        className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 transition hover:border-slate-300 hover:text-slate-700"
+                      >
+                        <Download size={14} /> Template
+                      </button>
+                      <button
+                        type="button"
+                        onClick={closeImportModal}
+                        className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-500 transition hover:border-slate-300 hover:text-slate-700"
+                        aria-label="Close import modal"
+                      >
+                        <X size={18} />
+                      </button>
                     </div>
                   </div>
 
-                  <div className="space-y-4">
-                    <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                      <h3 className="text-sm font-semibold text-slate-900">
-                        Import status
-                      </h3>
-                      <div className="mt-3 grid gap-3 text-xs text-slate-500">
-                        <div className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2">
-                          <span className="font-semibold text-slate-600">
-                            Loaded rows
+                  <div className="flex flex-1 flex-col gap-4 overflow-y-auto">
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50/60 p-4 text-sm text-slate-600">
+                      <div className="space-y-4">
+                        <div className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                          <span className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-[11px] font-semibold text-slate-600">
+                            <Upload size={14} className="text-blue-500" />
+                            {importFileMeta.name
+                              ? importFileMeta.name
+                              : "No file selected"}
                           </span>
-                          <span className="text-slate-900">
-                            {readyImportRowCount}
-                          </span>
+                          {importFileMeta.size > 0 && (
+                            <span className="inline-flex items-center rounded-full bg-white px-3 py-1 text-[11px] font-semibold text-slate-500">
+                              {formatFileSize(importFileMeta.size)}
+                            </span>
+                          )}
+                          {importSheetName && (
+                            <span className="inline-flex items-center rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-500">
+                              Sheet: {importSheetName}
+                            </span>
+                          )}
+                          {importFileMeta.totalRows > 0 && (
+                            <span className="inline-flex items-center rounded-full bg-white px-3 py-1 text-[11px] font-semibold text-slate-500">
+                              Rows: {importFileMeta.processedRows}/
+                              {importFileMeta.totalRows}
+                            </span>
+                          )}
                         </div>
-                        <div className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2">
-                          <span className="font-semibold text-slate-600">
-                            Detected columns
-                          </span>
-                          <span className="text-slate-900">
-                            {importColumns.length}
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2">
-                          <span className="font-semibold text-slate-600">
-                            API errors
-                          </span>
-                          <span className="text-slate-900">
-                            {importErrorsList.length}
-                          </span>
-                        </div>
-                        {importStatus === "loading" && (
-                          <div className="flex items-center justify-center gap-2 rounded-xl bg-blue-50 px-3 py-2 text-blue-600">
-                            <Loader2 size={16} className="animate-spin" />{" "}
-                            Importing...
+
+                        {importParseError && (
+                          <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-600">
+                            {importParseError}
                           </div>
                         )}
+
+                        {!!importWarnings.length && (
+                          <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-700">
+                            <p className="font-semibold uppercase tracking-wide">
+                              Warnings
+                            </p>
+                            <ul className="mt-2 space-y-1">
+                              {importWarnings.map((warning, index) => (
+                                <li key={index}>● {warning}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+
+                        {importErrorsList.length > 0 && (
+                          <div className="rounded-2xl border border-rose-200 bg-white px-4 py-3 text-xs text-rose-600">
+                            <p className="font-semibold uppercase tracking-wide">
+                              Backend validation issues
+                            </p>
+                            <ul className="mt-2 space-y-1">
+                              {importErrorsList
+                                .slice(0, 10)
+                                .map((err, index) => (
+                                  <li key={index}>
+                                    Row{" "}
+                                    {typeof err.index === "number"
+                                      ? err.index + 1
+                                      : "?"}
+                                    : {err.message || "Invalid data"}
+                                  </li>
+                                ))}
+                            </ul>
+                            {importErrorsList.length > 10 && (
+                              <p className="mt-2 text-[11px] text-slate-500">
+                                Showing first 10 errors. Check the downloaded
+                                error log for the full list.
+                              </p>
+                            )}
+                          </div>
+                        )}
+
+                        <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <h3 className="text-sm font-semibold text-slate-900">
+                              Preview
+                            </h3>
+                            <p className="text-xs text-slate-500">
+                              Showing up to {IMPORT_PREVIEW_LIMIT} rows from the
+                              file
+                            </p>
+                          </div>
+                          {isImportProcessing ? (
+                            <div className="mt-6 flex items-center justify-center text-sm text-slate-500">
+                              <Loader2
+                                size={18}
+                                className="mr-2 animate-spin text-blue-500"
+                              />
+                              Reading file...
+                            </div>
+                          ) : readyImportRowCount > 0 ? (
+                            <div className="mt-4 overflow-hidden rounded-2xl border border-slate-100">
+                              <div className="max-h-72 overflow-auto">
+                                <table className="w-full table-fixed divide-y divide-slate-100 text-sm">
+                                  <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+                                    <tr>
+                                      {importColumns.map((column) => (
+                                        <th
+                                          key={column}
+                                          className="break-words px-4 py-3 text-left align-top"
+                                        >
+                                          {IMPORT_LABEL_MAP[column] || column}
+                                        </th>
+                                      ))}
+                                    </tr>
+                                  </thead>
+                                  <tbody className="divide-y divide-slate-100 bg-white text-xs text-slate-600">
+                                    {importPreviewRows.map((row, rowIndex) => (
+                                      <tr key={rowIndex}>
+                                        {importColumns.map((column) => (
+                                          <td
+                                            key={column}
+                                            className="break-words px-4 py-2 align-top"
+                                          >
+                                            {row[column] !== undefined &&
+                                            row[column] !== ""
+                                              ? String(row[column])
+                                              : "--"}
+                                          </td>
+                                        ))}
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="mt-6 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
+                              Upload an XLSX file to preview coupon rows.
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
+                  </div>
 
-                    <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                      <h3 className="text-sm font-semibold text-slate-900">
-                        Field reference
-                      </h3>
-                      <ul className="mt-3 space-y-2 text-xs text-slate-600">
-                        {IMPORT_FIELD_GUIDE.map((field) => (
-                          <li
-                            key={field.key}
-                            className="rounded-xl bg-slate-50 px-3 py-2"
-                          >
-                            <span className="font-semibold text-slate-700">
-                              {field.label}
-                            </span>
-                            <span className="mx-2 text-slate-300">•</span>
-                            {field.helper}
-                          </li>
-                        ))}
-                      </ul>
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                      <button
+                        type="button"
+                        onClick={handleTriggerImportFileDialog}
+                        disabled={isImportProcessing}
+                        className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 font-semibold text-slate-600 transition hover:border-slate-300 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        <Upload size={14} /> Choose file
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleClearImportData}
+                        disabled={isImportProcessing}
+                        className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 font-semibold text-slate-600 transition hover:border-rose-200 hover:text-rose-600 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        Clear
+                      </button>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={closeImportModal}
+                        className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 transition hover:border-slate-300 hover:text-slate-700"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={
+                          isImportProcessing || readyImportRowCount === 0
+                        }
+                        className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-md transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {isImportProcessing ? (
+                          <Loader2 size={16} className="animate-spin" />
+                        ) : (
+                          <Upload size={16} />
+                        )}
+                        Import coupons
+                      </button>
                     </div>
                   </div>
-                </div>
-              </div>
-
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
-                  <button
-                    type="button"
-                    onClick={handleTriggerImportFileDialog}
-                    disabled={isImportProcessing}
-                    className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 font-semibold text-slate-600 transition hover:border-slate-300 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    <Upload size={14} /> Choose file
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleClearImportData}
-                    disabled={isImportProcessing}
-                    className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 font-semibold text-slate-600 transition hover:border-rose-200 hover:text-rose-600 disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    Clear
-                  </button>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={closeImportModal}
-                    className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 transition hover:border-slate-300 hover:text-slate-700"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={isImportProcessing || readyImportRowCount === 0}
-                    className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-md transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    {isImportProcessing ? (
-                      <Loader2 size={16} className="animate-spin" />
-                    ) : (
-                      <Upload size={16} />
-                    )}
-                    Import coupons
-                  </button>
-                </div>
-              </div>
-            </motion.form>
-          </motion.div>
+                </motion.form>
+              </motion.div>
+            )}
+          </AnimatePresence>,
+          portalTarget
         )}
-      </AnimatePresence>
     </motion.div>
   );
 };

@@ -230,7 +230,7 @@ const SellerSection = () => {
         title={
           <>
             Seller Hub Spotlight{" "}
-            <span style={{ color: "#008ECC" }}>Combo pack</span>
+            <span style={{ color: "#008ECC" }}>Combo Pack</span>
           </>
         }
         description="Fresh drops from our verified sellers"

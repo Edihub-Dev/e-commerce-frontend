@@ -1297,7 +1297,7 @@ const AdminProductsPage = () => {
             exit={{ opacity: 0 }}
           >
             <motion.div
-              className="relative w-full max-w-3xl rounded-3xl bg-white shadow-2xl md:my-0 max-h-[calc(100vh-4rem)] overflow-y-auto"
+              className="relative flex w-full max-w-3xl flex-col rounded-3xl bg-white shadow-2xl md:my-0 max-h-[calc(100vh-4rem)] overflow-hidden"
               initial={{ scale: 0.95, opacity: 0, y: 24 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.95, opacity: 0, y: 24 }}
@@ -1312,180 +1312,184 @@ const AdminProductsPage = () => {
                 <X size={18} />
               </button>
 
-              <div className="grid gap-6 px-6 pb-6 pt-12 md:grid-cols-[1.2fr,1fr]">
-                <div className="space-y-4">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <p className="text-xs uppercase text-slate-400">
-                        Product
-                      </p>
-                      <h2 className="text-xl font-semibold text-slate-900">
-                        {viewProduct.name || "Untitled product"}
-                      </h2>
-                      <p className="mt-1 text-sm text-slate-500">
-                        ID: {viewProduct._id || "--"}
-                      </p>
-                    </div>
-                    <span className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">
-                      {viewProduct.category || "No category"}
-                    </span>
-                  </div>
-
-                  <div className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50/60 p-4">
-                    <div className="flex flex-wrap items-center gap-3 text-sm">
-                      <div className="rounded-xl bg-white px-3 py-2 shadow-sm">
-                        <p className="text-xs text-slate-400">Price</p>
-                        <p className="text-base font-semibold text-slate-900">
-                          ₹
-                          {Number(viewProduct.price ?? 0).toLocaleString(
-                            "en-IN"
-                          )}
-                        </p>
-                      </div>
-                      <div className="rounded-xl bg-white px-3 py-2 shadow-sm">
-                        <p className="text-xs text-slate-400">Stock</p>
-                        <p className="text-base font-semibold text-slate-900">
-                          {viewProduct.stock ?? 0}
-                        </p>
-                      </div>
-                      <div className="rounded-xl bg-white px-3 py-2 shadow-sm">
-                        <p className="text-xs text-slate-400">Availability</p>
-                        <p className="text-base font-semibold text-slate-900">
-                          {viewProduct.availabilityStatus || "--"}
-                        </p>
-                      </div>
-                      <div className="rounded-xl bg-white px-3 py-2 shadow-sm">
-                        <p className="text-xs text-slate-400">Status</p>
-                        <p className="text-base font-semibold text-slate-900">
-                          {viewProduct.status || "--"}
-                        </p>
-                      </div>
-                      <div className="rounded-xl bg-white px-3 py-2 shadow-sm">
-                        <p className="text-xs text-slate-400">Featured</p>
-                        <p className="mt-1 inline-flex items-center gap-1 text-sm font-semibold text-slate-900">
-                          <Star
-                            size={14}
-                            className={
-                              viewProduct.isFeatured
-                                ? "text-blue-500 fill-blue-400"
-                                : "text-slate-300"
-                            }
-                          />
-                          {viewProduct.isFeatured ? "Yes" : "No"}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="grid gap-3 md:grid-cols-2">
-                      <div className="rounded-xl bg-white p-4 shadow-sm">
+              <div className="flex-1 overflow-y-auto">
+                <div className="grid gap-6 px-6 pb-6 pt-12 md:grid-cols-[1.2fr,1fr]">
+                  <div className="space-y-4">
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
                         <p className="text-xs uppercase text-slate-400">
-                          Brand
+                          Product
                         </p>
-                        <p className="mt-1 text-sm font-medium text-slate-800">
-                          {viewProduct.brand || "--"}
-                        </p>
-                      </div>
-                      <div className="rounded-xl bg-white p-4 shadow-sm">
-                        <p className="text-xs uppercase text-slate-400">
-                          Discount
-                        </p>
-                        <p className="mt-1 text-sm font-medium text-slate-800">
-                          {Number(viewProduct.discountPercentage ?? 0)}%
+                        <h2 className="text-xl font-semibold text-slate-900">
+                          {viewProduct.name || "Untitled product"}
+                        </h2>
+                        <p className="mt-1 text-sm text-slate-500">
+                          ID: {viewProduct._id || "--"}
                         </p>
                       </div>
+                      <span className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">
+                        {viewProduct.category || "No category"}
+                      </span>
                     </div>
-                  </div>
 
-                  <div className="space-y-2">
-                    <p className="text-xs uppercase text-slate-400">
-                      Description
-                    </p>
-                    <p className="rounded-2xl border border-slate-200 bg-white p-4 text-sm leading-relaxed text-slate-600">
-                      {viewProduct.description || "No description provided."}
-                    </p>
-                  </div>
-
-                  <div className="space-y-2">
-                    <p className="text-xs uppercase text-slate-400">Metadata</p>
-                    <div className="grid gap-3 md:grid-cols-2">
-                      <div className="rounded-xl border border-slate-200 bg-white p-3 text-sm text-slate-600">
-                        <p className="text-xs font-semibold uppercase text-slate-400">
-                          Rating
-                        </p>
-                        <p className="mt-1 text-base font-semibold text-slate-900">
-                          {Number(viewProduct.rating ?? 0).toFixed(1)}
-                        </p>
-                      </div>
-                      <div className="rounded-xl border border-slate-200 bg-white p-3 text-sm text-slate-600">
-                        <p className="text-xs font-semibold uppercase text-slate-400">
-                          Reviews
-                        </p>
-                        <p className="mt-1 text-base font-semibold text-slate-900">
-                          {viewProduct.reviews ?? 0}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex flex-col gap-4">
-                  <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
-                    <img
-                      src={
-                        viewProduct.thumbnail ||
-                        viewProduct.imageUrl ||
-                        viewProduct.gallery?.[0] ||
-                        "https://placehold.co/600x600/f8fafc/e2e8f0?text=Image"
-                      }
-                      alt={viewProduct.name}
-                      className="h-64 w-full object-cover"
-                      onError={(event) => {
-                        event.currentTarget.src =
-                          "https://placehold.co/600x600/f8fafc/e2e8f0?text=Image";
-                      }}
-                    />
-                  </div>
-
-                  {Array.isArray(viewProduct.gallery) &&
-                    viewProduct.gallery.length > 1 && (
-                      <div className="space-y-2">
-                        <p className="text-xs uppercase text-slate-400">
-                          Gallery
-                        </p>
-                        <div className="grid grid-cols-3 gap-2">
-                          {viewProduct.gallery.map((image, index) => (
-                            <div
-                              key={`${image}-${index}`}
-                              className="overflow-hidden rounded-xl border border-slate-200 bg-white"
-                            >
-                              <img
-                                src={image}
-                                alt={`${viewProduct.name || "Product"} ${
-                                  index + 1
-                                }`}
-                                className="h-24 w-full object-cover"
-                                onError={(event) => {
-                                  event.currentTarget.src =
-                                    "https://placehold.co/200x200/f8fafc/e2e8f0?text=Image";
-                                }}
-                              />
-                            </div>
-                          ))}
+                    <div className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50/60 p-4">
+                      <div className="flex flex-wrap items-center gap-3 text-sm">
+                        <div className="rounded-xl bg-white px-3 py-2 shadow-sm">
+                          <p className="text-xs text-slate-400">Price</p>
+                          <p className="text-base font-semibold text-slate-900">
+                            ₹
+                            {Number(viewProduct.price ?? 0).toLocaleString(
+                              "en-IN"
+                            )}
+                          </p>
+                        </div>
+                        <div className="rounded-xl bg-white px-3 py-2 shadow-sm">
+                          <p className="text-xs text-slate-400">Stock</p>
+                          <p className="text-base font-semibold text-slate-900">
+                            {viewProduct.stock ?? 0}
+                          </p>
+                        </div>
+                        <div className="rounded-xl bg-white px-3 py-2 shadow-sm">
+                          <p className="text-xs text-slate-400">Availability</p>
+                          <p className="text-base font-semibold text-slate-900">
+                            {viewProduct.availabilityStatus || "--"}
+                          </p>
+                        </div>
+                        <div className="rounded-xl bg-white px-3 py-2 shadow-sm">
+                          <p className="text-xs text-slate-400">Status</p>
+                          <p className="text-base font-semibold text-slate-900">
+                            {viewProduct.status || "--"}
+                          </p>
+                        </div>
+                        <div className="rounded-xl bg-white px-3 py-2 shadow-sm">
+                          <p className="text-xs text-slate-400">Featured</p>
+                          <p className="mt-1 inline-flex items-center gap-1 text-sm font-semibold text-slate-900">
+                            <Star
+                              size={14}
+                              className={
+                                viewProduct.isFeatured
+                                  ? "text-blue-500 fill-blue-400"
+                                  : "text-slate-300"
+                              }
+                            />
+                            {viewProduct.isFeatured ? "Yes" : "No"}
+                          </p>
                         </div>
                       </div>
-                    )}
 
-                  <button
-                    type="button"
-                    onClick={() => {
-                      closeViewProduct();
-                      openEditModal(viewProduct);
-                    }}
-                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700"
-                  >
-                    <Pencil size={16} />
-                    Edit Product
-                  </button>
+                      <div className="grid gap-3 md:grid-cols-2">
+                        <div className="rounded-xl bg-white p-4 shadow-sm">
+                          <p className="text-xs uppercase text-slate-400">
+                            Brand
+                          </p>
+                          <p className="mt-1 text-sm font-medium text-slate-800">
+                            {viewProduct.brand || "--"}
+                          </p>
+                        </div>
+                        <div className="rounded-xl bg-white p-4 shadow-sm">
+                          <p className="text-xs uppercase text-slate-400">
+                            Discount
+                          </p>
+                          <p className="mt-1 text-sm font-medium text-slate-800">
+                            {Number(viewProduct.discountPercentage ?? 0)}%
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <p className="text-xs uppercase text-slate-400">
+                        Description
+                      </p>
+                      <p className="rounded-2xl border border-slate-200 bg-white p-4 text-sm leading-relaxed text-slate-600">
+                        {viewProduct.description || "No description provided."}
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <p className="text-xs uppercase text-slate-400">
+                        Metadata
+                      </p>
+                      <div className="grid gap-3 md:grid-cols-2">
+                        <div className="rounded-xl border border-slate-200 bg-white p-3 text-sm text-slate-600">
+                          <p className="text-xs font-semibold uppercase text-slate-400">
+                            Rating
+                          </p>
+                          <p className="mt-1 text-base font-semibold text-slate-900">
+                            {Number(viewProduct.rating ?? 0).toFixed(1)}
+                          </p>
+                        </div>
+                        <div className="rounded-xl border border-slate-200 bg-white p-3 text-sm text-slate-600">
+                          <p className="text-xs font-semibold uppercase text-slate-400">
+                            Reviews
+                          </p>
+                          <p className="mt-1 text-base font-semibold text-slate-900">
+                            {viewProduct.reviews ?? 0}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-4">
+                    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
+                      <img
+                        src={
+                          viewProduct.thumbnail ||
+                          viewProduct.imageUrl ||
+                          viewProduct.gallery?.[0] ||
+                          "https://placehold.co/600x600/f8fafc/e2e8f0?text=Image"
+                        }
+                        alt={viewProduct.name}
+                        className="h-64 w-full object-cover"
+                        onError={(event) => {
+                          event.currentTarget.src =
+                            "https://placehold.co/600x600/f8fafc/e2e8f0?text=Image";
+                        }}
+                      />
+                    </div>
+
+                    {Array.isArray(viewProduct.gallery) &&
+                      viewProduct.gallery.length > 1 && (
+                        <div className="space-y-2">
+                          <p className="text-xs uppercase text-slate-400">
+                            Gallery
+                          </p>
+                          <div className="grid grid-cols-3 gap-2">
+                            {viewProduct.gallery.map((image, index) => (
+                              <div
+                                key={`${image}-${index}`}
+                                className="overflow-hidden rounded-xl border border-slate-200 bg-white"
+                              >
+                                <img
+                                  src={image}
+                                  alt={`${viewProduct.name || "Product"} ${
+                                    index + 1
+                                  }`}
+                                  className="h-24 w-full object-cover"
+                                  onError={(event) => {
+                                    event.currentTarget.src =
+                                      "https://placehold.co/200x200/f8fafc/e2e8f0?text=Image";
+                                  }}
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        closeViewProduct();
+                        openEditModal(viewProduct);
+                      }}
+                      className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700"
+                    >
+                      <Pencil size={16} />
+                      Edit Product
+                    </button>
+                  </div>
                 </div>
               </div>
             </motion.div>

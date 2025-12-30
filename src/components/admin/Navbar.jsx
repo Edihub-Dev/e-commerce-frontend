@@ -1,7 +1,8 @@
-import { Bell, LogOut, ChevronDown, Menu } from "lucide-react";
+import { Bell, LogOut, ChevronDown, Menu, ArrowLeft } from "lucide-react";
 import PropTypes from "prop-types";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 const ranges = ["All Date", "12 Months", "30 Days", "7 Days", "24 Hour"];
 
@@ -14,8 +15,10 @@ const Navbar = ({
   notifications,
   showRangeSelector,
   showNotifications,
+  onGoHome,
   onLogout,
 }) => {
+  const navigate = useNavigate();
   const displayName = adminName || "Admin";
   const initials = displayName
     .split(" ")
@@ -28,6 +31,14 @@ const Navbar = ({
     (notifications?.shippedOrders || 0) +
     (notifications?.deliveredOrders || 0);
   const [showMenu, setShowMenu] = useState(false);
+
+  const handleGoHome = () => {
+    if (typeof onGoHome === "function") {
+      onGoHome();
+      return;
+    }
+    navigate("/");
+  };
 
   return (
     <header className="sticky top-0 z-30 bg-white/90 backdrop-blur border-b border-slate-200">
@@ -132,6 +143,16 @@ const Navbar = ({
                       type="button"
                       onClick={() => {
                         setShowMenu(false);
+                        handleGoHome();
+                      }}
+                      className="flex w-full items-center gap-3 px-4 py-3 text-sm text-slate-600 hover:bg-slate-50"
+                    >
+                      <ArrowLeft size={16} /> Back to home
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowMenu(false);
                         onLogout?.();
                       }}
                       className="flex w-full items-center gap-3 px-4 py-3 text-sm text-slate-600 hover:bg-slate-50"
@@ -162,6 +183,7 @@ Navbar.propTypes = {
   }),
   showRangeSelector: PropTypes.bool,
   showNotifications: PropTypes.bool,
+  onGoHome: PropTypes.func,
   onLogout: PropTypes.func,
 };
 
@@ -175,6 +197,7 @@ Navbar.defaultProps = {
   },
   showRangeSelector: true,
   showNotifications: true,
+  onGoHome: undefined,
   onLogout: undefined,
 };
 

@@ -1290,6 +1290,7 @@ const AdminOrdersPage = () => {
             adminRole={user?.role === "admin" ? "Administrator" : user?.role}
             showRangeSelector={false}
             showNotifications={false}
+            onGoHome={() => navigate("/")}
             onLogout={logout}
           />
 

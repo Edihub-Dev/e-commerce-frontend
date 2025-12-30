@@ -1,8 +1,11 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import { toast } from "react-hot-toast";
-import api, { fetchOrderById } from "../utils/api";
+import api, {
+  adminUpdateReplacementRequest,
+  fetchOrderById,
+} from "../utils/api";
 import {
   ArrowLeft,
   Download,
@@ -12,6 +15,8 @@ import {
   Truck,
   CreditCard,
   Receipt,
+  ClipboardCheck,
+  RotateCcw,
 } from "lucide-react";
 
 const STATUS_LABELS = {
@@ -40,6 +45,19 @@ const STATUS_LABELS = {
     badge: "bg-rose-100 text-rose-700",
   },
 };
+
+const REPLACEMENT_STATUS_OPTIONS = [
+  { value: "approved", label: "Approved" },
+  { value: "pickup_completed", label: "Pickup completed" },
+  { value: "replacement_processing", label: "Replacement processing" },
+  { value: "replacement_shipped", label: "Replacement shipped" },
+  { value: "replacement_out_for_delivery", label: "Out for delivery" },
+  { value: "replacement_delivered", label: "Replacement delivered" },
+  { value: "rejected", label: "Rejected" },
+  { value: "cancelled", label: "Cancelled" },
+];
+
+const STATUSES_REQUIRING_REASON = new Set(["rejected"]);
 
 const formatCurrency = (value) => {
   const amount = Number.isFinite(Number(value)) ? Number(value) : 0;
@@ -73,6 +91,14 @@ const SellerOrderDetailsPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [downloadingInvoice, setDownloadingInvoice] = useState(false);
+  const [replacementUpdate, setReplacementUpdate] = useState({
+    status: "approved",
+    notes: "",
+    courier: "",
+    trackingId: "",
+  });
+  const [savingReplacement, setSavingReplacement] = useState(false);
+  const notesRef = useRef(null);
 
   const loadOrder = useCallback(async () => {
     try {
@@ -84,6 +110,19 @@ const SellerOrderDetailsPage = () => {
         throw new Error("Order not found");
       }
       setOrder(data);
+      if (
+        data.replacementRequest &&
+        data.replacementRequest.status !== "none"
+      ) {
+        setReplacementUpdate((prev) => ({
+          ...prev,
+          status: "approved",
+          notes: "",
+          courier: data.replacementRequest.replacementShipment?.courier || "",
+          trackingId:
+            data.replacementRequest.replacementShipment?.trackingId || "",
+        }));
+      }
     } catch (fetchError) {
       console.error("Failed to load order", fetchError);
       const message =
@@ -107,6 +146,37 @@ const SellerOrderDetailsPage = () => {
 
   const isPaymentPaid =
     (order?.payment?.status || "pending").toLowerCase() === "paid";
+
+  const handleReplacementFieldChange = (field, value) => {
+    setReplacementUpdate((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
+
+  useEffect(() => {
+    if (STATUSES_REQUIRING_REASON.has(replacementUpdate.status)) {
+      setReplacementUpdate((prev) => ({
+        ...prev,
+        notes: prev.notes || "",
+      }));
+      notesRef.current?.focus();
+    }
+  }, [replacementUpdate.status]);
+
+  const handleQuickDecision = (status) => {
+    setReplacementUpdate((prev) => ({
+      ...prev,
+      status,
+      notes: STATUSES_REQUIRING_REASON.has(status) ? "" : prev.notes,
+    }));
+    if (STATUSES_REQUIRING_REASON.has(status)) {
+      setTimeout(() => {
+        notesRef.current?.focus();
+        toast("Add a reason before submitting your decision.");
+      }, 0);
+    }
+  };
 
   const handleDownloadInvoice = async () => {
     if (!order?._id) {
@@ -151,6 +221,47 @@ const SellerOrderDetailsPage = () => {
       toast.error(message);
     } finally {
       setDownloadingInvoice(false);
+    }
+  };
+
+  const handleSubmitReplacementUpdate = async (event) => {
+    event.preventDefault();
+    if (!order?._id) return;
+
+    if (
+      STATUSES_REQUIRING_REASON.has(replacementUpdate.status) &&
+      !(replacementUpdate.notes && replacementUpdate.notes.trim())
+    ) {
+      toast.error("Please provide a reason for rejecting this request.");
+      notesRef.current?.focus();
+      return;
+    }
+
+    try {
+      setSavingReplacement(true);
+      const payload = {
+        status: replacementUpdate.status,
+        notes: replacementUpdate.notes?.trim() || undefined,
+        courier: replacementUpdate.courier?.trim() || undefined,
+        trackingId: replacementUpdate.trackingId?.trim() || undefined,
+      };
+
+      const response = await adminUpdateReplacementRequest(order._id, payload);
+      if (!response?.success) {
+        throw new Error(response?.message || "Failed to update request");
+      }
+
+      toast.success("Replacement request updated");
+      await loadOrder();
+    } catch (updateError) {
+      console.error("Failed to update replacement request", updateError);
+      const message =
+        updateError?.response?.data?.message ||
+        updateError?.message ||
+        "Unable to update replacement request";
+      toast.error(message);
+    } finally {
+      setSavingReplacement(false);
     }
   };
 
@@ -426,6 +537,237 @@ const SellerOrderDetailsPage = () => {
           </div>
         </motion.div>
       </section>
+
+      {order.replacementRequest &&
+        order.replacementRequest.status &&
+        order.replacementRequest.status !== "none" && (
+          <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <h3 className="text-lg font-semibold text-slate-900">
+                Return & Replace request
+              </h3>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleQuickDecision("approved")}
+                  className="inline-flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-100"
+                >
+                  <ClipboardCheck className="h-4 w-4" /> Approve request
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleQuickDecision("rejected")}
+                  className="inline-flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700 hover:bg-rose-100"
+                >
+                  <RotateCcw className="h-4 w-4" /> Reject request
+                </button>
+              </div>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2 text-sm text-slate-600">
+                <h4 className="text-sm font-semibold text-primary">
+                  Item details
+                </h4>
+                <p className="font-medium text-slate-900">
+                  {order.replacementRequest.itemName}
+                  {order.replacementRequest.itemSize &&
+                    ` • Size ${order.replacementRequest.itemSize}`}
+                </p>
+                <p>Quantity: {order.replacementRequest.quantity || 1}</p>
+                {order.replacementRequest.issueDescription && (
+                  <p className="rounded-xl border border-primary/20 bg-white p-3 text-sm text-slate-700">
+                    {order.replacementRequest.issueDescription}
+                  </p>
+                )}
+              </div>
+
+              <div className="space-y-2 text-sm text-slate-600">
+                <h4 className="text-sm font-semibold text-primary">
+                  Replacement preferences
+                </h4>
+                <p>
+                  Size:{" "}
+                  {order.replacementRequest.replacementPreferences?.size ||
+                    "--"}
+                </p>
+                <p>
+                  Color:{" "}
+                  {order.replacementRequest.replacementPreferences?.color ||
+                    "--"}
+                </p>
+                <p>
+                  Notes:{" "}
+                  {order.replacementRequest.replacementPreferences?.remarks ||
+                    "--"}
+                </p>
+                {order.replacementRequest.adminNotes && (
+                  <p className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">
+                    Seller notes: {order.replacementRequest.adminNotes}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <form
+              className="mt-6 grid gap-4 md:grid-cols-[1fr_1fr]"
+              onSubmit={handleSubmitReplacementUpdate}
+            >
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-primary">
+                  Update status
+                </label>
+                <select
+                  value={replacementUpdate.status}
+                  onChange={(event) =>
+                    handleReplacementFieldChange("status", event.target.value)
+                  }
+                  className="w-full rounded-xl border border-primary/30 px-3 py-2 text-sm focus:border-primary focus:outline-none"
+                  required
+                >
+                  {REPLACEMENT_STATUS_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-primary">
+                  Courier (optional)
+                </label>
+                <input
+                  value={replacementUpdate.courier}
+                  onChange={(event) =>
+                    handleReplacementFieldChange("courier", event.target.value)
+                  }
+                  className="w-full rounded-xl border border-primary/30 px-3 py-2 text-sm focus:border-primary focus:outline-none"
+                  placeholder="e.g. Delhivery"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-primary">
+                  Tracking ID (optional)
+                </label>
+                <input
+                  value={replacementUpdate.trackingId}
+                  onChange={(event) =>
+                    handleReplacementFieldChange(
+                      "trackingId",
+                      event.target.value
+                    )
+                  }
+                  className="w-full rounded-xl border border-primary/30 px-3 py-2 text-sm focus:border-primary focus:outline-none"
+                  placeholder="e.g. AWB123456"
+                />
+              </div>
+
+              <div className="space-y-2 md:col-span-2">
+                <label className="text-sm font-medium text-primary">
+                  Notes for customer
+                </label>
+                <textarea
+                  value={replacementUpdate.notes}
+                  onChange={(event) =>
+                    handleReplacementFieldChange("notes", event.target.value)
+                  }
+                  rows={3}
+                  ref={notesRef}
+                  required={STATUSES_REQUIRING_REASON.has(
+                    replacementUpdate.status
+                  )}
+                  className={`w-full rounded-xl border px-3 py-2 text-sm focus:border-primary focus:outline-none ${
+                    STATUSES_REQUIRING_REASON.has(replacementUpdate.status)
+                      ? "border-rose-200"
+                      : "border-primary/30"
+                  }`}
+                  placeholder={
+                    STATUSES_REQUIRING_REASON.has(replacementUpdate.status)
+                      ? "Explain why you are rejecting this request."
+                      : "Share updates or next actions (optional)."
+                  }
+                />
+                {STATUSES_REQUIRING_REASON.has(replacementUpdate.status) ? (
+                  <p className="text-xs text-rose-500">
+                    A reason is required when rejecting.
+                  </p>
+                ) : (
+                  <p className="text-xs text-slate-500">
+                    Optional message shared with the customer.
+                  </p>
+                )}
+              </div>
+
+              <div className="flex flex-wrap items-center justify-end gap-3 md:col-span-2">
+                <button
+                  type="submit"
+                  disabled={
+                    savingReplacement ||
+                    (STATUSES_REQUIRING_REASON.has(replacementUpdate.status) &&
+                      !(
+                        replacementUpdate.notes &&
+                        replacementUpdate.notes.trim()
+                      ))
+                  }
+                  className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-primary-dark disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {savingReplacement ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" /> Saving...
+                    </>
+                  ) : (
+                    <>
+                      <ClipboardCheck className="h-4 w-4" /> Update request
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </section>
+        )}
+
+      {Array.isArray(order.replacementRequest?.history) &&
+        order.replacementRequest.history.length > 0 && (
+          <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-4">
+            <h3 className="mb-3 text-sm font-semibold text-slate-800">
+              Activity log
+            </h3>
+            <ul className="space-y-2 text-xs text-slate-600">
+              {order.replacementRequest.history
+                .slice()
+                .reverse()
+                .map((entry, index) => (
+                  <li
+                    key={`${entry.at || index}-${entry.status}`}
+                    className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-2"
+                  >
+                    <div className="flex justify-between gap-3">
+                      <span className="font-semibold capitalize">
+                        {entry.status.replace(/_/g, " ")}
+                      </span>
+                      <span className="text-[11px] text-slate-400">
+                        {entry.at
+                          ? new Date(entry.at).toLocaleString("en-IN")
+                          : "--"}
+                      </span>
+                    </div>
+                    {entry.note ? (
+                      <p className="mt-1 text-[12px] text-slate-600">
+                        {entry.note}
+                      </p>
+                    ) : null}
+                    {entry.actor ? (
+                      <p className="mt-1 text-[11px] uppercase tracking-wide text-slate-400">
+                        Actor: {entry.actor}
+                      </p>
+                    ) : null}
+                  </li>
+                ))}
+            </ul>
+          </div>
+        )}
     </motion.div>
   );
 };

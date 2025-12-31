@@ -34,6 +34,11 @@ const TIMELINE_SEQUENCE = [
     defaultDescription: "Seller has processed your order.",
   },
   {
+    key: "rejected",
+    label: "Rejected",
+    defaultDescription: "Order has been rejected and will not be fulfilled.",
+  },
+  {
     key: "picked_up",
     label: "Picked Up",
     defaultDescription: "Your item has been picked up by delivery partner.",
@@ -80,6 +85,8 @@ const TIMELINE_ALIAS_MAP = {
   "return initiated": "returned",
   "return approved": "returned",
   "return request rejected": "returned",
+  rejected: "rejected",
+  "order rejected": "rejected",
 };
 
 const resolveStepKey = (label = "") => {
@@ -133,11 +140,13 @@ const buildTimeline = (order) => {
     delivered: "delivered",
     cancelled: "cancelled",
     returned: "returned",
+    rejected: "rejected",
   };
 
   const normalizedStatus = String(order.status || "").toLowerCase();
   const mappedStatus = statusLookup[normalizedStatus] || normalizedStatus;
   const resolvedCurrentKey = resolveStepKey(mappedStatus) || "order_confirmed";
+  const isRejected = resolvedCurrentKey === "rejected";
   const currentIndex = TIMELINE_SEQUENCE.findIndex(
     (step) => step.key === resolvedCurrentKey
   );
@@ -152,9 +161,27 @@ const buildTimeline = (order) => {
     timelineMap.has("returned") ||
     resolvedCurrentKey === "returned";
 
-  const sequence = includeReturnStep
+  const baseSequence = includeReturnStep
     ? TIMELINE_SEQUENCE
     : TIMELINE_SEQUENCE.filter((step) => step.key !== "returned");
+
+  let sequence = baseSequence;
+
+  if (isRejected) {
+    const rejectionIndex = baseSequence.findIndex(
+      (step) => step.key === "rejected"
+    );
+    if (rejectionIndex !== -1) {
+      sequence = baseSequence.filter((_, index) => index <= rejectionIndex);
+    }
+  } else {
+    sequence = baseSequence.filter((step) => {
+      if (step.key === "rejected") {
+        return timelineMap.has("rejected");
+      }
+      return true;
+    });
+  }
 
   return sequence.map((step) => {
     const timelineEntry = timelineMap.get(step.key) || null;

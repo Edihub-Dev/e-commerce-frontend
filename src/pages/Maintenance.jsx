@@ -5,7 +5,8 @@ const MAINTENANCE_MESSAGE =
   import.meta.env.VITE_MAINTENANCE_MESSAGE ||
   "We're polishing a few things behind the scenes. Thanks for your patience!";
 const MAINTENANCE_WINDOW =
-  import.meta.env.VITE_MAINTENANCE_WINDOW || "We'll be back online shortly.";
+  import.meta.env.VITE_MAINTENANCE_WINDOW ||
+  "We'll be back online 1st January 2026.";
 
 const Maintenance = () => {
   return (
@@ -39,7 +40,8 @@ const Maintenance = () => {
                 Scheduled Upgrade
               </p>
               <h1 className="text-4xl md:text-5xl font-semibold leading-tight md:leading-tight">
-                Our storefront is getting a fresh tune-up
+                {/* Our storefront is getting a fresh tune-up */}
+                Free Gift Offer Start From 1st January 2026
               </h1>
               <p className="mt-6 text-base md:text-lg text-white/70 leading-relaxed">
                 {MAINTENANCE_MESSAGE}

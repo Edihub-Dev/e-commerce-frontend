@@ -38,6 +38,7 @@ const STATUS_OPTIONS = [
   { value: "shipped", label: "Shipped" },
   { value: "delivered", label: "Delivered" },
   { value: "returned", label: "Returned" },
+  { value: "rejected", label: "Rejected" },
 ];
 
 const PAYMENT_OPTIONS = [
@@ -128,6 +129,7 @@ const SellerOrders = () => {
     paymentStatus: "",
     paymentMethod: "",
     estimatedDeliveryDate: "",
+    rejectionPermanent: false,
   });
   const todayInputValue = useMemo(() => toDateInputValue(new Date()), []);
   const [isSavingEdit, setIsSavingEdit] = useState(false);
@@ -725,6 +727,7 @@ const SellerOrders = () => {
         paymentMethod: fullOrder.payment?.method || "",
         estimatedDeliveryDate:
           toDateInputValue(fullOrder.estimatedDeliveryDate) || "",
+        rejectionPermanent: Boolean(fullOrder.rejectionPermanent),
       };
 
       setEditingOrder(fullOrder);
@@ -789,6 +792,8 @@ const SellerOrders = () => {
         ...prev,
         status: nextStatus,
         estimatedDeliveryDate: nextEstimated,
+        rejectionPermanent:
+          nextStatusLower === "rejected" ? prev.rejectionPermanent : false,
       };
     });
   };
@@ -821,6 +826,8 @@ const SellerOrders = () => {
   ].includes(effectivePaymentStatus);
   const requiresPaymentSuccess = normalizedFormStatus === "delivered";
   const canSaveEdit = !requiresPaymentSuccess || isPaymentSuccessful;
+  const isRejectionLockActive =
+    normalizedFormStatus === "rejected" && Boolean(editForm.rejectionPermanent);
 
   const handleEstimatedDeliveryChange = (event) => {
     const { value } = event.target;
@@ -856,6 +863,17 @@ const SellerOrders = () => {
         paymentMethod: editForm.paymentMethod || undefined,
         estimatedDeliveryDate: editForm.estimatedDeliveryDate || null,
       };
+
+      const nextStatusLower = (editForm.status || "").toString().toLowerCase();
+
+      if (nextStatusLower === "rejected") {
+        payload.rejectionPermanent = Boolean(editForm.rejectionPermanent);
+      } else if (
+        editingOrder?.rejectionPermanent &&
+        String(editingOrder.status || "").toLowerCase() === "rejected"
+      ) {
+        payload.rejectionPermanent = false;
+      }
 
       await updateOrder(editingOrder._id, payload);
 
@@ -1842,6 +1860,7 @@ const SellerOrders = () => {
                           value={editForm.status}
                           onChange={handleStatusFieldChange}
                           className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                          disabled={isRejectionLockActive}
                         >
                           <option value="confirmed">Order Confirmed</option>
                           <option value="processing">Processing</option>
@@ -1852,8 +1871,36 @@ const SellerOrders = () => {
                           </option>
                           <option value="delivered">Delivered</option>
                           <option value="returned">Returned</option>
+                          <option value="rejected">Rejected</option>
                         </select>
                       </label>
+
+                      {String(editForm.status || "").toLowerCase() ===
+                        "rejected" && (
+                        <label className="mt-1 flex items-center gap-2 text-xs font-medium text-rose-600">
+                          <input
+                            type="checkbox"
+                            className="h-4 w-4 rounded border-slate-300 text-rose-600 focus:ring-rose-500"
+                            checked={Boolean(editForm.rejectionPermanent)}
+                            onChange={(event) =>
+                              handleEditFieldChange(
+                                "rejectionPermanent",
+                                event.target.checked
+                              )
+                            }
+                          />
+                          <span>
+                            Lock status after rejection (prevent further status
+                            changes)
+                          </span>
+                        </label>
+                      )}
+
+                      {isRejectionLockActive ? (
+                        <p className="text-xs text-rose-500">
+                          Unlock the toggle above to change the order status.
+                        </p>
+                      ) : null}
 
                       <div className="grid gap-4 sm:grid-cols-2">
                         <label className="block text-sm font-medium text-slate-700">

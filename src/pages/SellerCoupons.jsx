@@ -1786,7 +1786,7 @@ const SellerCoupons = () => {
         </form>
       </section>
 
-      <section className="rounded-3xl border border-slate-200 bg-white shadow-sm">
+      <section className="rounded-3xl border border-slate-200 bg-white shadow-sm overflow-hidden">
         <div className="flex flex-col gap-4 border-b border-slate-100 px-4 py-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:px-5">
           <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
             <div className="flex w-full items-center gap-3 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm text-slate-500 shadow-sm sm:w-auto">

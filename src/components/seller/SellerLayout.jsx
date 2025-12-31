@@ -8,21 +8,22 @@ const SellerLayout = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   useEffect(() => {
-    if (isSidebarOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
+    const previousBodyOverflow = document.body.style.overflow;
+    const previousHtmlOverflow = document.documentElement.style.overflow;
+
+    document.body.style.overflow = "hidden";
+    document.documentElement.style.overflow = "hidden";
 
     return () => {
-      document.body.style.overflow = "";
+      document.body.style.overflow = previousBodyOverflow;
+      document.documentElement.style.overflow = previousHtmlOverflow;
     };
-  }, [isSidebarOpen]);
+  }, []);
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900">
-      <div className="flex min-h-screen w-full">
-        <SellerSidebar className="hidden lg:flex lg:w-72 lg:flex-none lg:flex-col lg:overflow-y-auto lg:border-r lg:border-slate-100 lg:sticky lg:top-0 lg:h-screen" />
+    <div className="flex h-screen max-h-screen overflow-hidden bg-slate-50 text-slate-900">
+      <div className="flex h-full w-full overflow-hidden">
+        <SellerSidebar className="hidden lg:flex lg:h-full lg:w-72 lg:flex-none lg:flex-col lg:overflow-y-auto lg:border-r lg:border-slate-100 lg:sticky lg:top-0" />
 
         <AnimatePresence>
           {isSidebarOpen && (
@@ -54,13 +55,15 @@ const SellerLayout = () => {
           )}
         </AnimatePresence>
 
-        <div className="flex min-h-screen flex-1 flex-col">
+        <div className="flex h-full flex-1 flex-col overflow-hidden">
           <SellerTopbar
             onToggleSidebar={() => setIsSidebarOpen((prev) => !prev)}
           />
-          <main className="flex-1 overflow-y-auto bg-slate-50 px-5 pb-10 pt-6 sm:px-8 lg:px-12">
-            <Outlet />
-          </main>
+          <div className="flex-1 overflow-y-auto">
+            <main className="min-h-full bg-slate-50 px-5 pb-10 pt-6 sm:px-8 lg:px-12">
+              <Outlet />
+            </main>
+          </div>
         </div>
       </div>
     </div>

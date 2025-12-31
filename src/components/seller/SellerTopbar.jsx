@@ -1,12 +1,19 @@
 import { Menu, ChevronDown, LogOut } from "lucide-react";
 import PropTypes from "prop-types";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../../contexts/AuthContext";
 
 const SellerTopbar = ({ onToggleSidebar }) => {
   const { user, logout } = useAuth();
-  const displayName = user?.name || user?.username || "Seller";
+  const rawDisplayName = user?.name || user?.username || "Seller";
+  const displayName = useMemo(() => {
+    const normalized = rawDisplayName
+      .replace(/\bsell+er\b/gi, "Seller")
+      .replace(/\s+/g, " ")
+      .trim();
+    return normalized || "Seller";
+  }, [rawDisplayName]);
   const initials = displayName
     .split(" ")
     .map((part) => part.charAt(0))

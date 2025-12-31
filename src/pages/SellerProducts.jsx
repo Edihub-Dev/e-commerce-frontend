@@ -866,16 +866,16 @@ const SellerProducts = () => {
                     key={row.id}
                     className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
                   >
-                    <div className="flex items-start gap-3">
-                      <input
-                        type="checkbox"
-                        className="mt-1 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-400"
-                        checked={isSelected}
-                        onChange={() => toggleRowSelection(row.id)}
-                        aria-label={`Select ${row.name}`}
-                      />
-                      <div className="flex flex-1 items-center gap-3">
-                        <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="checkbox"
+                          className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-400"
+                          checked={isSelected}
+                          onChange={() => toggleRowSelection(row.id)}
+                          aria-label={`Select ${row.name}`}
+                        />
+                        <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-slate-50 sm:h-14 sm:w-14">
                           {row.thumbnail ? (
                             <img
                               src={row.thumbnail}
@@ -888,25 +888,25 @@ const SellerProducts = () => {
                             </span>
                           )}
                         </div>
-                        <div className="min-w-0 space-y-1">
-                          <p className="truncate text-base font-semibold text-slate-900">
-                            {row.name}
-                          </p>
-                          <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
-                            {row.brand ? (
-                              <span className="font-medium uppercase tracking-wide text-slate-400">
-                                {row.brand}
-                              </span>
-                            ) : null}
-                            {row.sku && row.sku !== "-" ? (
-                              <span className="rounded-full bg-slate-100 px-2 py-0.5 font-mono text-[11px] text-slate-500">
-                                {row.sku}
-                              </span>
-                            ) : null}
-                            <span className="text-[11px] text-slate-400">
-                              {row.variants} Variants
+                      </div>
+                      <div className="min-w-0 flex-1 space-y-2">
+                        <p className="text-base font-semibold text-slate-900">
+                          {row.name}
+                        </p>
+                        <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                          {row.brand ? (
+                            <span className="font-medium uppercase tracking-wide text-slate-400">
+                              {row.brand}
                             </span>
-                          </div>
+                          ) : null}
+                          {row.sku && row.sku !== "-" ? (
+                            <span className="rounded-full bg-slate-100 px-2 py-0.5 font-mono text-[11px] text-slate-500">
+                              {row.sku}
+                            </span>
+                          ) : null}
+                          <span className="text-[11px] text-slate-400">
+                            {row.variants} Variants
+                          </span>
                         </div>
                       </div>
                     </div>

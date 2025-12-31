@@ -52,7 +52,7 @@ const Maintenance = () => {
                   <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-300" />
                 </span>
                 <span>
-                  Systems monitored 24/7 &bull; Reach out at support.p2pdeal.net
+                  Systems monitored 24/7 &bull; Reach out at support@p2pdeal.net
                 </span>
               </div>
             </div>

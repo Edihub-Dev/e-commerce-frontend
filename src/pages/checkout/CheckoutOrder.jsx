@@ -67,7 +67,41 @@ const CheckoutOrder = () => {
     setCouponCode(appliedCoupon?.code || "");
   }, [appliedCoupon?.code]);
 
+  useEffect(() => {
+    if (!qrfolioUpload) {
+      setQrfolioPreview(null);
+      return;
+    }
+
+    const nextPreview =
+      qrfolioUpload.previewUrl || qrfolioUpload.imageUrl || null;
+
+    setQrfolioPreview(nextPreview);
+
+    if (nextPreview) {
+      setQrfolioError("");
+    }
+  }, [qrfolioUpload]);
+
   const handleContinue = () => {
+    if (qrfolioRequired) {
+      const hasQrfolioImage =
+        qrfolioUpload &&
+        Boolean(
+          (typeof qrfolioUpload.dataUrl === "string" &&
+            qrfolioUpload.dataUrl.trim()) ||
+            (typeof qrfolioUpload.imageUrl === "string" &&
+              qrfolioUpload.imageUrl.trim())
+        );
+
+      if (!hasQrfolioImage) {
+        const message = "Please upload your QRfolio QR code before continuing.";
+        setQrfolioError(message);
+        toast.error(message);
+        return;
+      }
+    }
+
     dispatch(
       setCheckoutTotals({
         ...computedTotals,

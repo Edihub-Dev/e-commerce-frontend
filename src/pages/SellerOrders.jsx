@@ -940,7 +940,8 @@ const SellerOrders = () => {
         payload.rejectionPermanent = false;
       }
 
-      await updateOrder(editingOrder._id, payload);
+      const targetId = editingOrder.orderId || editingOrder._id;
+      await updateOrder(targetId, payload);
 
       toast.success("Order updated successfully");
       setRefreshToken((prev) => prev + 1);

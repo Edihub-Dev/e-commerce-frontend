@@ -281,6 +281,34 @@ const SellerOrders = () => {
         .join("\n");
     };
 
+    const toAbsoluteUrl = (value) => {
+      const source = typeof value === "string" ? value.trim() : "";
+      if (!source) {
+        return "";
+      }
+
+      if (/^https?:\/\//i.test(source)) {
+        return source;
+      }
+
+      if (source.startsWith("//")) {
+        if (typeof window !== "undefined" && window.location?.protocol) {
+          return `${window.location.protocol}${source}`;
+        }
+        return `https:${source}`;
+      }
+
+      try {
+        const base =
+          typeof window !== "undefined" && window.location?.origin
+            ? window.location.origin
+            : undefined;
+        return base ? new URL(source, base).href : source;
+      } catch (error) {
+        return source;
+      }
+    };
+
     return orders.map((order) => {
       const items = Array.isArray(order.items) ? order.items : [];
       const primaryItem = items[0] || {};
@@ -314,6 +342,8 @@ const SellerOrders = () => {
       };
       const qrfolioUrl =
         typeof qrfolio.imageUrl === "string" ? qrfolio.imageUrl.trim() : "";
+      const invoice = order.invoice || {};
+      const invoiceUrl = toAbsoluteUrl(invoice.url || order.invoiceUrl || "");
       const row = {};
 
       row["Order ID"] = order.orderId || order.id || order._id;
@@ -338,9 +368,20 @@ const SellerOrders = () => {
         : "--";
       row["Shipping Address"] = formatShippingAddress(address);
       row["QR Folio Image"] = qrfolioUrl || resolveQrfolioFallback();
+      row["Invoice Number"] = invoice.number || order.invoiceNumber || "";
+      row["Invoice Date"] = invoice.generatedAt
+        ? formatDate(invoice.generatedAt)
+        : order.invoiceDate
+        ? formatDate(order.invoiceDate)
+        : "--";
+      row["Invoice"] = invoiceUrl;
 
       Object.defineProperty(row, "__qrfolioLink", {
         value: qrfolioUrl,
+        enumerable: false,
+      });
+      Object.defineProperty(row, "__invoiceLink", {
+        value: invoiceUrl,
         enumerable: false,
       });
 
@@ -394,6 +435,7 @@ const SellerOrders = () => {
 
     const header = Object.keys(rows[0]);
     const qrColumnIndex = header.indexOf("QR Folio Image");
+    const invoiceColumnIndex = header.indexOf("Invoice");
 
     if (qrColumnIndex !== -1) {
       rows.forEach((row, rowIndex) => {
@@ -417,9 +459,32 @@ const SellerOrders = () => {
         } else {
           cell.v = row["QR Folio Image"] || "View QR Image";
         }
+        if (!worksheet[cellAddress].l) {
+          worksheet[cellAddress].l = {
+            Target: qrLink,
+            Tooltip: "View QR folio image",
+          };
+        }
+      });
+    }
+
+    if (invoiceColumnIndex !== -1) {
+      rows.forEach((row, rowIndex) => {
+        const invoiceLink = row.__invoiceLink;
+        if (!invoiceLink) {
+          return;
+        }
+
+        const cellAddress = XLSXUtils.encode_cell({
+          r: rowIndex + 1,
+          c: invoiceColumnIndex,
+        });
+        const cell =
+          worksheet[cellAddress] || (worksheet[cellAddress] = { t: "s" });
+        cell.v = row["Invoice"] || invoiceLink;
         cell.l = {
-          Target: qrLink,
-          Tooltip: "Open QR folio image",
+          Target: invoiceLink,
+          Tooltip: "Download invoice",
         };
       });
     }

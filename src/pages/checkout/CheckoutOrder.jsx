@@ -23,6 +23,7 @@ const CheckoutOrder = () => {
   const qrfolioRequired = useSelector(
     (state) => state.checkout.qrfolioRequired
   );
+  const couponRequired = useSelector((state) => state.checkout.couponRequired);
   const couponState = useSelector((state) => state.coupon);
   const [shippingFee] = useState(0);
   const [couponCode, setCouponCode] = useState(appliedCoupon?.code || "");
@@ -40,6 +41,7 @@ const CheckoutOrder = () => {
   });
   const [qrfolioError, setQrfolioError] = useState("");
   const [qrfolioUploading, setQrfolioUploading] = useState(false);
+  const isCouponFulfilled = Boolean(appliedCoupon?.code?.trim());
   const computedTotals = useMemo(
     () =>
       calculateTotals(items, {
@@ -84,6 +86,12 @@ const CheckoutOrder = () => {
   }, [qrfolioUpload]);
 
   const handleContinue = () => {
+    if (couponRequired && !isCouponFulfilled) {
+      const message = "Please apply a valid coupon code before continuing.";
+      toast.error(message);
+      return;
+    }
+
     if (qrfolioRequired) {
       const hasQrfolioImage =
         qrfolioUpload &&
@@ -343,6 +351,12 @@ const CheckoutOrder = () => {
                     Coupon applied successfully. Savings: ₹
                     {Number(appliedCoupon.discountAmount || 0).toLocaleString()}
                   </div>
+                )}
+
+                {couponRequired && !isCouponFulfilled && !couponError && (
+                  <p className="mt-3 text-xs font-medium text-[#d97706]">
+                    Coupon code is required before continuing.
+                  </p>
                 )}
               </div>
 

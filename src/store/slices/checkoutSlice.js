@@ -10,6 +10,7 @@ const initialState = {
   appliedCoupon: null,
   qrfolioUpload: null,
   qrfolioRequired: true,
+  couponRequired: true,
   totals: {
     subtotal: 0,
     shippingFee: 0,
@@ -135,6 +136,12 @@ const checkoutSlice = createSlice({
         state.qrfolioUpload = null;
       }
     },
+    setCouponRequirement: (state, action) => {
+      state.couponRequired = Boolean(action.payload);
+      if (!state.couponRequired) {
+        state.appliedCoupon = state.appliedCoupon || null;
+      }
+    },
     setOrderId: (state, action) => {
       state.orderId = action.payload;
     },
@@ -157,6 +164,7 @@ export const {
   setCheckoutTotals,
   setQrfolioUpload,
   setQrfolioRequirement,
+  setCouponRequirement,
   setOrderId,
   setAppliedCoupon,
   clearAppliedCoupon,

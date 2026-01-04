@@ -67,7 +67,7 @@ const Signup = () => {
 
   return (
     <motion.div
-      className="container mx-auto px-4 pt-0 pb-0 flex justify-center"
+      className="container mx-auto px-4 pt-4 pb-4 flex justify-center"
       variants={pageVariants}
       initial="initial"
       animate="animate"

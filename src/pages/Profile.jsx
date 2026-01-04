@@ -112,8 +112,11 @@ const Profile = () => {
   const [editingAddressId, setEditingAddressId] = useState(null);
   const [saving, setSaving] = useState(false);
   const [formState, setFormState] = useState(createInitialFormState);
-  const [isEditingAccountName, setIsEditingAccountName] = useState(false);
+  const [isEditingAccount, setIsEditingAccount] = useState(false);
   const [accountNameInput, setAccountNameInput] = useState(user?.name || "");
+  const [accountMobileInput, setAccountMobileInput] = useState(
+    user?.mobile ? user.mobile.replace(/\D/g, "").slice(-10) : ""
+  );
   const [accountSaving, setAccountSaving] = useState(false);
   const lastResolvedPincodeRef = useRef("");
 
@@ -164,6 +167,13 @@ const Profile = () => {
 
     loadAddresses();
   }, []);
+
+  useEffect(() => {
+    setAccountNameInput(user?.name || "");
+    setAccountMobileInput(
+      user?.mobile ? user.mobile.replace(/\D/g, "").slice(-10) : ""
+    );
+  }, [user]);
 
   useEffect(() => {
     const trimmedPincode = String(formState.pincode || "").trim();
@@ -335,18 +345,38 @@ const Profile = () => {
     }
   };
 
-  const handleAccountNameSubmit = async (event) => {
+  const handleAccountDetailsSubmit = async (event) => {
     event.preventDefault();
-    const trimmed = accountNameInput.trim();
-    if (trimmed.length < 2) {
+    const trimmedName = accountNameInput.trim();
+    if (trimmedName.length < 2) {
       toast.error("Name must be at least 2 characters.");
+      return;
+    }
+
+    const normalizedMobile = accountMobileInput.replace(/\D/g, "").slice(-10);
+    if (!MOBILE_REGEX.test(normalizedMobile)) {
+      toast.error("Enter a valid 10-digit mobile number starting with 6.");
+      return;
+    }
+
+    const payload = {};
+    if (trimmedName !== user?.name) {
+      payload.name = trimmedName;
+    }
+    if (normalizedMobile !== user?.mobile) {
+      payload.mobile = normalizedMobile;
+    }
+
+    if (!Object.keys(payload).length) {
+      toast.info("No changes to save.");
+      setIsEditingAccount(false);
       return;
     }
 
     setAccountSaving(true);
     try {
-      await updateProfile({ name: trimmed });
-      setIsEditingAccountName(false);
+      await updateProfile(payload);
+      setIsEditingAccount(false);
     } catch (error) {
       console.error("Failed to update profile name", error);
     } finally {
@@ -385,10 +415,10 @@ const Profile = () => {
                   Account
                 </h2>
               </div>
-              {!isEditingAccountName && (
+              {!isEditingAccount && (
                 <button
                   type="button"
-                  onClick={() => setIsEditingAccountName(true)}
+                  onClick={() => setIsEditingAccount(true)}
                   className="inline-flex items-center justify-center gap-2 rounded-lg border border-primary/20 bg-primary/10 px-3 py-2 text-xs font-semibold text-primary hover:bg-primary/20"
                 >
                   <PencilLine className="h-4 w-4" />
@@ -396,8 +426,8 @@ const Profile = () => {
               )}
             </div>
 
-            {isEditingAccountName ? (
-              <form onSubmit={handleAccountNameSubmit} className="space-y-4">
+            {isEditingAccount ? (
+              <form onSubmit={handleAccountDetailsSubmit} className="space-y-4">
                 <label className="text-sm font-medium text-secondary/80">
                   Name
                   <input
@@ -410,13 +440,39 @@ const Profile = () => {
                     maxLength={100}
                   />
                 </label>
+                <label className="text-sm font-medium text-secondary/80">
+                  Mobile Number
+                  <div className="mt-2 flex w-full rounded-lg border border-slate-200 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/30">
+                    <span className="inline-flex items-center rounded-l-lg bg-slate-100 px-3 text-sm text-secondary/70">
+                      +91
+                    </span>
+                    <input
+                      value={accountMobileInput}
+                      onChange={(event) => {
+                        const digitsOnly = event.target.value
+                          .replace(/\D/g, "")
+                          .slice(0, 10);
+                        setAccountMobileInput(digitsOnly);
+                      }}
+                      className="flex-1 rounded-r-lg border-0 px-3 py-2 text-sm focus:outline-none"
+                      placeholder="10-digit mobile"
+                      inputMode="numeric"
+                      maxLength={10}
+                    />
+                  </div>
+                </label>
                 <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
                   <button
                     type="button"
                     className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-secondary hover:bg-slate-50"
                     onClick={() => {
-                      setIsEditingAccountName(false);
+                      setIsEditingAccount(false);
                       setAccountNameInput(user?.name || "");
+                      setAccountMobileInput(
+                        user?.mobile
+                          ? user.mobile.replace(/\D/g, "").slice(-10)
+                          : ""
+                      );
                     }}
                     disabled={accountSaving}
                   >
@@ -450,6 +506,16 @@ const Profile = () => {
                   <dt className="font-medium text-secondary/80">Email:</dt>
                   <dd className="select-text text-secondary">
                     {user?.email || "-"}
+                  </dd>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <dt className="font-medium text-secondary/80">Mobile:</dt>
+                  <dd className="text-secondary">
+                    {user?.mobile
+                      ? user.mobile.startsWith("+")
+                        ? user.mobile
+                        : `+91 ${user.mobile}`
+                      : "-"}
                   </dd>
                 </div>
               </dl>

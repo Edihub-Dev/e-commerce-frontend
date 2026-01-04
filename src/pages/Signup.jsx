@@ -11,6 +11,7 @@ const Signup = () => {
   const [formData, setFormData] = useState({
     username: "",
     email: "",
+    mobile: "",
     password: "",
     confirmPassword: "",
   });
@@ -19,7 +20,9 @@ const Signup = () => {
   const [errors, setErrors] = useState({});
   const { signup } = useAuth();
   const navigate = useNavigate();
+  const usernameInputRef = useRef(null);
   const emailInputRef = useRef(null);
+  const mobileInputRef = useRef(null);
   const passwordInputRef = useRef(null);
   const confirmPasswordInputRef = useRef(null);
 
@@ -52,6 +55,7 @@ const Signup = () => {
         name: formData.username,
         username: formData.username,
         email: formData.email,
+        mobile: formData.mobile,
         password: formData.password,
       });
       navigate("/verify-email", { state: { email: formData.email } });
@@ -63,7 +67,7 @@ const Signup = () => {
 
   return (
     <motion.div
-      className="container mx-auto px-4 py-16 flex justify-center"
+      className="container mx-auto px-4 pt-0 pb-0 flex justify-center"
       variants={pageVariants}
       initial="initial"
       animate="animate"
@@ -91,6 +95,7 @@ const Signup = () => {
               value={formData.username}
               onChange={handleChange}
               onKeyDown={(event) => handleFieldKeyDown(event, emailInputRef)}
+              ref={usernameInputRef}
               className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary sm:text-sm ${
                 errors.username ? "border-red-500" : "border-gray-300"
               }`}
@@ -112,7 +117,7 @@ const Signup = () => {
               id="email"
               value={formData.email}
               onChange={handleChange}
-              onKeyDown={(event) => handleFieldKeyDown(event, passwordInputRef)}
+              onKeyDown={(event) => handleFieldKeyDown(event, mobileInputRef)}
               ref={emailInputRef}
               className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary sm:text-sm ${
                 errors.email ? "border-red-500" : "border-gray-300"
@@ -120,6 +125,43 @@ const Signup = () => {
             />
             {errors.email && (
               <p className="mt-1 text-sm text-red-600">{errors.email}</p>
+            )}
+          </div>
+          <div>
+            <label
+              htmlFor="mobile"
+              className="block text-sm font-medium text-gray-700"
+            >
+              Mobile Number
+            </label>
+            <div className="mt-1 flex rounded-md shadow-sm">
+              <span className="inline-flex items-center rounded-l-md border border-r-0 border-gray-300 bg-gray-50 px-3 text-sm text-gray-500">
+                +91
+              </span>
+              <input
+                type="tel"
+                name="mobile"
+                id="mobile"
+                value={formData.mobile}
+                onChange={(event) => {
+                  const digitsOnly = event.target.value
+                    .replace(/\D/g, "")
+                    .slice(0, 10);
+                  setFormData((prev) => ({ ...prev, mobile: digitsOnly }));
+                }}
+                onKeyDown={(event) =>
+                  handleFieldKeyDown(event, passwordInputRef)
+                }
+                className={`block w-full rounded-r-md border px-3 py-2 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm ${
+                  errors.mobile ? "border-red-500" : "border-gray-300"
+                }`}
+                placeholder="10-digit mobile"
+                inputMode="numeric"
+                pattern="[0-9]*"
+              />
+            </div>
+            {errors.mobile && (
+              <p className="mt-1 text-sm text-red-600">{errors.mobile}</p>
             )}
           </div>
           <div>

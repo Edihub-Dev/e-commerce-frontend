@@ -14,6 +14,14 @@ export const signupSchema = Joi.object({
     "string.min": "Username must be at least 3 characters long",
     "string.max": "Username cannot be more than 30 characters long",
   }),
+  mobile: Joi.string()
+    .pattern(/^[6-9]\d{9}$/)
+    .required()
+    .messages({
+      "string.empty": "Mobile number is required",
+      "string.pattern.base":
+        "Enter a valid 10-digit Indian mobile number starting with 6-9",
+    }),
   email: Joi.string()
     .email({ tlds: { allow: false } })
     .required()

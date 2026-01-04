@@ -511,7 +511,10 @@ const SellerSignup = () => {
 
             <p className="text-sm text-center text-gray-600">
               Already have an account?{" "}
-              <Link to="/" className="font-medium text-primary hover:underline">
+              <Link
+                to="/login"
+                className="font-medium text-primary hover:underline"
+              >
                 Log in
               </Link>
             </p>

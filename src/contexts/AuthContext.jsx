@@ -1,6 +1,7 @@
 import React, { createContext, useState, useContext, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
-import api from "../utils/api";
+import api, { FORCE_LOGOUT_EVENT } from "../utils/api";
 
 const AuthContext = createContext(null);
 
@@ -42,6 +43,7 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
     try {
@@ -74,6 +76,44 @@ export const AuthProvider = ({ children }) => {
       setLoading(false);
     }
   }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return undefined;
+    }
+
+    const handleForceLogout = (event) => {
+      const detail = event?.detail || {};
+
+      try {
+        localStorage.removeItem("user");
+        localStorage.removeItem("authToken");
+      } catch (storageError) {
+        console.warn(
+          "Failed to clear auth storage on force logout",
+          storageError
+        );
+      }
+
+      setUser(null);
+      setIsAuthenticated(false);
+
+      const message =
+        detail.message || "Please verify your email before continuing.";
+      const toastType = detail.type === "warning" ? toast.warning : toast.info;
+      toastType(message, { autoClose: 1800 });
+
+      const redirectPath =
+        typeof detail.redirect === "string" ? detail.redirect : "/login";
+      navigate(redirectPath, { replace: true });
+    };
+
+    window.addEventListener(FORCE_LOGOUT_EVENT, handleForceLogout);
+
+    return () => {
+      window.removeEventListener(FORCE_LOGOUT_EVENT, handleForceLogout);
+    };
+  }, [navigate]);
 
   const login = async (credentials) => {
     try {

@@ -126,10 +126,36 @@ const resolveBaseUrl = (value) => {
   return value || "http://localhost:5000/api";
 };
 
+export const FORCE_LOGOUT_EVENT = "app:force-logout";
+
 const api = axios.create({
   baseURL: resolveBaseUrl(import.meta.env.VITE_API_URL),
   withCredentials: true,
 });
+
+const dispatchForceLogout = (detail = {}) => {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  const payload = {
+    reason: "email-unverified",
+    message: "Please verify your email to continue.",
+    redirect: "/login",
+    ...detail,
+  };
+
+  try {
+    window.localStorage?.removeItem("authToken");
+    window.localStorage?.removeItem("user");
+  } catch (storageError) {
+    console.warn("Failed to clear auth storage on force logout", storageError);
+  }
+
+  window.dispatchEvent(
+    new CustomEvent(FORCE_LOGOUT_EVENT, { detail: payload })
+  );
+};
 
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem("authToken");
@@ -140,6 +166,33 @@ api.interceptors.request.use((config) => {
   }
   return config;
 });
+
+api.interceptors.response.use(
+  (response) => {
+    if (response?.data?.forceLogout) {
+      dispatchForceLogout({
+        message:
+          response.data.message || "Please verify your email to continue.",
+        reason: response.data.reason || "email-unverified",
+      });
+    }
+
+    return response;
+  },
+  (error) => {
+    const { response } = error || {};
+
+    if (response?.data?.forceLogout) {
+      dispatchForceLogout({
+        message:
+          response.data.message || "Please verify your email to continue.",
+        reason: response.data.reason || "email-unverified",
+      });
+    }
+
+    return Promise.reject(error);
+  }
+);
 
 const extractPayload = (response, fallbackMessage) => {
   const payload = response?.data;

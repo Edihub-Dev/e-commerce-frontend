@@ -357,6 +357,7 @@ const SellerOrders = () => {
       row["Item Count"] = items.length;
       row["Primary Item"] = primaryItem.name || primaryItem.productName || "";
       row["Primary SKU"] = primaryItem.sku || "";
+      row["Primary Size"] = primaryItem.size || primaryItem.selectedSize || "";
       row["Buyer Name"] =
         order.buyerName || order.customerName || address.fullName || "";
       row["Buyer Email"] =
@@ -515,12 +516,13 @@ const SellerOrders = () => {
       "Payment",
       "Total",
       "Primary Item",
+      "Primary Size",
       "Buyer",
       "Item Count",
       "Shipping Address",
     ];
 
-    const columnWidths = [42, 40, 68, 32, 90, 90, 32, 180];
+    const columnWidths = [42, 40, 68, 32, 90, 70, 90, 32, 180];
     const startX = 20;
     let currentY = 36;
 
@@ -578,6 +580,7 @@ const SellerOrders = () => {
         `${row["Primary Item"]}${
           row["Primary SKU"] ? ` (SKU: ${row["Primary SKU"]})` : ""
         }`,
+        row["Primary Size"] || "--",
         buyerLabel,
         row["Item Count"],
         row["Shipping Address"],

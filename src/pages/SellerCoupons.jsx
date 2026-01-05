@@ -30,6 +30,7 @@ import {
   deleteSellerCouponsBulkThunk,
   importSellerCouponsThunk,
 } from "../store/thunks/sellerCouponsThunks";
+import { fetchSellerProducts } from "../utils/api";
 import { generateSellerCouponCode } from "../services/sellerCouponsApi";
 import {
   setSellerCouponsPage,
@@ -497,6 +498,8 @@ const buildDefaultFormState = () => ({
   endDate: "",
   isActive: true,
   count: "1",
+  appliesTo: "all",
+  productIds: [],
 });
 
 const toDateInputValue = (value) => {
@@ -551,6 +554,9 @@ const SellerCoupons = () => {
   const [isParsingImport, setIsParsingImport] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [importWarnings, setImportWarnings] = useState([]);
+  const [productOptions, setProductOptions] = useState([]);
+  const [isLoadingProducts, setIsLoadingProducts] = useState(false);
+  const [productLoadError, setProductLoadError] = useState("");
 
   const isLoadingList = status === "loading";
   const isMutating = mutationStatus === "loading";
@@ -562,6 +568,11 @@ const SellerCoupons = () => {
   const isBulkCreate =
     !isEditing && Number.isFinite(countValue) && countValue > 1;
   const isImportProcessing = isParsingImport || importStatus === "loading";
+  const selectedProductId =
+    formState.appliesTo === "product" ? formState.productIds?.[0] || "" : "";
+  const hasSelectedProductOption =
+    selectedProductId &&
+    productOptions.some((option) => option.value === selectedProductId);
   const readyImportRowCount = importRows.length;
   const importErrorsList = useMemo(
     () => (Array.isArray(importErrors) ? importErrors : []),
@@ -1078,6 +1089,31 @@ const SellerCoupons = () => {
     }));
   };
 
+  const loadProductOptions = useCallback(async () => {
+    setIsLoadingProducts(true);
+    setProductLoadError("");
+    try {
+      const response = await fetchSellerProducts({ page: 1, limit: 200 });
+      const items = Array.isArray(response?.data) ? response.data : [];
+      const options = items.map((product) => ({
+        value: product?._id || product?.id || product?.productId || "",
+        label:
+          product?.name?.trim() || product?.title?.trim() || "Untitled product",
+      }));
+      setProductOptions(options);
+    } catch (error) {
+      const message = error?.message || "Failed to load products";
+      setProductLoadError(message);
+      toast.error(message);
+    } finally {
+      setIsLoadingProducts(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadProductOptions();
+  }, [loadProductOptions]);
+
   const handleInputChange = (field) => (event) => {
     const { value } = event.target;
     setFormState((prev) => ({ ...prev, [field]: value }));
@@ -1086,6 +1122,31 @@ const SellerCoupons = () => {
   const handleCheckboxChange = (field) => (event) => {
     const { checked } = event.target;
     setFormState((prev) => ({ ...prev, [field]: checked }));
+  };
+
+  const handleScopeToggle = (scope) => {
+    setFormState((prev) => {
+      if (scope === "product") {
+        return {
+          ...prev,
+          appliesTo: "product",
+          productIds: Array.isArray(prev.productIds) ? prev.productIds : [],
+        };
+      }
+      return {
+        ...prev,
+        appliesTo: "all",
+        productIds: [],
+      };
+    });
+  };
+
+  const handleProductSelectChange = (event) => {
+    const { value } = event.target;
+    setFormState((prev) => ({
+      ...prev,
+      productIds: value ? [value] : [],
+    }));
   };
 
   const validateForm = () => {
@@ -1148,6 +1209,16 @@ const SellerCoupons = () => {
       }
     }
 
+    if (formState.appliesTo === "product") {
+      const selectedProducts = Array.isArray(formState.productIds)
+        ? formState.productIds.filter((id) => id && id.toString().trim())
+        : [];
+      if (!selectedProducts.length) {
+        toast.error("Select at least one product for this coupon");
+        return false;
+      }
+    }
+
     return true;
   };
 
@@ -1191,6 +1262,24 @@ const SellerCoupons = () => {
       startDate: formState.startDate || undefined,
       endDate: formState.endDate || undefined,
       isActive: Boolean(formState.isActive),
+      appliesTo: formState.appliesTo === "product" ? "product" : "all",
+      productIds:
+        formState.appliesTo === "product"
+          ? Array.from(
+              new Set(
+                (Array.isArray(formState.productIds)
+                  ? formState.productIds
+                  : []
+                )
+                  .map((id) =>
+                    id && typeof id.toString === "function"
+                      ? id.toString()
+                      : String(id || "").trim()
+                  )
+                  .filter(Boolean)
+              )
+            )
+          : [],
     };
   };
 
@@ -1260,6 +1349,12 @@ const SellerCoupons = () => {
       endDate: toDateInputValue(coupon.endDate),
       isActive: coupon.isActive !== false,
       count: "1",
+      appliesTo: coupon.appliesTo === "product" ? "product" : "all",
+      productIds: Array.isArray(coupon.productIds)
+        ? coupon.productIds
+            .map((id) => id?.toString?.() || String(id || ""))
+            .filter(Boolean)
+        : [],
     });
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -1481,6 +1576,82 @@ const SellerCoupons = () => {
               </div>
 
               <div className="mt-4 space-y-4">
+                <div>
+                  <span className="text-sm font-medium text-slate-600">
+                    Coupon applies to
+                  </span>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {["all", "product"].map((scopeKey) => {
+                      const isActive = formState.appliesTo === scopeKey;
+                      const label =
+                        scopeKey === "all"
+                          ? "All products"
+                          : "Specific product";
+                      return (
+                        <button
+                          key={scopeKey}
+                          type="button"
+                          onClick={() => handleScopeToggle(scopeKey)}
+                          className={`inline-flex items-center rounded-xl border px-3 py-1.5 text-xs font-semibold transition focus:outline-none focus:ring-2 focus:ring-blue-100 ${
+                            isActive
+                              ? "border-blue-500 bg-blue-50 text-blue-600"
+                              : "border-slate-200 bg-white text-slate-600 hover:border-blue-300"
+                          }`}
+                        >
+                          {label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {formState.appliesTo === "product" ? (
+                    <div className="mt-3">
+                      <label
+                        htmlFor="coupon-product-select"
+                        className="text-xs font-medium uppercase tracking-wide text-slate-500"
+                      >
+                        Eligible product
+                      </label>
+                      <select
+                        id="coupon-product-select"
+                        value={selectedProductId}
+                        onChange={handleProductSelectChange}
+                        className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-blue-500 focus:outline-none"
+                        disabled={isLoadingProducts}
+                      >
+                        <option value="">Select a product</option>
+                        {!hasSelectedProductOption && selectedProductId && (
+                          <option value={selectedProductId}>
+                            Selected product (no longer listed)
+                          </option>
+                        )}
+                        {productOptions.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                      {isLoadingProducts && (
+                        <div className="mt-2 inline-flex items-center gap-2 text-xs text-slate-500">
+                          <Loader2 size={14} className="animate-spin" />
+                          Loading products…
+                        </div>
+                      )}
+                      {productLoadError && !isLoadingProducts && (
+                        <p className="mt-2 text-xs text-amber-600">
+                          {productLoadError}
+                        </p>
+                      )}
+                      <p className="mt-2 text-xs text-slate-500">
+                        Customers can redeem this coupon only when the selected
+                        product is in their cart.
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="mt-2 text-xs text-slate-500">
+                      Coupon will apply to every published product you sell.
+                    </p>
+                  )}
+                </div>
                 <div>
                   <label
                     htmlFor="coupon-code"

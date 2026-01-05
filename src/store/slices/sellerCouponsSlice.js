@@ -31,6 +31,16 @@ const initialState = {
   importStatus: "idle",
   importSummary: null,
   importMessage: "",
+  stats: {
+    total: 0,
+    active: 0,
+    single: 0,
+    multi: 0,
+    expiredSingle: 0,
+    expiredMulti: 0,
+    redeemed: 0,
+    notRedeemed: 0,
+  },
 };
 
 const sellerCouponsSlice = createSlice({
@@ -69,6 +79,16 @@ const sellerCouponsSlice = createSlice({
         } else {
           state.meta = { ...initialState.meta, total: coupons.length };
         }
+        const statsCandidate =
+          payload.meta && typeof payload.meta === "object"
+            ? payload.meta.stats
+            : undefined;
+        state.stats = {
+          ...initialState.stats,
+          ...(statsCandidate && typeof statsCandidate === "object"
+            ? statsCandidate
+            : {}),
+        };
       })
       .addCase(fetchSellerCouponsThunk.rejected, (state, action) => {
         state.status = "failed";

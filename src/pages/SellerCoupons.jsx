@@ -526,6 +526,7 @@ const SellerCoupons = () => {
     importErrors,
     importSummary,
     importMessage,
+    stats: storeStats,
   } = useAppSelector((state) => state.sellerCoupons);
 
   const [formState, setFormState] = useState(buildDefaultFormState());
@@ -629,84 +630,115 @@ const SellerCoupons = () => {
   }, [resetImportState]);
 
   const summary = useMemo(() => {
-    const total = coupons.length;
-    const active = coupons.filter((coupon) => coupon.isActive !== false).length;
-    const single = coupons.filter(
-      (coupon) => deriveTypeFromCoupon(coupon) === "single"
-    ).length;
-    const multi = total - single;
-    const expiredSingle = coupons.filter(
-      (coupon) =>
-        deriveTypeFromCoupon(coupon) === "single" && coupon.isActive === false
-    ).length;
-    const expiredMulti = coupons.filter(
-      (coupon) =>
-        deriveTypeFromCoupon(coupon) === "multi" && coupon.isActive === false
-    ).length;
-    const redeemed = coupons.filter((coupon) =>
-      isCouponRedeemed(coupon)
-    ).length;
-    const notRedeemed = total - redeemed;
+    const fallback = (() => {
+      const total = coupons.length;
+      const active = coupons.filter(
+        (coupon) => coupon.isActive !== false
+      ).length;
+      const single = coupons.filter(
+        (coupon) => deriveTypeFromCoupon(coupon) === "single"
+      ).length;
+      const multi = total - single;
+      const expiredSingle = coupons.filter(
+        (coupon) =>
+          deriveTypeFromCoupon(coupon) === "single" && coupon.isActive === false
+      ).length;
+      const expiredMulti = coupons.filter(
+        (coupon) =>
+          deriveTypeFromCoupon(coupon) === "multi" && coupon.isActive === false
+      ).length;
+      const redeemed = coupons.filter((coupon) =>
+        isCouponRedeemed(coupon)
+      ).length;
+      const notRedeemed = total - redeemed;
+
+      return {
+        total,
+        active,
+        single,
+        multi,
+        expiredSingle,
+        expiredMulti,
+        redeemed,
+        notRedeemed,
+      };
+    })();
+
+    const hasStoreStats =
+      storeStats && typeof storeStats === "object" && "total" in storeStats;
+
+    const resolved = hasStoreStats
+      ? {
+          total: Number(storeStats.total) || 0,
+          active: Number(storeStats.active) || 0,
+          single: Number(storeStats.single) || 0,
+          multi: Number(storeStats.multi) || 0,
+          expiredSingle: Number(storeStats.expiredSingle) || 0,
+          expiredMulti: Number(storeStats.expiredMulti) || 0,
+          redeemed: Number(storeStats.redeemed) || 0,
+          notRedeemed: Number(storeStats.notRedeemed) || 0,
+        }
+      : fallback;
 
     return [
       {
         key: "total",
         label: "Total Coupons",
-        value: total,
+        value: resolved.total,
         icon: Tag,
         badgeClass: "bg-blue-50 text-blue-600",
       },
       {
         key: "active",
         label: "Active",
-        value: active,
+        value: resolved.active,
         icon: ShieldCheck,
         badgeClass: "bg-emerald-50 text-emerald-600",
       },
       {
         key: "single",
         label: "Single Use",
-        value: single,
+        value: resolved.single,
         icon: Layers,
         badgeClass: "bg-violet-50 text-violet-600",
       },
       {
         key: "multi",
         label: "Multi Use",
-        value: multi,
+        value: resolved.multi,
         icon: Calendar,
         badgeClass: "bg-amber-50 text-amber-600",
       },
       {
         key: "expired-single",
         label: "Expired Single Use",
-        value: expiredSingle,
+        value: resolved.expiredSingle,
         icon: AlertTriangle,
         badgeClass: "bg-slate-100 text-slate-600",
       },
       {
         key: "expired-multi",
         label: "Expired Multi Use",
-        value: expiredMulti,
+        value: resolved.expiredMulti,
         icon: AlertTriangle,
         badgeClass: "bg-orange-50 text-orange-600",
       },
       {
         key: "redeemed",
         label: "Redeemed Coupons",
-        value: redeemed,
+        value: resolved.redeemed,
         icon: CheckCircle2,
         badgeClass: "bg-emerald-50 text-emerald-600",
       },
       {
         key: "not-redeemed",
         label: "Not Redeemed",
-        value: notRedeemed,
+        value: resolved.notRedeemed,
         icon: CircleDashed,
         badgeClass: "bg-blue-50 text-blue-600",
       },
     ];
-  }, [coupons]);
+  }, [coupons, storeStats]);
 
   const filteredCoupons = useMemo(() => {
     const min = parseDiscountBound(filterDiscountMin);

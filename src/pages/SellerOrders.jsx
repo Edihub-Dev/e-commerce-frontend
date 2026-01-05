@@ -1704,7 +1704,8 @@ const SellerOrders = () => {
                     animate={{ y: 0, opacity: 1 }}
                     exit={{ y: 24, opacity: 0 }}
                     transition={{ duration: 0.2 }}
-                    className="w-full max-w-2xl rounded-2xl bg-white p-5 shadow-xl"
+                    className="modal-scroll w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-5 shadow-xl md:max-h-[calc(100vh-4rem)]"
+                    style={{ maxHeight: "calc(100vh - 2.5rem)" }}
                     onClick={(event) => event.stopPropagation()}
                   >
                     <div className="mb-4 flex items-center justify-between gap-3">

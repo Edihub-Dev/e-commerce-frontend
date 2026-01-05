@@ -1705,6 +1705,7 @@ const SellerOrders = () => {
                     exit={{ y: 24, opacity: 0 }}
                     transition={{ duration: 0.2 }}
                     className="modal-scroll w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-5 shadow-xl md:max-h-[calc(100vh-4rem)]"
+                    data-modal-dvh="true"
                     style={{ maxHeight: "calc(100vh - 2.5rem)" }}
                     onClick={(event) => event.stopPropagation()}
                   >

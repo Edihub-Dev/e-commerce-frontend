@@ -347,6 +347,7 @@ const AdminOrderDetailsPage = () => {
   const discount = order?.pricing?.discount ?? 0;
   const total = order?.pricing?.total ?? 0;
   const coupon = order?.coupon;
+  const couponCode = typeof coupon?.code === "string" ? coupon.code.trim() : "";
 
   const items = Array.isArray(order?.items) ? order.items : [];
 
@@ -647,9 +648,9 @@ const AdminOrderDetailsPage = () => {
                     <h3 className="text-lg font-semibold text-slate-900">
                       Payment summary
                     </h3>
-                    {coupon?.code && (
+                    {couponCode && (
                       <span className="inline-flex items-center rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-emerald-600">
-                        Coupon applied
+                        Coupon: {couponCode}
                       </span>
                     )}
                   </div>

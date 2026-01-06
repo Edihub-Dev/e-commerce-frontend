@@ -1317,7 +1317,7 @@ const SellerOrders = () => {
         </div>
       )}
 
-      <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+      <section className="overflow-visible md:overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
         <div className="pb-2 flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-4 py-3 text-sm text-slate-500">
           <div>
             {meta.total > 0 ? (
@@ -1354,7 +1354,7 @@ const SellerOrders = () => {
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -8 }}
                     transition={{ duration: 0.18 }}
-                    className="absolute right-0 top-full z-20 mt-2 w-44 rounded-xl border border-slate-200 bg-white text-left shadow-xl origin-top-right"
+                    className="absolute left-0 top-full z-20 mt-2 w-44 rounded-xl border border-slate-200 bg-white text-left shadow-xl origin-top-left sm:left-auto sm:right-0 sm:origin-top-right"
                   >
                     <button
                       type="button"

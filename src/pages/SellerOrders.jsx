@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { toast } from "react-hot-toast";
-import { utils as XLSXUtils, writeFile as writeXlsxFile } from "xlsx";
+import ExcelJS from "exceljs";
 import jsPDF from "jspdf";
 import {
   downloadOrderInvoice,
@@ -423,78 +423,171 @@ const SellerOrders = () => {
     toast.success("CSV exported");
   }, [buildExportRows]);
 
-  const handleExportXlsx = useCallback(() => {
+  const handleExportXlsx = useCallback(async () => {
     const rows = buildExportRows();
     if (!rows.length) {
       toast.error("No orders to export");
       return;
     }
 
-    const worksheet = XLSXUtils.json_to_sheet(rows);
-    const workbook = XLSXUtils.book_new();
-    XLSXUtils.book_append_sheet(workbook, worksheet, "Orders");
-
     const header = Object.keys(rows[0]);
     const qrColumnIndex = header.indexOf("QR Folio Image");
     const invoiceColumnIndex = header.indexOf("Invoice");
 
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("Orders");
+
+    worksheet.addRow(header);
+
     if (qrColumnIndex !== -1) {
-      rows.forEach((row, rowIndex) => {
-        const qrLink = row.__qrfolioLink;
-        if (!qrLink) {
-          return;
-        }
-
-        const cellAddress = XLSXUtils.encode_cell({
-          r: rowIndex + 1,
-          c: qrColumnIndex,
-        });
-        const cell = worksheet[cellAddress];
-        if (!cell) {
-          return;
-        }
-
-        cell.t = "s";
-        if (qrLink === row["QR Folio Image"]) {
-          cell.v = qrLink;
-        } else {
-          cell.v = row["QR Folio Image"] || "View QR Image";
-        }
-        if (!worksheet[cellAddress].l) {
-          worksheet[cellAddress].l = {
-            Target: qrLink,
-            Tooltip: "View QR folio image",
-          };
-        }
-      });
+      worksheet.getColumn(qrColumnIndex + 1).width = 16;
     }
-
     if (invoiceColumnIndex !== -1) {
-      rows.forEach((row, rowIndex) => {
-        const invoiceLink = row.__invoiceLink;
-        if (!invoiceLink) {
-          return;
-        }
-
-        const cellAddress = XLSXUtils.encode_cell({
-          r: rowIndex + 1,
-          c: invoiceColumnIndex,
-        });
-        const cell =
-          worksheet[cellAddress] || (worksheet[cellAddress] = { t: "s" });
-        cell.v = row["Invoice"] || invoiceLink;
-        cell.l = {
-          Target: invoiceLink,
-          Tooltip: "Download invoice",
-        };
-      });
+      worksheet.getColumn(invoiceColumnIndex + 1).width = 24;
     }
 
-    writeXlsxFile(
-      workbook,
-      `seller-orders-${new Date().toISOString().slice(0, 10)}.xlsx`
-    );
-    toast.success("XLSX exported");
+    const normalizeUrl = (value) => {
+      if (!value || typeof value !== "string") {
+        return null;
+      }
+
+      const trimmed = value.trim();
+      if (!trimmed) {
+        return null;
+      }
+
+      try {
+        return new URL(trimmed).toString();
+      } catch (_error) {
+        try {
+          const base = window.location?.origin || "";
+          if (!base) return trimmed;
+          return new URL(trimmed.replace(/^\/+/, ""), base).toString();
+        } catch (_nestedError) {
+          return trimmed;
+        }
+      }
+    };
+
+    const imageCache = new Map();
+
+    const loadQrImage = async (rawUrl) => {
+      const normalizedUrl = normalizeUrl(rawUrl);
+      if (!normalizedUrl) {
+        return null;
+      }
+
+      if (imageCache.has(normalizedUrl)) {
+        return imageCache.get(normalizedUrl);
+      }
+
+      try {
+        const response = await fetch(normalizedUrl, { credentials: "include" });
+        if (!response.ok) {
+          throw new Error(`Unexpected status ${response.status}`);
+        }
+
+        const blob = await response.blob();
+        if (!blob.type || !blob.type.startsWith("image/")) {
+          imageCache.set(normalizedUrl, null);
+          return null;
+        }
+
+        const dataUrl = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+
+        const extension = blob.type.includes("png")
+          ? "png"
+          : blob.type.includes("jpeg") || blob.type.includes("jpg")
+          ? "jpeg"
+          : blob.type.includes("webp")
+          ? "webp"
+          : "png";
+
+        const payload = { dataUrl, extension };
+        imageCache.set(normalizedUrl, payload);
+        return payload;
+      } catch (error) {
+        console.error(
+          "Failed to load QR image for XLSX export",
+          normalizedUrl,
+          error
+        );
+        imageCache.set(normalizedUrl, null);
+        return null;
+      }
+    };
+
+    for (let index = 0; index < rows.length; index += 1) {
+      const row = rows[index];
+      const excelRowIndex = index + 2; // account for header row
+
+      const qrLink = row.__qrfolioLink || row["QR Folio Image"];
+      const qrImage =
+        qrColumnIndex !== -1 && qrLink ? await loadQrImage(qrLink) : null;
+
+      const rowValues = header.map((key) => {
+        if (key === "QR Folio Image") {
+          return qrImage ? "" : row[key] || "";
+        }
+        return row[key];
+      });
+
+      const addedRow = worksheet.addRow(rowValues);
+
+      if (qrImage && qrImage.dataUrl && qrColumnIndex !== -1) {
+        const base64 =
+          typeof qrImage.dataUrl === "string"
+            ? qrImage.dataUrl.split(",")[1] || qrImage.dataUrl
+            : qrImage.dataUrl;
+
+        const imageId = workbook.addImage({
+          base64,
+          extension: qrImage.extension || "png",
+        });
+
+        addedRow.height = 70;
+
+        worksheet.addImage(imageId, {
+          tl: { col: qrColumnIndex, row: excelRowIndex - 1 },
+          ext: { width: 72, height: 72 },
+        });
+      }
+
+      if (invoiceColumnIndex !== -1) {
+        const invoiceLink = row.__invoiceLink;
+        if (invoiceLink) {
+          const cell = addedRow.getCell(invoiceColumnIndex + 1);
+          const text = row["Invoice"] || invoiceLink;
+          cell.value = { text, hyperlink: invoiceLink };
+        }
+      }
+    }
+
+    try {
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `seller-orders-${new Date()
+        .toISOString()
+        .slice(0, 10)}.xlsx`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      toast.success("XLSX exported");
+    } catch (error) {
+      console.error("Failed to export XLSX with QR images", error);
+      toast.error("Failed to export XLSX. Please try again.");
+    }
   }, [buildExportRows]);
 
   const handleExportPdf = useCallback(async () => {

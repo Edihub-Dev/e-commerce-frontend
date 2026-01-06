@@ -504,63 +504,235 @@ const SellerOrders = () => {
       return;
     }
 
-    const doc = new jsPDF({ orientation: "landscape" });
-    doc.setFontSize(16);
-    doc.text("Seller Orders", doc.internal.pageSize.getWidth() / 2, 24, {
-      align: "center",
+    const doc = new jsPDF({
+      orientation: "landscape",
+      unit: "pt",
+      format: "a4",
     });
 
-    const headers = [
-      "Order ID",
-      "Status",
-      "Payment",
-      "Total",
-      "Primary Item",
-      "Primary Size",
-      "Buyer",
-      "Item Count",
-      "Shipping Address",
+    const columns = [
+      { key: "orderId", label: "Order ID", width: 65 },
+      { key: "status", label: "Status", width: 45 },
+      { key: "payment", label: "Payment", width: 72 },
+      { key: "total", label: "Total (INR)", width: 65, align: "right" },
+      { key: "item", label: "Primary Item", width: 118 },
+      { key: "size", label: "Size", width: 36, align: "center" },
+      { key: "buyer", label: "Buyer", width: 86 },
+      { key: "qty", label: "Qty", width: 30, align: "center" },
+      { key: "ship", label: "Ship To", width: 108 },
+      { key: "qr", label: "QR Code", width: 58 },
+      { key: "invoice", label: "Invoice URL", width: 90 },
     ];
 
-    const columnWidths = [42, 40, 68, 32, 90, 70, 90, 32, 180];
-    const startX = 20;
-    let currentY = 36;
+    const tableStartX = 32;
+    const marginY = 72;
+    const bottomMargin = 48;
+    const headerHeight = 26;
+    const tableWidth = columns.reduce((sum, column) => sum + column.width, 0);
+    const bodyFontSize = 9;
+    const bodyLineHeight = 12;
 
-    const drawRow = (values, { header = false } = {}) => {
-      const rowHeight = header ? 12 : 13;
-      let cursorX = startX;
+    let currentY = marginY;
+    let pageWidth = doc.internal.pageSize.getWidth();
+    let pageHeight = doc.internal.pageSize.getHeight();
 
-      values.forEach((value, index) => {
-        const cellWidth = columnWidths[index];
-        const text = Array.isArray(value)
-          ? value
-          : doc.splitTextToSize(String(value ?? ""), cellWidth - 6);
+    const ensurePageMetrics = () => {
+      pageWidth = doc.internal.pageSize.getWidth();
+      pageHeight = doc.internal.pageSize.getHeight();
+    };
 
-        if (header) {
-          doc.setFillColor(15, 23, 42);
-          doc.setTextColor(255, 255, 255);
-          doc.rect(cursorX, currentY, cellWidth, rowHeight, "F");
-          doc.setFont("Helvetica", "bold");
-          doc.text(String(value), cursorX + 4, currentY + 8);
-        } else {
-          doc.setFillColor(248, 250, 252);
-          doc.rect(cursorX, currentY, cellWidth, rowHeight, "S");
-          doc.setTextColor(30, 41, 59);
-          doc.setFont("Helvetica", "normal");
-          doc.text(text, cursorX + 4, currentY + rowHeight / 2, {
-            baseline: "middle",
-          });
+    const normalizeDisplayText = (value) => {
+      if (value === null || value === undefined) {
+        return "--";
+      }
+
+      const text = Array.isArray(value) ? value.join(" ") : String(value);
+      return text.replace(/\u00a0/g, " ").trim() || "--";
+    };
+
+    const normalizeLink = (value) => {
+      if (!value || typeof value !== "string") {
+        return null;
+      }
+
+      const trimmed = value.trim();
+      if (!trimmed || trimmed === "--") {
+        return null;
+      }
+
+      try {
+        return new URL(trimmed).toString();
+      } catch (error) {
+        try {
+          const base = window.location?.origin || "";
+          if (!base) return trimmed;
+          return new URL(trimmed.replace(/^\/+/, ""), base).toString();
+        } catch (_nestedError) {
+          return trimmed;
         }
+      }
+    };
 
-        cursorX += cellWidth;
+    const formatAmount = (value) => {
+      const resolvedNumber = Number.isFinite(Number(value)) ? Number(value) : 0;
+
+      const normalized = new Intl.NumberFormat("en-IN", {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
+      }).format(resolvedNumber);
+
+      return `INR ${normalized}`;
+    };
+
+    const resolveCellValue = (value) => {
+      if (value && typeof value === "object" && !Array.isArray(value)) {
+        return {
+          text: value.text !== undefined ? value.text : "--",
+          link: normalizeLink(value.link || value.url),
+        };
+      }
+
+      return {
+        text: value,
+        link: null,
+      };
+    };
+
+    const drawColumnHeader = () => {
+      doc.setFont("Helvetica", "bold");
+      doc.setFontSize(10);
+      doc.setTextColor(255, 255, 255);
+      doc.setFillColor(15, 23, 42);
+      doc.setDrawColor(15, 23, 42);
+
+      let cursorX = tableStartX;
+      columns.forEach((column) => {
+        doc.setFillColor(15, 23, 42);
+        doc.setTextColor(255, 255, 255);
+        doc.rect(cursorX, currentY, column.width, headerHeight, "FD");
+        const textY = currentY + headerHeight / 2 + 1;
+        doc.text(column.label, cursorX + column.width / 2, textY, {
+          align: "center",
+          baseline: "middle",
+        });
+        cursorX += column.width;
+      });
+
+      currentY += headerHeight;
+      doc.setDrawColor(221, 226, 233);
+      doc.setFont("Helvetica", "normal");
+      doc.setFontSize(bodyFontSize);
+      doc.setTextColor(30, 41, 59);
+    };
+
+    const renderPageHeader = (isFirstPage) => {
+      ensurePageMetrics();
+      const title = isFirstPage ? "Seller Orders" : "Seller Orders (cont.)";
+      const titleOffset = isFirstPage ? 32 : 24;
+
+      doc.setFont("Helvetica", "bold");
+      doc.setFontSize(isFirstPage ? 16 : 12);
+      doc.setTextColor(30, 41, 59);
+      doc.text(title, pageWidth / 2, marginY - titleOffset, {
+        align: "center",
+      });
+
+      currentY = marginY;
+      drawColumnHeader();
+    };
+
+    const appendRow = (rowData, rowIndex) => {
+      const cellInfos = columns.map((column) => {
+        const { text, link } = resolveCellValue(rowData[column.key]);
+        const normalizedText = normalizeDisplayText(
+          typeof text === "string" ? text.replace(/\r?\n/g, "\n") : text
+        );
+        const lines = doc.splitTextToSize(
+          normalizedText || "--",
+          column.width - 12
+        );
+
+        return {
+          lines: lines.length ? lines : ["--"],
+          link,
+        };
+      });
+
+      const linesCount = Math.max(
+        ...cellInfos.map((entry) => entry.lines.length || 1)
+      );
+      const rowHeight = Math.max(linesCount * bodyLineHeight + 16, 26);
+
+      if (currentY + rowHeight > pageHeight - bottomMargin) {
+        doc.addPage({ orientation: "landscape", unit: "pt", format: "a4" });
+        renderPageHeader(false);
+      }
+
+      if (rowIndex % 2 === 0) {
+        doc.setFillColor(248, 250, 252);
+        doc.setDrawColor(248, 250, 252);
+        doc.rect(tableStartX, currentY, tableWidth, rowHeight, "F");
+      }
+
+      doc.setDrawColor(221, 226, 233);
+      doc.setFont("Helvetica", "normal");
+      doc.setFontSize(bodyFontSize);
+      doc.setTextColor(30, 41, 59);
+
+      let cursorX = tableStartX;
+      columns.forEach((column, columnIndex) => {
+        doc.rect(cursorX, currentY, column.width, rowHeight);
+        const { lines, link } = cellInfos[columnIndex];
+        lines.forEach((line, lineIndex) => {
+          const textY = currentY + 12 + lineIndex * bodyLineHeight;
+          const align = column.align || "left";
+          const textOptions = { baseline: "top" };
+
+          if (align === "center") {
+            textOptions.align = "center";
+            if (link && lines.length === 1 && lineIndex === 0) {
+              doc.setTextColor(37, 99, 235);
+              doc.textWithLink(line, cursorX + column.width / 2, textY, {
+                align: "center",
+                url: link,
+              });
+              doc.setTextColor(30, 41, 59);
+            } else {
+              doc.text(line, cursorX + column.width / 2, textY, textOptions);
+            }
+          } else if (align === "right") {
+            textOptions.align = "right";
+            if (link && lines.length === 1 && lineIndex === 0) {
+              doc.setTextColor(37, 99, 235);
+              doc.textWithLink(line, cursorX + column.width - 6, textY, {
+                align: "right",
+                url: link,
+              });
+              doc.setTextColor(30, 41, 59);
+            } else {
+              doc.text(line, cursorX + column.width - 6, textY, textOptions);
+            }
+          } else {
+            if (link && lines.length === 1 && lineIndex === 0) {
+              doc.setTextColor(37, 99, 235);
+              doc.textWithLink(line, cursorX + 6, textY, {
+                url: link,
+              });
+              doc.setTextColor(30, 41, 59);
+            } else {
+              doc.text(line, cursorX + 6, textY, textOptions);
+            }
+          }
+        });
+        cursorX += column.width;
       });
 
       currentY += rowHeight;
     };
 
-    drawRow(headers, { header: true });
+    renderPageHeader(true);
 
-    rows.forEach((row) => {
+    rows.forEach((row, index) => {
       const paymentLabel = `${row["Payment Status"] || ""}${
         row["Payment Method"] ? ` (${row["Payment Method"]})` : ""
       }`;
@@ -571,28 +743,36 @@ const SellerOrders = () => {
       ]
         .filter(Boolean)
         .join(" • ");
+      const shippingAddress = (row["Shipping Address"] || "")
+        .split("\n")
+        .map((entry) => entry.trim())
+        .filter(Boolean)
+        .join(", ");
 
-      const values = [
-        row["Order ID"],
-        row.Status,
-        paymentLabel,
-        row["Total Amount"],
-        `${row["Primary Item"]}${
-          row["Primary SKU"] ? ` (SKU: ${row["Primary SKU"]})` : ""
-        }`,
-        row["Primary Size"] || "--",
-        buyerLabel,
-        row["Item Count"],
-        row["Shipping Address"],
-      ];
+      const qrLink = row.__qrfolioLink || row["QR Folio Image"];
+      const invoiceLink = row.__invoiceLink || row["Invoice"];
 
-      if (currentY + 15 > doc.internal.pageSize.getHeight() - 20) {
-        doc.addPage({ orientation: "landscape" });
-        currentY = 36;
-        drawRow(headers, { header: true });
-      }
+      const rowData = {
+        orderId: normalizeDisplayText(row["Order ID"]),
+        status: normalizeDisplayText(row.Status),
+        payment: normalizeDisplayText(paymentLabel),
+        total: formatAmount(row["Total Amount"]),
+        item: normalizeDisplayText(
+          `${row["Primary Item"] || "--"}${
+            row["Primary SKU"] ? ` (SKU: ${row["Primary SKU"]})` : ""
+          }`
+        ),
+        size: normalizeDisplayText(row["Primary Size"] || "--"),
+        buyer: normalizeDisplayText(buyerLabel),
+        qty: normalizeDisplayText(row["Item Count"] ?? 0),
+        ship: normalizeDisplayText(shippingAddress),
+        qr: qrLink ? { text: "View", link: qrLink } : { text: "--" },
+        invoice: invoiceLink
+          ? { text: "Open", link: invoiceLink }
+          : { text: "--" },
+      };
 
-      drawRow(values);
+      appendRow(rowData, index);
     });
 
     doc.save(`seller-orders-${new Date().toISOString().slice(0, 10)}.pdf`);

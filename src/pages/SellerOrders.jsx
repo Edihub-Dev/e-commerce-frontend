@@ -497,7 +497,7 @@ const SellerOrders = () => {
     toast.success("XLSX exported");
   }, [buildExportRows]);
 
-  const handleExportPdf = useCallback(() => {
+  const handleExportPdf = useCallback(async () => {
     const rows = buildExportRows();
     if (!rows.length) {
       toast.error("No orders to export");
@@ -515,13 +515,27 @@ const SellerOrders = () => {
       { key: "status", label: "Status", width: 45 },
       { key: "payment", label: "Payment", width: 72 },
       { key: "total", label: "Total (INR)", width: 65, align: "right" },
-      { key: "item", label: "Primary Item", width: 118 },
+      { key: "item", label: "Primary Item", width: 112 },
       { key: "size", label: "Size", width: 36, align: "center" },
-      { key: "buyer", label: "Buyer", width: 86 },
+      { key: "buyer", label: "Buyer", width: 80 },
       { key: "qty", label: "Qty", width: 30, align: "center" },
-      { key: "ship", label: "Ship To", width: 108 },
-      { key: "qr", label: "QR Code", width: 58 },
-      { key: "invoice", label: "Invoice URL", width: 90 },
+      { key: "ship", label: "Ship To", width: 102 },
+      {
+        key: "qr",
+        label: "QR Code",
+        width: 70,
+        type: "image",
+        imageWidth: 52,
+        imageHeight: 52,
+      },
+      {
+        key: "invoice",
+        label: "Invoice",
+        width: 88,
+        type: "image",
+        imageWidth: 68,
+        imageHeight: 52,
+      },
     ];
 
     const tableStartX = 32;
@@ -570,6 +584,126 @@ const SellerOrders = () => {
         } catch (_nestedError) {
           return trimmed;
         }
+      }
+    };
+
+    const extractExtensionFromPath = (path) => {
+      if (!path || typeof path !== "string") {
+        return "";
+      }
+
+      const sanitized = path.split("?")[0].split("#")[0];
+      const segments = sanitized.split("/").filter(Boolean);
+      if (!segments.length) {
+        return "";
+      }
+
+      const lastSegment = segments[segments.length - 1];
+      const dotIndex = lastSegment.lastIndexOf(".");
+      if (dotIndex === -1 || dotIndex === lastSegment.length - 1) {
+        return "";
+      }
+
+      return lastSegment.slice(dotIndex + 1).toLowerCase();
+    };
+
+    const inferFileExtension = (value) => {
+      if (!value || typeof value !== "string") {
+        return "";
+      }
+
+      try {
+        const parsed = new URL(value, window.location?.origin || undefined);
+        return extractExtensionFromPath(parsed.pathname || "");
+      } catch (_error) {
+        return extractExtensionFromPath(value);
+      }
+    };
+
+    const isLikelyImageLink = (value) => {
+      const extension = inferFileExtension(value);
+      if (!extension) {
+        return false;
+      }
+
+      return ["png", "jpg", "jpeg", "gif", "bmp", "webp", "svg"].includes(
+        extension
+      );
+    };
+
+    const resolveInvoiceFallback = (url, attemptedImage) => {
+      if (!url) {
+        return "Invoice unavailable";
+      }
+
+      if (attemptedImage) {
+        return "Invoice image unavailable";
+      }
+
+      const extension = inferFileExtension(url);
+      if (!extension) {
+        return "Invoice file";
+      }
+
+      if (extension === "pdf") {
+        return "Invoice ";
+      }
+
+      return `Invoice ${extension.toUpperCase()}`;
+    };
+
+    const imageCache = new Map();
+
+    const loadImageData = async (rawUrl) => {
+      const normalizedUrl = normalizeLink(rawUrl);
+      if (!normalizedUrl) {
+        return null;
+      }
+
+      if (imageCache.has(normalizedUrl)) {
+        return imageCache.get(normalizedUrl);
+      }
+
+      try {
+        const response = await fetch(normalizedUrl, {
+          credentials: "include",
+        });
+        if (!response.ok) {
+          throw new Error(`Unexpected status ${response.status}`);
+        }
+
+        const blob = await response.blob();
+        if (!blob.type || !blob.type.startsWith("image/")) {
+          imageCache.set(normalizedUrl, null);
+          return null;
+        }
+
+        const dataUrl = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+
+        const format = blob.type.includes("png")
+          ? "PNG"
+          : blob.type.includes("jpeg") || blob.type.includes("jpg")
+          ? "JPEG"
+          : blob.type.includes("webp")
+          ? "WEBP"
+          : undefined;
+
+        const payload = { dataUrl, format };
+        imageCache.set(normalizedUrl, payload);
+        return payload;
+      } catch (error) {
+        console.error(
+          "Failed to load image for PDF export",
+          normalizedUrl,
+          error
+        );
+        imageCache.set(normalizedUrl, null);
+        return null;
       }
     };
 
@@ -643,6 +777,38 @@ const SellerOrders = () => {
 
     const appendRow = (rowData, rowIndex) => {
       const cellInfos = columns.map((column) => {
+        if (column.type === "image") {
+          const cellValue = rowData[column.key] || {};
+          const hasImage = Boolean(cellValue.image && cellValue.image.dataUrl);
+          const linkUrl =
+            typeof cellValue.url === "string" && cellValue.url.trim()
+              ? cellValue.url.trim()
+              : null;
+
+          const fallbackLines = !hasImage
+            ? doc.splitTextToSize(
+                normalizeDisplayText(cellValue.fallback || "Image unavailable"),
+                column.width - 12
+              )
+            : [];
+
+          const imageHeight = column.imageHeight || 52;
+          const requiredHeight = hasImage
+            ? Math.max(imageHeight + 16, 26)
+            : Math.max((fallbackLines.length || 1) * bodyLineHeight + 16, 26);
+
+          return {
+            type: "image",
+            hasImage,
+            image: cellValue.image || null,
+            url: linkUrl,
+            fallbackLines,
+            requiredHeight,
+            imageWidth: column.imageWidth || 52,
+            imageHeight,
+          };
+        }
+
         const { text, link } = resolveCellValue(rowData[column.key]);
         const normalizedText = normalizeDisplayText(
           typeof text === "string" ? text.replace(/\r?\n/g, "\n") : text
@@ -653,15 +819,16 @@ const SellerOrders = () => {
         );
 
         return {
+          type: "text",
           lines: lines.length ? lines : ["--"],
           link,
+          requiredHeight: Math.max(lines.length * bodyLineHeight + 16, 26),
         };
       });
 
-      const linesCount = Math.max(
-        ...cellInfos.map((entry) => entry.lines.length || 1)
+      const rowHeight = Math.max(
+        ...cellInfos.map((entry) => entry.requiredHeight || 26)
       );
-      const rowHeight = Math.max(linesCount * bodyLineHeight + 16, 26);
 
       if (currentY + rowHeight > pageHeight - bottomMargin) {
         doc.addPage({ orientation: "landscape", unit: "pt", format: "a4" });
@@ -681,8 +848,55 @@ const SellerOrders = () => {
 
       let cursorX = tableStartX;
       columns.forEach((column, columnIndex) => {
+        const cellInfo = cellInfos[columnIndex];
         doc.rect(cursorX, currentY, column.width, rowHeight);
-        const { lines, link } = cellInfos[columnIndex];
+
+        if (column.type === "image") {
+          if (cellInfo.hasImage && cellInfo.image?.dataUrl) {
+            const targetWidth = Math.min(cellInfo.imageWidth, column.width - 8);
+            const targetHeight = cellInfo.imageHeight;
+            const imageX = cursorX + (column.width - targetWidth) / 2;
+            const imageY = currentY + (rowHeight - targetHeight) / 2;
+
+            try {
+              doc.addImage(
+                cellInfo.image.dataUrl,
+                cellInfo.image.format || "PNG",
+                imageX,
+                imageY,
+                targetWidth,
+                targetHeight
+              );
+
+              if (cellInfo.url) {
+                doc.link(imageX, imageY, targetWidth, targetHeight, {
+                  url: cellInfo.url,
+                });
+              }
+            } catch (error) {
+              console.error("Failed to add image to PDF", error);
+            }
+          } else if (cellInfo.fallbackLines.length) {
+            cellInfo.fallbackLines.forEach((line, lineIndex) => {
+              const textY = currentY + 12 + lineIndex * bodyLineHeight;
+
+              if (cellInfo.url && lineIndex === 0) {
+                doc.setTextColor(37, 99, 235);
+                doc.textWithLink(line, cursorX + 6, textY, {
+                  url: cellInfo.url,
+                });
+                doc.setTextColor(30, 41, 59);
+              } else {
+                doc.text(line, cursorX + 6, textY, { baseline: "top" });
+              }
+            });
+          }
+
+          cursorX += column.width;
+          return;
+        }
+
+        const { lines, link } = cellInfo;
         lines.forEach((line, lineIndex) => {
           const textY = currentY + 12 + lineIndex * bodyLineHeight;
           const align = column.align || "left";
@@ -724,6 +938,7 @@ const SellerOrders = () => {
             }
           }
         });
+
         cursorX += column.width;
       });
 
@@ -732,8 +947,9 @@ const SellerOrders = () => {
 
     renderPageHeader(true);
 
-    rows.forEach((row, index) => {
-      const paymentLabel = `${row["Payment Status"] || ""}${
+    for (let index = 0; index < rows.length; index += 1) {
+      const row = rows[index];
+      const paymentLabel = `${row["Payment Status"] || ""}$${
         row["Payment Method"] ? ` (${row["Payment Method"]})` : ""
       }`;
       const buyerLabel = [
@@ -752,6 +968,20 @@ const SellerOrders = () => {
       const qrLink = row.__qrfolioLink || row["QR Folio Image"];
       const invoiceLink = row.__invoiceLink || row["Invoice"];
 
+      const normalizedQrUrl = normalizeLink(qrLink);
+      const normalizedInvoiceUrl = normalizeLink(invoiceLink);
+      const invoiceAssetUrl = normalizedInvoiceUrl || invoiceLink;
+      const shouldAttemptInvoiceImage = isLikelyImageLink(invoiceAssetUrl);
+
+      const [qrImage, invoiceImageRaw] = await Promise.all([
+        loadImageData(qrLink),
+        shouldAttemptInvoiceImage
+          ? loadImageData(invoiceLink)
+          : Promise.resolve(null),
+      ]);
+
+      const invoiceImage = shouldAttemptInvoiceImage ? invoiceImageRaw : null;
+
       const rowData = {
         orderId: normalizeDisplayText(row["Order ID"]),
         status: normalizeDisplayText(row.Status),
@@ -766,14 +996,25 @@ const SellerOrders = () => {
         buyer: normalizeDisplayText(buyerLabel),
         qty: normalizeDisplayText(row["Item Count"] ?? 0),
         ship: normalizeDisplayText(shippingAddress),
-        qr: qrLink ? { text: "View", link: qrLink } : { text: "--" },
-        invoice: invoiceLink
-          ? { text: "Open", link: invoiceLink }
-          : { text: "--" },
+        qr: qrImage
+          ? { image: qrImage, url: normalizedQrUrl }
+          : {
+              fallback: "QR image unavailable",
+              url: normalizedQrUrl,
+            },
+        invoice: invoiceImage
+          ? { image: invoiceImage, url: normalizedInvoiceUrl }
+          : {
+              fallback: resolveInvoiceFallback(
+                invoiceAssetUrl,
+                shouldAttemptInvoiceImage
+              ),
+              url: normalizedInvoiceUrl,
+            },
       };
 
       appendRow(rowData, index);
-    });
+    }
 
     doc.save(`seller-orders-${new Date().toISOString().slice(0, 10)}.pdf`);
     toast.success("PDF exported");

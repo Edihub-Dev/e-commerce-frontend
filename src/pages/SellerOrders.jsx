@@ -604,27 +604,27 @@ const SellerOrders = () => {
     });
 
     const columns = [
-      { key: "orderId", label: "Order ID", width: 65 },
+      { key: "orderId", label: "Order ID", width: 58 },
       { key: "status", label: "Status", width: 45 },
-      { key: "payment", label: "Payment", width: 72 },
-      { key: "total", label: "Total (INR)", width: 65, align: "right" },
-      { key: "item", label: "Primary Item", width: 112 },
-      { key: "size", label: "Size", width: 36, align: "center" },
-      { key: "buyer", label: "Buyer", width: 80 },
+      { key: "payment", label: "Payment", width: 64 },
+      { key: "total", label: "Total (INR)", width: 60, align: "right" },
+      { key: "item", label: "Primary Item", width: 96 },
+      { key: "size", label: "Size", width: 32, align: "center" },
+      { key: "buyer", label: "Buyer", width: 66 },
       { key: "qty", label: "Qty", width: 30, align: "center" },
-      { key: "ship", label: "Ship To", width: 102 },
+      { key: "ship", label: "Ship To", width: 86 },
       {
         key: "qr",
         label: "QR Code",
-        width: 70,
+        width: 150,
         type: "image",
-        imageWidth: 52,
-        imageHeight: 52,
+        imageWidth: 140,
+        imageHeight: 140,
       },
       {
         key: "invoice",
         label: "Invoice",
-        width: 88,
+        width: 74,
         type: "image",
         imageWidth: 68,
         imageHeight: 52,
@@ -634,7 +634,7 @@ const SellerOrders = () => {
     const tableStartX = 32;
     const marginY = 72;
     const bottomMargin = 48;
-    const headerHeight = 26;
+    const headerHeight = 28;
     const tableWidth = columns.reduce((sum, column) => sum + column.width, 0);
     const bodyFontSize = 9;
     const bodyLineHeight = 12;
@@ -758,9 +758,20 @@ const SellerOrders = () => {
       }
 
       try {
-        const response = await fetch(normalizedUrl, {
-          credentials: "include",
-        });
+        const fetchOptions = {};
+        try {
+          const parsedUrl = new URL(
+            normalizedUrl,
+            window.location?.origin || undefined
+          );
+          if (parsedUrl.origin === window.location?.origin) {
+            fetchOptions.credentials = "include";
+          }
+        } catch (_urlError) {
+          /* fall through with anonymous fetch */
+        }
+
+        const response = await fetch(normalizedUrl, fetchOptions);
         if (!response.ok) {
           throw new Error(`Unexpected status ${response.status}`);
         }
@@ -887,8 +898,8 @@ const SellerOrders = () => {
 
           const imageHeight = column.imageHeight || 52;
           const requiredHeight = hasImage
-            ? Math.max(imageHeight + 16, 26)
-            : Math.max((fallbackLines.length || 1) * bodyLineHeight + 16, 26);
+            ? Math.max(imageHeight + 28, 42)
+            : Math.max((fallbackLines.length || 1) * bodyLineHeight + 20, 42);
 
           return {
             type: "image",
@@ -920,7 +931,7 @@ const SellerOrders = () => {
       });
 
       const rowHeight = Math.max(
-        ...cellInfos.map((entry) => entry.requiredHeight || 26)
+        ...cellInfos.map((entry) => entry.requiredHeight || 28)
       );
 
       if (currentY + rowHeight > pageHeight - bottomMargin) {
@@ -946,12 +957,26 @@ const SellerOrders = () => {
 
         if (column.type === "image") {
           if (cellInfo.hasImage && cellInfo.image?.dataUrl) {
-            const targetWidth = Math.min(cellInfo.imageWidth, column.width - 8);
+            const targetWidth = Math.min(
+              cellInfo.imageWidth,
+              column.width - 16
+            );
             const targetHeight = cellInfo.imageHeight;
             const imageX = cursorX + (column.width - targetWidth) / 2;
             const imageY = currentY + (rowHeight - targetHeight) / 2;
 
             try {
+              doc.setFillColor(255, 255, 255);
+              doc.setDrawColor(226, 232, 240);
+              doc.roundedRect(
+                imageX - 6,
+                imageY - 6,
+                targetWidth + 12,
+                targetHeight + 12,
+                12,
+                12,
+                "FD"
+              );
               doc.addImage(
                 cellInfo.image.dataUrl,
                 cellInfo.image.format || "PNG",

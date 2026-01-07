@@ -40,6 +40,8 @@ const ROLE_DISPLAY = {
   },
 };
 
+const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
+
 const AdminUsersTable = ({
   users,
   isLoading,
@@ -54,6 +56,7 @@ const AdminUsersTable = ({
     name: "",
     username: "",
     email: "",
+    mobile: "",
     role: "customer",
     isVerified: false,
   });
@@ -67,6 +70,8 @@ const AdminUsersTable = ({
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
   const [isSelectionModalOpen, setIsSelectionModalOpen] = useState(false);
   const [isBulkViewOpen, setIsBulkViewOpen] = useState(false);
+  const [pageSize, setPageSize] = useState(10);
+  const [currentPage, setCurrentPage] = useState(0);
 
   useEffect(() => {
     if (!enableManagement) {
@@ -91,6 +96,7 @@ const AdminUsersTable = ({
       name: user.name || "",
       username: user.username || "",
       email: user.email || "",
+      mobile: user.mobile || "",
       role: normalizeRole(user.role),
       isVerified: Boolean(user.isVerified),
     });
@@ -136,10 +142,17 @@ const AdminUsersTable = ({
       return;
     }
 
+    const trimmedMobile = formState.mobile.trim();
+    if (!trimmedMobile) {
+      toast.error("Mobile number is required");
+      return;
+    }
+
     setIsSaving(true);
     try {
       const payload = {
         username: trimmedUsername,
+        mobile: trimmedMobile,
         role: formState.role,
         isVerified: formState.isVerified,
       };
@@ -179,7 +192,7 @@ const AdminUsersTable = ({
 
     return sortedUsers.filter((usr) => {
       const matchesQuery = query
-        ? [usr.name, usr.username, usr.email]
+        ? [usr.name, usr.username, usr.email, usr.mobile]
             .filter(Boolean)
             .some((value) => value.toLowerCase().includes(query))
         : true;
@@ -198,17 +211,72 @@ const AdminUsersTable = ({
     });
   }, [sortedUsers, searchTerm, roleFilter, statusFilter]);
 
+  useEffect(() => {
+    setCurrentPage(0);
+  }, [searchTerm, roleFilter, statusFilter, pageSize, users]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredUsers.length / pageSize));
+
+  useEffect(() => {
+    setCurrentPage((prev) => Math.min(prev, totalPages - 1));
+  }, [totalPages]);
+
+  const paginatedUsers = useMemo(() => {
+    const start = currentPage * pageSize;
+    return filteredUsers.slice(start, start + pageSize);
+  }, [filteredUsers, currentPage, pageSize]);
+
+  const pageNumbers = useMemo(() => {
+    if (filteredUsers.length === 0) return [];
+    if (totalPages <= 5) {
+      return Array.from({ length: totalPages }, (_, index) => index);
+    }
+    const start = Math.max(0, Math.min(currentPage - 2, totalPages - 5));
+    return Array.from({ length: 5 }, (_, index) => start + index);
+  }, [filteredUsers.length, totalPages, currentPage]);
+
+  const startEntry =
+    filteredUsers.length === 0 ? 0 : currentPage * pageSize + 1;
+  const endEntry = Math.min(filteredUsers.length, (currentPage + 1) * pageSize);
+
+  const handlePageSizeChange = (event) => {
+    setPageSize(Number(event.target.value));
+  };
+
+  const goToPage = (page) => {
+    setCurrentPage(Math.max(0, Math.min(page, totalPages - 1)));
+  };
+
+  const handlePrevPage = () => {
+    if (currentPage === 0) return;
+    goToPage(currentPage - 1);
+  };
+
+  const handleNextPage = () => {
+    if (currentPage >= totalPages - 1 || filteredUsers.length === 0) return;
+    goToPage(currentPage + 1);
+  };
+
   const handleDownloadCsv = () => {
     if (!sortedUsers.length) {
       toast.info("No team members to export");
       return;
     }
 
-    const header = ["Name", "Username", "Email", "Role", "Verified", "Joined"];
+    const header = [
+      "Name",
+      "Username",
+      "Email",
+      "Mobile",
+      "Role",
+      "Verified",
+      "Joined",
+    ];
     const rows = sortedUsers.map((usr) => [
       (usr.name || "").replace(/\n|\r|"/g, " "),
       (usr.username || "").replace(/\n|\r|"/g, " "),
       usr.email,
+      usr.mobile || "",
       ROLE_DISPLAY[normalizeRole(usr.role)].label,
       usr.isVerified ? "Yes" : "No",
       new Intl.DateTimeFormat("en-IN", {
@@ -265,7 +333,7 @@ const AdminUsersTable = ({
 
   const handleToggleAll = () => {
     if (!enableManagement) return;
-    const ids = filteredUsers.map((usr) => usr._id);
+    const ids = paginatedUsers.map((usr) => usr._id);
     const hasUnselected = ids.some((id) => !selectedIds.includes(id));
     setSelectedIds(hasUnselected ? ids : []);
   };
@@ -343,13 +411,13 @@ const AdminUsersTable = ({
               value={searchTerm}
               onChange={(event) => setSearchTerm(event.target.value)}
               placeholder="Search name, email, username"
-              className="w-48 bg-transparent text-sm text-slate-600 placeholder:text-slate-400 focus:outline-none"
+              className="w-48 bg-transparent text-[11px] text-slate-600 placeholder:text-slate-400 focus:outline-none"
             />
           </div>
           <select
             value={roleFilter}
             onChange={(event) => setRoleFilter(event.target.value)}
-            className="rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-600 focus:outline-none focus:border-blue-400"
+            className="rounded-xl border border-slate-200 px-3 py-2 text-xs text-slate-600 focus:outline-none focus:border-blue-400"
           >
             <option value="all">All roles</option>
             <option value="customer">Customers</option>
@@ -359,16 +427,35 @@ const AdminUsersTable = ({
           <select
             value={statusFilter}
             onChange={(event) => setStatusFilter(event.target.value)}
-            className="rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-600 focus:outline-none focus:border-blue-400"
+            className="rounded-xl border border-slate-200 px-3 py-2 text-xs text-slate-600 focus:outline-none focus:border-blue-400"
           >
             <option value="all">All status</option>
             <option value="verified">Verified</option>
             <option value="unverified">Pending</option>
           </select>
+          <div className="flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-xs text-slate-600">
+            <span className="text-[11px] uppercase tracking-wide text-slate-400">
+              Show
+            </span>
+            <select
+              value={pageSize}
+              onChange={handlePageSizeChange}
+              className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs focus:outline-none focus:border-blue-400"
+            >
+              {PAGE_SIZE_OPTIONS.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+            <span className="text-[11px] uppercase tracking-wide text-slate-400">
+              entries
+            </span>
+          </div>
           <button
             type="button"
             onClick={handleDownloadCsv}
-            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-sm text-slate-600 hover:border-blue-200 hover:text-blue-600 transition"
+            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-[11px] text-slate-600 hover:border-blue-200 hover:text-blue-600 transition"
           >
             <FileDown size={18} /> Export CSV
           </button>
@@ -378,7 +465,7 @@ const AdminUsersTable = ({
                 type="button"
                 onClick={() => setIsBulkViewOpen(true)}
                 disabled={selectedIds.length === 0}
-                className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 transition hover:border-blue-200 hover:text-blue-600 disabled:cursor-not-allowed disabled:border-slate-200 disabled:text-slate-300"
+                className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-[11px] font-medium text-slate-600 transition hover:border-blue-200 hover:text-blue-600 disabled:cursor-not-allowed disabled:border-slate-200 disabled:text-slate-300"
               >
                 <Eye size={16} /> Bulk View
               </button>
@@ -386,7 +473,7 @@ const AdminUsersTable = ({
                 type="button"
                 onClick={() => setIsSelectionModalOpen(true)}
                 disabled={selectedIds.length === 0}
-                className="inline-flex items-center gap-2 rounded-xl border border-red-200 px-4 py-2 text-sm font-medium text-red-500 transition hover:border-red-300 hover:text-red-600 disabled:cursor-not-allowed disabled:border-slate-200 disabled:text-slate-300"
+                className="inline-flex items-center gap-2 rounded-xl border border-red-200 px-4 py-2 text-[11px] font-medium text-red-500 transition hover:border-red-300 hover:text-red-600 disabled:cursor-not-allowed disabled:border-slate-200 disabled:text-slate-300"
               >
                 <Trash2 size={16} /> Bulk Delete
               </button>
@@ -405,8 +492,8 @@ const AdminUsersTable = ({
                     <input
                       type="checkbox"
                       checked={
-                        filteredUsers.length > 0 &&
-                        filteredUsers.every((usr) =>
+                        paginatedUsers.length > 0 &&
+                        paginatedUsers.every((usr) =>
                           selectedIds.includes(usr._id)
                         )
                       }
@@ -421,6 +508,9 @@ const AdminUsersTable = ({
               </th>
               <th className="px-6 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wide">
                 Email
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wide">
+                Mobile
               </th>
               <th className="px-6 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wide">
                 Role
@@ -440,7 +530,7 @@ const AdminUsersTable = ({
             {isLoading ? (
               <tr>
                 <td
-                  colSpan={enableManagement ? 7 : 6}
+                  colSpan={enableManagement ? 8 : 7}
                   className="px-6 py-12 text-center text-slate-400"
                 >
                   Loading team members...
@@ -449,7 +539,7 @@ const AdminUsersTable = ({
             ) : error ? (
               <tr>
                 <td
-                  colSpan={enableManagement ? 7 : 6}
+                  colSpan={enableManagement ? 8 : 7}
                   className="px-6 py-12 text-center text-red-400"
                 >
                   {error}
@@ -458,17 +548,17 @@ const AdminUsersTable = ({
             ) : filteredUsers.length === 0 ? (
               <tr>
                 <td
-                  colSpan={enableManagement ? 7 : 6}
+                  colSpan={enableManagement ? 8 : 7}
                   className="px-6 py-12 text-center text-slate-400"
                 >
                   No users found.
                 </td>
               </tr>
             ) : (
-              filteredUsers.map((usr) => (
+              paginatedUsers.map((usr) => (
                 <tr key={usr._id} className="hover:bg-slate-50/60 transition">
                   {enableManagement && (
-                    <td className="px-6 py-4">
+                    <td className="px-5 py-3">
                       <input
                         type="checkbox"
                         checked={selectedIds.includes(usr._id)}
@@ -477,7 +567,7 @@ const AdminUsersTable = ({
                       />
                     </td>
                   )}
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-5 py-2.5 whitespace-nowrap">
                     <div className="flex items-center gap-3">
                       <div className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 text-white grid place-items-center font-semibold">
                         {(usr.name || usr.username || "U")
@@ -485,17 +575,22 @@ const AdminUsersTable = ({
                           .toUpperCase()}
                       </div>
                       <div>
-                        <p className="text-sm font-semibold text-slate-900">
+                        <p className="text-[13px] font-semibold text-slate-900 leading-tight">
                           {usr.name || usr.username}
                         </p>
-                        <p className="text-xs text-slate-400">{usr.username}</p>
+                        <p className="text-[10px] text-slate-400">
+                          {usr.username}
+                        </p>
                       </div>
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
+                  <td className="px-5 py-2.5 whitespace-nowrap text-[11px] text-slate-600">
                     {usr.email}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-5 py-2.5 whitespace-nowrap text-[11px] text-slate-600">
+                    {usr.mobile || "—"}
+                  </td>
+                  <td className="px-5 py-2.5 whitespace-nowrap text-[11px]">
                     {(() => {
                       const normalized = normalizeRole(usr.role);
                       const { label, badgeClass } =
@@ -509,7 +604,7 @@ const AdminUsersTable = ({
                       );
                     })()}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-5 py-2.5 whitespace-nowrap">
                     {usr.isVerified ? (
                       <span className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-600">
                         <ShieldCheck size={14} /> Verified
@@ -520,34 +615,34 @@ const AdminUsersTable = ({
                       </span>
                     )}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-slate-500">
+                  <td className="px-5 py-2.5 whitespace-nowrap text-right text-[11px] text-slate-500">
                     {new Intl.DateTimeFormat("en-IN", {
                       dateStyle: "medium",
                     }).format(new Date(usr.createdAt))}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right">
-                    <div className="flex justify-end gap-2">
+                  <td className="px-5 py-2.5 whitespace-nowrap text-right">
+                    <div className="flex justify-end gap-1.5 text-[11px]">
                       <button
                         type="button"
                         onClick={() => openViewModal(usr)}
-                        className="inline-flex items-center gap-2 rounded-full border border-slate-200 px-3 py-1 text-xs font-medium text-slate-500 hover:border-blue-200 hover:text-blue-600 transition"
+                        className="inline-flex items-center gap-1 rounded-full border border-slate-200 px-2.5 py-1 text-[10px] font-medium text-slate-500 hover:border-blue-200 hover:text-blue-600 transition"
                       >
-                        <Eye size={14} /> View
+                        <Eye size={14} />
                       </button>
                       <button
                         type="button"
                         onClick={() => openDrawer(usr)}
-                        className="inline-flex items-center gap-2 rounded-full border border-slate-200 px-3 py-1 text-xs font-medium text-slate-500 hover:border-blue-200 hover:text-blue-600 transition"
+                        className="inline-flex items-center gap-1 rounded-full border border-slate-200 px-2.5 py-1 text-[10px] font-medium text-slate-500 hover:border-blue-200 hover:text-blue-600 transition"
                       >
-                        <PencilLine size={14} /> Edit
+                        <PencilLine size={14} />
                       </button>
                       {enableManagement && (
                         <button
                           type="button"
                           onClick={() => openDeleteConfirm(usr)}
-                          className="inline-flex items-center gap-2 rounded-full border border-red-200 px-3 py-1 text-xs font-medium text-red-500 hover:border-red-300 hover:text-red-600 transition"
+                          className="inline-flex items-center gap-1 rounded-full border border-red-200 px-2.5 py-1 text-[10px] font-medium text-red-500 hover:border-red-300 hover:text-red-600 transition"
                         >
-                          <Trash2 size={14} /> Delete
+                          <Trash2 size={14} />
                         </button>
                       )}
                     </div>
@@ -560,13 +655,13 @@ const AdminUsersTable = ({
       </div>
 
       <div className="space-y-3 px-4 md:hidden">
-        {enableManagement && filteredUsers.length > 0 && (
+        {enableManagement && paginatedUsers.length > 0 && (
           <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
             <div className="space-y-1">
-              <p className="text-xs uppercase tracking-wide text-slate-400">
+              <p className="text-[11px] uppercase tracking-wide text-slate-400">
                 Selection
               </p>
-              <p className="text-sm font-medium text-slate-700">
+              <p className="text-xs font-medium text-slate-700">
                 {selectedIds.length} selected
               </p>
             </div>
@@ -574,8 +669,8 @@ const AdminUsersTable = ({
               <input
                 type="checkbox"
                 checked={
-                  filteredUsers.length > 0 &&
-                  filteredUsers.every((usr) => selectedIds.includes(usr._id))
+                  paginatedUsers.length > 0 &&
+                  paginatedUsers.every((usr) => selectedIds.includes(usr._id))
                 }
                 onChange={handleToggleAll}
                 className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
@@ -620,7 +715,7 @@ const AdminUsersTable = ({
 
           {!isLoading &&
             !error &&
-            filteredUsers.map((usr) => {
+            paginatedUsers.map((usr) => {
               const isSelected = selectedIds.includes(usr._id);
               return (
                 <motion.div
@@ -680,8 +775,8 @@ const AdminUsersTable = ({
                         })()}
                       </div>
 
-                      <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-slate-500">
-                        <div className="rounded-xl bg-slate-50 p-3">
+                      <div className="mt-3 grid grid-cols-2 gap-2 text-[11px] text-slate-500">
+                        <div className="rounded-xl bg-slate-50 p-2.5">
                           <p className="text-[10px] uppercase tracking-wide text-slate-400">
                             Status
                           </p>
@@ -695,11 +790,11 @@ const AdminUsersTable = ({
                             </span>
                           )}
                         </div>
-                        <div className="rounded-xl bg-slate-50 p-3">
+                        <div className="rounded-xl bg-slate-50 p-2.5">
                           <p className="text-[10px] uppercase tracking-wide text-slate-400">
                             Joined
                           </p>
-                          <p className="mt-1 text-xs font-medium text-slate-700">
+                          <p className="mt-1 text-[11px] font-medium text-slate-700">
                             {new Intl.DateTimeFormat("en-IN", {
                               dateStyle: "medium",
                             }).format(new Date(usr.createdAt))}
@@ -707,18 +802,18 @@ const AdminUsersTable = ({
                         </div>
                       </div>
 
-                      <div className="mt-4 flex flex-wrap items-center justify-end gap-2">
+                      <div className="mt-4 flex flex-wrap items-center justify-end gap-1.5 text-[11px]">
                         <button
                           type="button"
                           onClick={() => openViewModal(usr)}
-                          className="inline-flex items-center gap-2 rounded-full border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:border-blue-200 hover:text-blue-600"
+                          className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 px-3 py-1.5 font-semibold text-slate-600 hover:border-blue-200 hover:text-blue-600"
                         >
                           <Eye size={14} /> View
                         </button>
                         <button
                           type="button"
                           onClick={() => openDrawer(usr)}
-                          className="inline-flex items-center gap-2 rounded-full border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:border-blue-200 hover:text-blue-600"
+                          className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 px-3 py-1.5 font-semibold text-slate-600 hover:border-blue-200 hover:text-blue-600"
                         >
                           <PencilLine size={14} /> Edit
                         </button>
@@ -726,7 +821,7 @@ const AdminUsersTable = ({
                           <button
                             type="button"
                             onClick={() => openDeleteConfirm(usr)}
-                            className="inline-flex items-center gap-2 rounded-full border border-rose-200 px-3 py-1.5 text-xs font-semibold text-rose-500 hover:border-rose-300"
+                            className="inline-flex items-center gap-1.5 rounded-full border border-rose-200 px-3 py-1.5 font-semibold text-rose-500 hover:border-rose-300"
                           >
                             <Trash2 size={14} /> Delete
                           </button>
@@ -739,6 +834,49 @@ const AdminUsersTable = ({
             })}
         </AnimatePresence>
       </div>
+
+      {!isLoading && !error && filteredUsers.length > 0 && (
+        <div className="flex flex-col gap-3 border-t border-slate-100 px-6 py-4 md:flex-row md:items-center md:justify-between">
+          <p className="text-[11px] uppercase tracking-wide text-slate-400">
+            Showing <span className="text-slate-600">{startEntry}</span> to
+            <span className="text-slate-600"> {endEntry}</span> of
+            <span className="text-slate-600"> {filteredUsers.length}</span>{" "}
+            entries
+          </p>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handlePrevPage}
+              disabled={currentPage === 0}
+              className="rounded-full border border-slate-200 px-3 py-1 text-xs text-slate-500 transition hover:border-blue-200 hover:text-blue-600 disabled:cursor-not-allowed disabled:border-slate-100 disabled:text-slate-300"
+            >
+              Prev
+            </button>
+            {pageNumbers.map((page) => (
+              <button
+                key={page}
+                type="button"
+                onClick={() => goToPage(page)}
+                className={`rounded-full border px-3 py-1 text-xs transition ${
+                  page === currentPage
+                    ? "border-blue-500 bg-blue-50 text-blue-600"
+                    : "border-slate-200 text-slate-500 hover:border-blue-200 hover:text-blue-600"
+                }`}
+              >
+                {page + 1}
+              </button>
+            ))}
+            <button
+              type="button"
+              onClick={handleNextPage}
+              disabled={currentPage >= totalPages - 1}
+              className="rounded-full border border-slate-200 px-3 py-1 text-xs text-slate-500 transition hover:border-blue-200 hover:text-blue-600 disabled:cursor-not-allowed disabled:border-slate-100 disabled:text-slate-300"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
 
       <AnimatePresence>
         {viewUser && (

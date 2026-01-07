@@ -41,6 +41,13 @@ const CheckoutOrder = () => {
   });
   const [qrfolioError, setQrfolioError] = useState("");
   const [qrfolioUploading, setQrfolioUploading] = useState(false);
+  const isQrfolioCoupon = Boolean(appliedCoupon?.isQrfolioCoupon);
+  const isQrfolioCouponApplied = Boolean(
+    appliedCoupon?.isQrfolioCoupon && appliedCoupon?.code?.trim()
+  );
+  const isQrfolioCouponRequired = Boolean(
+    qrfolioRequired && !isQrfolioCouponApplied
+  );
   const isCouponFulfilled = Boolean(appliedCoupon?.code?.trim());
   const computedTotals = useMemo(
     () =>
@@ -212,8 +219,21 @@ const CheckoutOrder = () => {
           discountType: result.discountType,
           discountValue: result.discountValue,
           discountAmount: result.discountAmount,
+          isQrfolioCoupon: Boolean(result.isQrfolioCoupon),
         })
       );
+
+      if (result.isQrfolioCoupon && result.qrfolio) {
+        dispatch(
+          setQrfolioUpload({
+            imageUrl: result.qrfolio.imageUrl || result.qrfolio.link || null,
+            link: result.qrfolio.link || null,
+            name: result.qrfolio.name || null,
+          })
+        );
+      } else {
+        dispatch(setQrfolioUpload(null));
+      }
 
       const updatedTotals = calculateTotals(items, {
         shippingFee,
@@ -366,49 +386,53 @@ const CheckoutOrder = () => {
                     QRfolio QR Code
                   </h3>
                   <p className="mt-1 text-xs text-[#7b8bb4]">
-                    Upload your QRfolio QR code image.
+                    {isQrfolioCoupon
+                      ? "Your QRfolio QR code is linked automatically from your QRfolio account."
+                      : "Upload your QRfolio QR code image."}
                   </p>
 
                   <div className="mt-5 space-y-4">
-                    <label
-                      htmlFor="checkout-qrfolio-upload"
-                      className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-3xl border-2 border-dashed border-[#ccdbff] bg-[#f5f8ff] p-6 sm:p-8 text-center transition hover:border-[#4c7dff] hover:bg-[#ecf2ff]"
-                    >
-                      <div className="rounded-full bg-white p-4 shadow-[0_15px_35px_-20px_rgba(37,99,235,0.45)]">
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="1.5"
-                          className="h-10 w-10 text-[#4c7dff]"
-                        >
-                          <path
-                            d="M12 5v14M5 12h14"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                        </svg>
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold text-[#1b2f62]">
-                          {qrfolioPreview
-                            ? "Replace QR code"
-                            : "Upload QR code"}
-                        </p>
-                        <p className="mt-1 text-xs text-[#7b8bb4]">
-                          PNG, JPG, or WEBP up to 3MB.
-                        </p>
-                      </div>
-                      <input
-                        id="checkout-qrfolio-upload"
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={handleQrfolioFileChange}
-                        disabled={qrfolioUploading}
-                      />
-                    </label>
+                    {!isQrfolioCoupon && (
+                      <label
+                        htmlFor="checkout-qrfolio-upload"
+                        className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-3xl border-2 border-dashed border-[#ccdbff] bg-[#f5f8ff] p-6 sm:p-8 text-center transition hover:border-[#4c7dff] hover:bg-[#ecf2ff]"
+                      >
+                        <div className="rounded-full bg-white p-4 shadow-[0_15px_35px_-20px_rgba(37,99,235,0.45)]">
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="1.5"
+                            className="h-10 w-10 text-[#4c7dff]"
+                          >
+                            <path
+                              d="M12 5v14M5 12h14"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          </svg>
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold text-[#1b2f62]">
+                            {qrfolioPreview
+                              ? "Replace QR code"
+                              : "Upload QR code"}
+                          </p>
+                          <p className="mt-1 text-xs text-[#7b8bb4]">
+                            PNG, JPG, or WEBP up to 3MB.
+                          </p>
+                        </div>
+                        <input
+                          id="checkout-qrfolio-upload"
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={handleQrfolioFileChange}
+                          disabled={qrfolioUploading}
+                        />
+                      </label>
+                    )}
 
                     {qrfolioUploading && (
                       <div className="flex items-center justify-center gap-2 text-sm text-[#1b2f62]">
@@ -426,24 +450,61 @@ const CheckoutOrder = () => {
                     {qrfolioPreview && (
                       <div className="flex flex-col gap-3 rounded-2xl border border-[#cfdcff] bg-white/90 p-4 shadow-[0_18px_32px_-30px_rgba(37,99,235,0.35)]">
                         <div className="flex items-center justify-between">
-                          <p className="text-xs font-semibold uppercase tracking-wide text-[#4c7dff]">
-                            Preview
-                          </p>
-                          <button
-                            type="button"
-                            onClick={handleQrfolioRemove}
-                            className="text-xs font-semibold text-[#d53f6a] hover:underline"
-                          >
-                            Remove
-                          </button>
+                          <div>
+                            {isQrfolioCoupon ? (
+                              <p className="text-sm font-extrabold tracking-tight text-[#111827]">
+                                Your QRfolio QR Code
+                              </p>
+                            ) : (
+                              <p className="text-xs font-semibold uppercase tracking-wide text-[#4c7dff]">
+                                Preview
+                              </p>
+                            )}
+                          </div>
+                          {!isQrfolioCoupon && (
+                            <button
+                              type="button"
+                              onClick={handleQrfolioRemove}
+                              className="text-xs font-semibold text-[#d53f6a] hover:underline"
+                            >
+                              Remove
+                            </button>
+                          )}
                         </div>
-                        <div className="flex items-center justify-center">
-                          <img
-                            src={qrfolioPreview}
-                            alt="QRfolio preview"
-                            className="h-36 w-36 rounded-2xl border border-[#dbe6ff] bg-white p-2 object-contain"
-                          />
+                        <div className="mt-2 flex items-center justify-center">
+                          <div className="relative inline-flex flex-col items-center">
+                            {isQrfolioCoupon && (
+                              <p className="mb-3 text-base font-extrabold text-[#111827]">
+                                {qrfolioUpload?.name || "QRfolio Profile"}
+                              </p>
+                            )}
+                            <div className="relative rounded-2xl bg-white p-3 shadow-[0_20px_45px_-26px_rgba(15,23,42,0.45)]">
+                              <img
+                                src={qrfolioPreview}
+                                alt="QRfolio preview"
+                                className="h-56 w-56 rounded-2xl border border-[#dbe6ff] bg-white object-contain"
+                              />
+                              {isQrfolioCoupon && (
+                                <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+                                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl border-2 border-white bg-gradient-to-b from-[#2563eb] to-[#1d4ed8] shadow-[0_18px_40px_-20px_rgba(37,99,235,0.9)]">
+                                    <span className="text-[10px] font-semibold leading-tight tracking-wide text-white text-center">
+                                      Qr
+                                      <br />
+                                      Folio
+                                    </span>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
                         </div>
+                      </div>
+                    )}
+
+                    {isQrfolioCoupon && !qrfolioPreview && !qrfolioError && (
+                      <div className="flex items-center justify-center gap-2 text-sm text-[#1b2f62]">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <span>Fetching your QRfolio QR code…</span>
                       </div>
                     )}
                   </div>

@@ -3,13 +3,17 @@ import { motion } from "framer-motion";
 import { Loader2, MapPin, PencilLine } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { useAuth } from "../contexts/AuthContext";
-import { fetchAddresses, updateAddress } from "../utils/api";
+import {
+  fetchAddresses,
+  addAddress,
+  updateAddress,
+  deleteAddress,
+} from "../utils/api";
 import { pageVariants, scaleIn } from "../utils/animations";
 import { STATE_OPTIONS, getCitiesForState } from "../constants/indiaLocations";
 import {
   fetchLocationByPincode,
   verifyAddressWithPostalApi,
-  doesAddressMatchLocation,
 } from "../utils/postalLookup";
 
 const createInitialFormState = () => ({
@@ -110,6 +114,7 @@ const Profile = () => {
   const [addresses, setAddresses] = useState([]);
   const [loadingAddresses, setLoadingAddresses] = useState(true);
   const [editingAddressId, setEditingAddressId] = useState(null);
+  const [isAddingAddress, setIsAddingAddress] = useState(false);
   const [saving, setSaving] = useState(false);
   const [formState, setFormState] = useState(createInitialFormState);
   const [isEditingAccount, setIsEditingAccount] = useState(false);
@@ -119,6 +124,15 @@ const Profile = () => {
   );
   const [accountSaving, setAccountSaving] = useState(false);
   const lastResolvedPincodeRef = useRef("");
+
+  const buildPrefilledAddressForm = () => ({
+    fullName: user?.name || "",
+    mobile: user?.mobile ? user.mobile.replace(/\D/g, "").slice(-10) : "",
+    addressLine: "",
+    city: "",
+    state: "",
+    pincode: "",
+  });
 
   const cityOptions = useMemo(() => {
     const cities = getCitiesForState(formState.state) || [];
@@ -202,8 +216,6 @@ const Profile = () => {
 
       const resolvedState = resolveStateName(lookup.data.state);
       const resolvedCity = (lookup.data.city || "").trim();
-      const suggestedAddressLine =
-        lookup.data.addressLineSuggestion?.trim() || "";
 
       if (!resolvedState && !resolvedCity) {
         return;
@@ -212,27 +224,15 @@ const Profile = () => {
       setFormState((previous) => {
         const nextState = resolvedState || previous.state;
         const nextCity = resolvedCity || previous.city;
-        const shouldUpdateAddressLine =
-          suggestedAddressLine &&
-          (!previous.addressLine ||
-            !doesAddressMatchLocation(previous.addressLine, {
-              city: nextCity,
-              state: nextState,
-            }));
 
         if (previous.state === nextState && previous.city === nextCity) {
-          if (!shouldUpdateAddressLine) {
-            return previous;
-          }
+          return previous;
         }
 
         return {
           ...previous,
           state: nextState,
           city: nextCity,
-          ...(shouldUpdateAddressLine
-            ? { addressLine: suggestedAddressLine }
-            : {}),
         };
       });
     };
@@ -245,6 +245,7 @@ const Profile = () => {
   }, [formState.pincode]);
 
   const startEditing = (address) => {
+    setIsAddingAddress(false);
     setEditingAddressId(address._id || address.id);
     setFormState({
       fullName: address.fullName || "",
@@ -258,6 +259,17 @@ const Profile = () => {
 
   const cancelEditing = () => {
     setEditingAddressId(null);
+    setFormState(createInitialFormState());
+  };
+
+  const startAddingAddress = () => {
+    setEditingAddressId(null);
+    setFormState(buildPrefilledAddressForm());
+    setIsAddingAddress(true);
+  };
+
+  const cancelAddingAddress = () => {
+    setIsAddingAddress(false);
     setFormState(createInitialFormState());
   };
 
@@ -294,7 +306,11 @@ const Profile = () => {
     };
 
     try {
-      const mapValidation = await verifyAddressWithPostalApi(payload);
+      const mapValidation = await verifyAddressWithPostalApi({
+        pincode: payload.pincode,
+        state: payload.state,
+        city: payload.city,
+      });
       if (!mapValidation.success) {
         toast.error(mapValidation.message);
         setSaving(false);
@@ -303,19 +319,6 @@ const Profile = () => {
 
       payload.state = mapValidation.data.state;
       payload.city = mapValidation.data.city;
-
-      if (
-        !doesAddressMatchLocation(payload.addressLine, {
-          city: payload.city,
-          state: payload.state,
-        })
-      ) {
-        toast.error(
-          "Address line must include the resolved city and state for this PIN."
-        );
-        setSaving(false);
-        return;
-      }
 
       const geoCoordinates = await fetchGeoCoordinates(payload);
       if (geoCoordinates) {
@@ -339,6 +342,116 @@ const Profile = () => {
         error.response?.data?.message ||
           error.message ||
           "Failed to update address."
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleAddAddress = async (event) => {
+    event.preventDefault();
+
+    const validation = validateAddressForm(formState);
+    if (!validation.isValid) {
+      validation.errors.forEach((message) => toast.error(message));
+      return;
+    }
+
+    const email = user?.email?.trim();
+    if (!email) {
+      toast.error("Email is required to save an address.");
+      return;
+    }
+
+    setSaving(true);
+
+    const payload = {
+      fullName: formState.fullName.trim(),
+      mobile: formState.mobile.trim(),
+      addressLine: formState.addressLine.trim(),
+      city: formState.city.trim(),
+      state: formState.state.trim(),
+      pincode: formState.pincode.trim(),
+      email,
+      isDefault: true,
+    };
+
+    try {
+      const mapValidation = await verifyAddressWithPostalApi({
+        pincode: payload.pincode,
+        state: payload.state,
+        city: payload.city,
+      });
+      if (!mapValidation.success) {
+        toast.error(mapValidation.message || "Failed to validate address.");
+        setSaving(false);
+        return;
+      }
+
+      payload.state = mapValidation.data.state;
+      payload.city = mapValidation.data.city;
+
+      const geoCoordinates = await fetchGeoCoordinates(payload);
+      if (geoCoordinates) {
+        payload.latitude = geoCoordinates.latitude;
+        payload.longitude = geoCoordinates.longitude;
+        payload.formattedAddress = geoCoordinates.formattedAddress;
+        payload.isGeoVerified = true;
+      }
+
+      const response = await addAddress(payload);
+      const data = Array.isArray(response)
+        ? response
+        : response?.data?.data || response?.data || [];
+
+      setAddresses(data);
+      toast.success("Address added successfully.");
+      setIsAddingAddress(false);
+      setFormState(createInitialFormState());
+    } catch (error) {
+      console.error("Failed to add address", error);
+      toast.error(
+        error.response?.data?.message ||
+          error.message ||
+          "Failed to add address."
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeleteAddress = async (addressId) => {
+    if (!addressId) {
+      return;
+    }
+
+    const confirmed = window.confirm(
+      "Remove this address? This action cannot be undone."
+    );
+    if (!confirmed) {
+      return;
+    }
+
+    setSaving(true);
+
+    try {
+      const response = await deleteAddress(addressId);
+      const data = Array.isArray(response)
+        ? response
+        : response?.data?.data || response?.data || [];
+
+      setAddresses(data);
+      toast.success("Address removed.");
+
+      if (editingAddressId === addressId) {
+        cancelEditing();
+      }
+    } catch (error) {
+      console.error("Failed to delete address", error);
+      toast.error(
+        error.response?.data?.message ||
+          error.message ||
+          "Failed to delete address."
       );
     } finally {
       setSaving(false);
@@ -535,6 +648,26 @@ const Profile = () => {
                 Saved Addresses
               </h2>
             </div>
+            <div className="flex gap-2">
+              {isAddingAddress ? (
+                <button
+                  type="button"
+                  onClick={cancelAddingAddress}
+                  className="inline-flex items-center justify-center rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-secondary hover:bg-slate-50"
+                  disabled={saving}
+                >
+                  Cancel
+                </button>
+              ) : null}
+              <button
+                type="button"
+                onClick={startAddingAddress}
+                className="inline-flex items-center justify-center gap-2 rounded-lg border border-primary/20 bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary hover:bg-primary/20 disabled:cursor-not-allowed disabled:opacity-70"
+                disabled={saving}
+              >
+                + Add Address
+              </button>
+            </div>
           </div>
 
           <div className="mt-5 space-y-4">
@@ -543,180 +676,318 @@ const Profile = () => {
                 <Loader2 className="mr-2 h-4 w-4 animate-spin text-primary" />
                 Loading saved addresses...
               </div>
-            ) : addresses.length ? (
-              addresses.map((address) => {
-                const addressId = address._id || address.id;
-                const isEditing = editingAddressId === addressId;
-
-                return (
+            ) : (
+              <>
+                {isAddingAddress && (
                   <motion.div
-                    key={addressId}
                     variants={scaleIn}
                     initial="initial"
                     animate="animate"
                     className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
                   >
-                    {isEditing ? (
-                      <form
-                        className="space-y-4"
-                        onSubmit={handleUpdateAddress}
-                      >
-                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                          <label className="text-sm font-medium text-secondary/80">
-                            Full Name
-                            <input
-                              name="fullName"
-                              value={formState.fullName}
-                              onChange={handleFormChange}
-                              className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
-                              placeholder="Recipient name"
-                            />
-                          </label>
-                          <label className="text-sm font-medium text-secondary/80">
-                            Mobile Number
-                            <input
-                              name="mobile"
-                              value={formState.mobile}
-                              onChange={handleFormChange}
-                              className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
-                              placeholder="10-digit mobile"
-                              maxLength={10}
-                            />
-                          </label>
-                        </div>
+                    <form className="space-y-4" onSubmit={handleAddAddress}>
+                      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                         <label className="text-sm font-medium text-secondary/80">
-                          Address
-                          <textarea
-                            name="addressLine"
-                            value={formState.addressLine}
+                          Full Name
+                          <input
+                            name="fullName"
+                            value={formState.fullName}
                             onChange={handleFormChange}
-                            className="mt-2 h-20 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
-                            placeholder="House number, street, locality"
+                            className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
+                            placeholder="Recipient name"
                           />
                         </label>
-                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                          <label className="text-sm font-medium text-secondary/80">
-                            State
-                            <select
-                              name="state"
-                              value={formState.state}
-                              onChange={handleFormChange}
-                              className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
-                            >
-                              <option value="">Select state</option>
-                              {STATE_OPTIONS.map((state) => (
-                                <option key={state} value={state}>
-                                  {state}
-                                </option>
-                              ))}
-                            </select>
-                          </label>
-                          <label className="text-sm font-medium text-secondary/80">
-                            City
-                            <select
-                              name="city"
-                              value={formState.city}
-                              onChange={handleFormChange}
-                              disabled={!formState.state}
-                              className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:cursor-not-allowed disabled:bg-slate-100"
-                            >
-                              <option value="">
-                                {formState.state
-                                  ? "Select city"
-                                  : "Select state first"}
+                        <label className="text-sm font-medium text-secondary/80">
+                          Mobile Number
+                          <input
+                            name="mobile"
+                            value={formState.mobile}
+                            onChange={handleFormChange}
+                            className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
+                            placeholder="10-digit mobile"
+                            maxLength={10}
+                          />
+                        </label>
+                      </div>
+                      <label className="text-sm font-medium text-secondary/80">
+                        Address
+                        <textarea
+                          name="addressLine"
+                          value={formState.addressLine}
+                          onChange={handleFormChange}
+                          className="mt-2 h-20 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
+                          placeholder="House number, street, locality"
+                        />
+                      </label>
+                      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                        <label className="text-sm font-medium text-secondary/80">
+                          State
+                          <select
+                            name="state"
+                            value={formState.state}
+                            onChange={handleFormChange}
+                            className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
+                          >
+                            <option value="">Select state</option>
+                            {STATE_OPTIONS.map((state) => (
+                              <option key={state} value={state}>
+                                {state}
                               </option>
-                              {cityOptions.map((city) => (
-                                <option key={city} value={city}>
-                                  {city}
-                                </option>
-                              ))}
-                            </select>
-                          </label>
-                          <label className="text-sm font-medium text-secondary/80 md:col-span-1">
-                            PIN Code
-                            <input
-                              name="pincode"
-                              value={formState.pincode}
-                              onChange={handleFormChange}
-                              className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
-                              placeholder="6-digit PIN"
-                              maxLength={6}
-                            />
-                          </label>
-                        </div>
-                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
-                          <button
-                            type="button"
-                            onClick={cancelEditing}
-                            className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-secondary hover:bg-slate-50"
-                            disabled={saving}
+                            ))}
+                          </select>
+                        </label>
+                        <label className="text-sm font-medium text-secondary/80">
+                          City
+                          <select
+                            name="city"
+                            value={formState.city}
+                            onChange={handleFormChange}
+                            disabled={!formState.state}
+                            className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:cursor-not-allowed disabled:bg-slate-100"
                           >
-                            Cancel
-                          </button>
-                          <button
-                            type="submit"
-                            disabled={saving}
-                            className="inline-flex items-center justify-center rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-70"
+                            <option value="">
+                              {formState.state
+                                ? "Select city"
+                                : "Select state first"}
+                            </option>
+                            {cityOptions.map((city) => (
+                              <option key={city} value={city}>
+                                {city}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        <label className="text-sm font-medium text-secondary/80 md:col-span-1">
+                          PIN Code
+                          <input
+                            name="pincode"
+                            value={formState.pincode}
+                            onChange={handleFormChange}
+                            className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
+                            placeholder="6-digit PIN"
+                            maxLength={6}
+                          />
+                        </label>
+                      </div>
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
+                        <button
+                          type="button"
+                          onClick={cancelAddingAddress}
+                          className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-secondary hover:bg-slate-50"
+                          disabled={saving}
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="submit"
+                          disabled={saving}
+                          className="inline-flex items-center justify-center rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-70"
+                        >
+                          {saving ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Saving...
+                            </>
+                          ) : (
+                            "Save address"
+                          )}
+                        </button>
+                      </div>
+                    </form>
+                  </motion.div>
+                )}
+
+                {addresses.length ? (
+                  addresses.map((address) => {
+                    const addressId = address._id || address.id;
+                    const isEditing = editingAddressId === addressId;
+
+                    return (
+                      <motion.div
+                        key={addressId}
+                        variants={scaleIn}
+                        initial="initial"
+                        animate="animate"
+                        className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+                      >
+                        {isEditing ? (
+                          <form
+                            className="space-y-4"
+                            onSubmit={handleUpdateAddress}
                           >
-                            {saving ? (
-                              <>
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                Saving...
-                              </>
-                            ) : (
-                              "Save changes"
-                            )}
-                          </button>
-                        </div>
-                      </form>
-                    ) : (
-                      <div className="space-y-4">
-                        <div className="flex items-start justify-between gap-3">
-                          <div>
-                            <p className="text-base font-semibold text-secondary">
-                              {address.fullName}
-                            </p>
-                            {address.mobile ? (
-                              <p className="text-sm text-medium-text">
-                                Phone: {address.mobile}
+                            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                              <label className="text-sm font-medium text-secondary/80">
+                                Full Name
+                                <input
+                                  name="fullName"
+                                  value={formState.fullName}
+                                  onChange={handleFormChange}
+                                  className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
+                                  placeholder="Recipient name"
+                                />
+                              </label>
+                              <label className="text-sm font-medium text-secondary/80">
+                                Mobile Number
+                                <input
+                                  name="mobile"
+                                  value={formState.mobile}
+                                  onChange={handleFormChange}
+                                  className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
+                                  placeholder="10-digit mobile"
+                                  maxLength={10}
+                                />
+                              </label>
+                            </div>
+                            <label className="text-sm font-medium text-secondary/80">
+                              Address
+                              <textarea
+                                name="addressLine"
+                                value={formState.addressLine}
+                                onChange={handleFormChange}
+                                className="mt-2 h-20 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
+                                placeholder="House number, street, locality"
+                              />
+                            </label>
+                            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                              <label className="text-sm font-medium text-secondary/80">
+                                State
+                                <select
+                                  name="state"
+                                  value={formState.state}
+                                  onChange={handleFormChange}
+                                  className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
+                                >
+                                  <option value="">Select state</option>
+                                  {STATE_OPTIONS.map((state) => (
+                                    <option key={state} value={state}>
+                                      {state}
+                                    </option>
+                                  ))}
+                                </select>
+                              </label>
+                              <label className="text-sm font-medium text-secondary/80">
+                                City
+                                <select
+                                  name="city"
+                                  value={formState.city}
+                                  onChange={handleFormChange}
+                                  disabled={!formState.state}
+                                  className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:cursor-not-allowed disabled:bg-slate-100"
+                                >
+                                  <option value="">
+                                    {formState.state
+                                      ? "Select city"
+                                      : "Select state first"}
+                                  </option>
+                                  {cityOptions.map((city) => (
+                                    <option key={city} value={city}>
+                                      {city}
+                                    </option>
+                                  ))}
+                                </select>
+                              </label>
+                              <label className="text-sm font-medium text-secondary/80 md:col-span-1">
+                                PIN Code
+                                <input
+                                  name="pincode"
+                                  value={formState.pincode}
+                                  onChange={handleFormChange}
+                                  className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
+                                  placeholder="6-digit PIN"
+                                  maxLength={6}
+                                />
+                              </label>
+                            </div>
+                            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
+                              <button
+                                type="button"
+                                onClick={cancelEditing}
+                                className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-secondary hover:bg-slate-50"
+                                disabled={saving}
+                              >
+                                Cancel
+                              </button>
+                              <button
+                                type="submit"
+                                disabled={saving}
+                                className="inline-flex items-center justify-center rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-70"
+                              >
+                                {saving ? (
+                                  <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    Saving...
+                                  </>
+                                ) : (
+                                  "Save changes"
+                                )}
+                              </button>
+                            </div>
+                          </form>
+                        ) : (
+                          <div className="space-y-4">
+                            <div className="flex items-start justify-between gap-3">
+                              <div>
+                                <p className="text-base font-semibold text-secondary">
+                                  {address.fullName}
+                                </p>
+                                {address.mobile ? (
+                                  <p className="text-sm text-medium-text">
+                                    Phone: {address.mobile}
+                                  </p>
+                                ) : null}
+                                <p className="text-xs text-slate-400">
+                                  Email: {address.email || user?.email || "-"}
+                                </p>
+                              </div>
+                              <div className="flex flex-col items-end gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => startEditing(address)}
+                                  className="inline-flex items-center justify-center gap-2 rounded-lg border border-primary/20 bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary hover:bg-primary/20"
+                                >
+                                  <PencilLine className="h-4 w-4" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    handleDeleteAddress(
+                                      address._id || address.id
+                                    )
+                                  }
+                                  className="inline-flex items-center justify-center gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-600 hover:border-rose-300 hover:bg-rose-100"
+                                  disabled={saving}
+                                >
+                                  Remove
+                                </button>
+                              </div>
+                            </div>
+                            <div className="flex items-start gap-2 text-sm text-medium-text">
+                              <MapPin className="mt-0.5 h-4 w-4 text-primary" />
+                              <div>
+                                <p>{address.addressLine}</p>
+                                <p>
+                                  {address.city}, {address.state} -{" "}
+                                  {address.pincode}
+                                </p>
+                              </div>
+                            </div>
+                            {address.isGeoVerified ? (
+                              <p className="text-xs font-medium text-emerald-600">
+                                ✓ Location verified
                               </p>
                             ) : null}
-                            <p className="text-xs text-slate-400">
-                              Email: {address.email || user?.email || "-"}
-                            </p>
                           </div>
-                          <button
-                            type="button"
-                            onClick={() => startEditing(address)}
-                            className="inline-flex items-center justify-center gap-2 rounded-lg border border-primary/20 bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary hover:bg-primary/20"
-                          >
-                            <PencilLine className="h-4 w-4" />
-                          </button>
-                        </div>
-                        <div className="flex items-start gap-2 text-sm text-medium-text">
-                          <MapPin className="mt-0.5 h-4 w-4 text-primary" />
-                          <div>
-                            <p>{address.addressLine}</p>
-                            <p>
-                              {address.city}, {address.state} -{" "}
-                              {address.pincode}
-                            </p>
-                          </div>
-                        </div>
-                        {address.isGeoVerified ? (
-                          <p className="text-xs font-medium text-emerald-600">
-                            ✓ Location verified
-                          </p>
-                        ) : null}
-                      </div>
-                    )}
-                  </motion.div>
-                );
-              })
-            ) : (
-              <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 py-12 text-center text-sm text-medium-text">
-                No saved addresses yet. Add one during checkout to see it here.
-              </div>
+                        )}
+                      </motion.div>
+                    );
+                  })
+                ) : (
+                  <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 py-12 text-center text-sm text-medium-text">
+                    No saved addresses yet. Use "+ Add Address" to create your
+                    first one.
+                  </div>
+                )}
+              </>
             )}
           </div>
         </motion.div>

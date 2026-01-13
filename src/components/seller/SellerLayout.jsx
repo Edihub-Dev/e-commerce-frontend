@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Outlet } from "react-router-dom";
 import SellerSidebar from "./SellerSidebar";
@@ -7,18 +7,36 @@ import SellerTopbar from "./SellerTopbar";
 const SellerLayout = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  useEffect(() => {
-    const previousBodyOverflow = document.body.style.overflow;
-    const previousHtmlOverflow = document.documentElement.style.overflow;
+  const previousOverflowRef = useRef({
+    body: "",
+    html: "",
+  });
 
-    document.body.style.overflow = "hidden";
-    document.documentElement.style.overflow = "hidden";
+  useEffect(() => {
+    if (typeof document === "undefined") {
+      return undefined;
+    }
+
+    if (isSidebarOpen) {
+      previousOverflowRef.current = {
+        body: document.body.style.overflow,
+        html: document.documentElement.style.overflow,
+      };
+
+      document.body.style.overflow = "hidden";
+      document.documentElement.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = previousOverflowRef.current.body || "";
+      document.documentElement.style.overflow =
+        previousOverflowRef.current.html || "";
+    }
 
     return () => {
-      document.body.style.overflow = previousBodyOverflow;
-      document.documentElement.style.overflow = previousHtmlOverflow;
+      document.body.style.overflow = previousOverflowRef.current.body || "";
+      document.documentElement.style.overflow =
+        previousOverflowRef.current.html || "";
     };
-  }, []);
+  }, [isSidebarOpen]);
 
   return (
     <div className="flex h-screen max-h-screen overflow-hidden bg-slate-50 text-slate-900">

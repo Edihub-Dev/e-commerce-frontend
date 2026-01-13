@@ -1485,7 +1485,7 @@ const SellerCoupons = () => {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 20 }}
       transition={{ type: "spring", stiffness: 120, damping: 18 }}
-      className="flex min-h-screen w-full flex-col gap-6 bg-slate-50 px-4 py-6 text-slate-900 sm:px-6 lg:px-8"
+      className="space-y-6 text-slate-900"
     >
       <input
         ref={fileInputRef}

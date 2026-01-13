@@ -7,9 +7,12 @@ import SellerTopbar from "./SellerTopbar";
 const SellerLayout = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  const previousOverflowRef = useRef({
-    body: "",
-    html: "",
+  const previousDocumentStylesRef = useRef({
+    bodyOverflow: "",
+    bodyHeight: "",
+    htmlOverflow: "",
+    htmlHeight: "",
+    rootHeight: "",
   });
 
   useEffect(() => {
@@ -17,31 +20,42 @@ const SellerLayout = () => {
       return undefined;
     }
 
-    if (isSidebarOpen) {
-      previousOverflowRef.current = {
-        body: document.body.style.overflow,
-        html: document.documentElement.style.overflow,
-      };
+    const { body, documentElement } = document;
+    const root = document.getElementById("root");
 
-      document.body.style.overflow = "hidden";
-      document.documentElement.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = previousOverflowRef.current.body || "";
-      document.documentElement.style.overflow =
-        previousOverflowRef.current.html || "";
+    previousDocumentStylesRef.current = {
+      bodyOverflow: body.style.overflow,
+      bodyHeight: body.style.height,
+      htmlOverflow: documentElement.style.overflow,
+      htmlHeight: documentElement.style.height,
+      rootHeight: root?.style.height || "",
+    };
+
+    body.style.overflow = "hidden";
+    body.style.height = "100%";
+    documentElement.style.overflow = "hidden";
+    documentElement.style.height = "100%";
+    if (root) {
+      root.style.height = "100%";
     }
 
     return () => {
-      document.body.style.overflow = previousOverflowRef.current.body || "";
-      document.documentElement.style.overflow =
-        previousOverflowRef.current.html || "";
+      body.style.overflow = previousDocumentStylesRef.current.bodyOverflow;
+      body.style.height = previousDocumentStylesRef.current.bodyHeight;
+      documentElement.style.overflow =
+        previousDocumentStylesRef.current.htmlOverflow;
+      documentElement.style.height =
+        previousDocumentStylesRef.current.htmlHeight;
+      if (root) {
+        root.style.height = previousDocumentStylesRef.current.rootHeight;
+      }
     };
-  }, [isSidebarOpen]);
+  }, []);
 
   return (
-    <div className="flex h-screen max-h-screen overflow-hidden bg-slate-50 text-slate-900">
-      <div className="flex h-full w-full overflow-hidden">
-        <SellerSidebar className="hidden lg:flex lg:h-full lg:w-72 lg:flex-none lg:flex-col lg:overflow-y-auto lg:border-r lg:border-slate-100 lg:sticky lg:top-0" />
+    <div className="flex h-screen w-screen overflow-hidden bg-slate-50 text-slate-900">
+      <div className="flex h-full w-full min-h-0 overflow-hidden">
+        <SellerSidebar className="hidden lg:flex lg:w-72 lg:flex-none" />
 
         <AnimatePresence>
           {isSidebarOpen && (
@@ -56,7 +70,7 @@ const SellerLayout = () => {
                 animate={{ x: 0 }}
                 exit={{ x: "-100%" }}
                 transition={{ type: "spring", stiffness: 220, damping: 26 }}
-                className="h-full w-72 max-w-sm drop-shadow-xl"
+                className="h-full w-72 max-w-sm overflow-y-auto drop-shadow-xl"
               >
                 <SellerSidebar
                   className="flex"
@@ -73,12 +87,12 @@ const SellerLayout = () => {
           )}
         </AnimatePresence>
 
-        <div className="flex h-full flex-1 flex-col overflow-hidden">
+        <div className="flex h-full flex-1 flex-col min-h-0 overflow-hidden">
           <SellerTopbar
             onToggleSidebar={() => setIsSidebarOpen((prev) => !prev)}
           />
-          <div className="flex-1 overflow-y-auto">
-            <main className="min-h-full bg-slate-50 px-5 pb-10 pt-6 sm:px-8 lg:px-12">
+          <div className="flex-1 min-h-0 overflow-y-auto">
+            <main className="min-h-0 bg-slate-50 px-5 pb-10 pt-6 sm:px-8 lg:px-12">
               <Outlet />
             </main>
           </div>

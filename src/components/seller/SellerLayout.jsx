@@ -14,32 +14,48 @@ const SellerLayout = () => {
     htmlHeight: "",
     rootHeight: "",
   });
+  const isLockedRef = useRef(false);
 
   useEffect(() => {
-    if (typeof document === "undefined") {
+    if (typeof window === "undefined" || typeof document === "undefined") {
       return undefined;
     }
 
-    const { body, documentElement } = document;
-    const root = document.getElementById("root");
-
-    previousDocumentStylesRef.current = {
-      bodyOverflow: body.style.overflow,
-      bodyHeight: body.style.height,
-      htmlOverflow: documentElement.style.overflow,
-      htmlHeight: documentElement.style.height,
-      rootHeight: root?.style.height || "",
+    const storeCurrentStyles = () => {
+      const { body, documentElement } = document;
+      const root = document.getElementById("root");
+      previousDocumentStylesRef.current = {
+        bodyOverflow: body.style.overflow,
+        bodyHeight: body.style.height,
+        htmlOverflow: documentElement.style.overflow,
+        htmlHeight: documentElement.style.height,
+        rootHeight: root?.style.height || "",
+      };
     };
 
-    body.style.overflow = "hidden";
-    body.style.height = "100%";
-    documentElement.style.overflow = "hidden";
-    documentElement.style.height = "100%";
-    if (root) {
-      root.style.height = "100%";
-    }
+    const applyLock = () => {
+      if (isLockedRef.current) return;
+      storeCurrentStyles();
 
-    return () => {
+      const { body, documentElement } = document;
+      const root = document.getElementById("root");
+
+      body.style.overflow = "hidden";
+      body.style.height = "100%";
+      documentElement.style.overflow = "hidden";
+      documentElement.style.height = "100%";
+      if (root) {
+        root.style.height = "100%";
+      }
+
+      isLockedRef.current = true;
+    };
+
+    const releaseLock = () => {
+      if (!isLockedRef.current) return;
+
+      const { body, documentElement } = document;
+      const root = document.getElementById("root");
       body.style.overflow = previousDocumentStylesRef.current.bodyOverflow;
       body.style.height = previousDocumentStylesRef.current.bodyHeight;
       documentElement.style.overflow =
@@ -49,12 +65,43 @@ const SellerLayout = () => {
       if (root) {
         root.style.height = previousDocumentStylesRef.current.rootHeight;
       }
+
+      isLockedRef.current = false;
+    };
+
+    const mediaQuery = window.matchMedia("(min-width: 1024px)");
+
+    const handleChange = (matches) => {
+      if (matches) {
+        applyLock();
+      } else {
+        releaseLock();
+      }
+    };
+
+    handleChange(mediaQuery.matches);
+
+    const listener = (event) => handleChange(event.matches);
+
+    if (mediaQuery.addEventListener) {
+      mediaQuery.addEventListener("change", listener);
+    } else {
+      mediaQuery.addListener(listener);
+    }
+
+    return () => {
+      if (mediaQuery.removeEventListener) {
+        mediaQuery.removeEventListener("change", listener);
+      } else {
+        mediaQuery.removeListener(listener);
+      }
+      releaseLock();
     };
   }, []);
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-slate-50 text-slate-900">
-      <div className="flex h-full w-full min-h-0 overflow-hidden">
+    <div className="flex min-h-screen w-full bg-slate-50 text-slate-900 lg:h-screen lg:w-screen lg:overflow-hidden">
+      <div className="flex w-full min-h-screen lg:h-full lg:min-h-0 lg:overflow-hidden">
         <SellerSidebar className="hidden lg:flex lg:w-72 lg:flex-none" />
 
         <AnimatePresence>
@@ -87,12 +134,12 @@ const SellerLayout = () => {
           )}
         </AnimatePresence>
 
-        <div className="flex h-full flex-1 flex-col min-h-0 overflow-hidden">
+        <div className="flex flex-1 flex-col min-h-screen lg:h-full lg:min-h-0 lg:overflow-hidden">
           <SellerTopbar
             onToggleSidebar={() => setIsSidebarOpen((prev) => !prev)}
           />
-          <div className="flex-1 min-h-0 overflow-y-auto">
-            <main className="min-h-0 bg-slate-50 px-5 pb-10 pt-6 sm:px-8 lg:px-12">
+          <div className="flex-1 lg:min-h-0 lg:overflow-y-auto">
+            <main className="bg-slate-50 px-5 pb-10 pt-6 sm:px-8 lg:px-12 lg:min-h-0">
               <Outlet />
             </main>
           </div>

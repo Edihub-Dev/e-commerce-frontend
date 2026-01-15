@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { toast } from "react-hot-toast";
 import ExcelJS from "exceljs";
@@ -97,6 +97,8 @@ const toDateInputValue = (value) => {
 
 const SellerOrders = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const locationState = useMemo(() => location.state || {}, [location.state]);
   const [orders, setOrders] = useState([]);
   const [meta, setMeta] = useState({
     page: 1,
@@ -107,11 +109,13 @@ const SellerOrders = () => {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useState(() => Number(locationState.page) || 1);
   const [searchValue, setSearchValue] = useState("");
   const [searchFilter, setSearchFilter] = useState("");
-  const [status, setStatus] = useState("");
-  const [paymentStatus, setPaymentStatus] = useState("");
+  const [status, setStatus] = useState(() => locationState.status || "");
+  const [paymentStatus, setPaymentStatus] = useState(
+    () => locationState.paymentStatus || ""
+  );
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [minAmount, setMinAmount] = useState("");
@@ -203,6 +207,18 @@ const SellerOrders = () => {
     pageSize,
     refreshToken,
   ]);
+
+  useEffect(() => {
+    navigate(location.pathname, {
+      replace: true,
+      state: {
+        ...locationState,
+        status,
+        paymentStatus,
+        page,
+      },
+    });
+  }, [status, paymentStatus, page, navigate, location.pathname]);
 
   useEffect(() => {
     if (typeof document === "undefined") {
@@ -1191,8 +1207,14 @@ const SellerOrders = () => {
     const paymentStatusValue = String(
       order.paymentStatus || "pending"
     ).toLowerCase();
-    if (paymentStatusValue !== "paid") {
-      toast.error("Invoice will be available once the payment is successful.");
+    const hasInvoiceAsset = Boolean(
+      order?.invoice?.url || order?.invoiceUrl || order?.invoice?.number
+    );
+
+    if (!hasInvoiceAsset && paymentStatusValue !== "paid") {
+      toast.error(
+        "Invoice will be available once payment succeeds or the seller updates it manually."
+      );
       return;
     }
 

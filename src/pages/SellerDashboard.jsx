@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   BarChart3,
@@ -65,6 +66,7 @@ const emptyOverview = {
 };
 
 const SellerDashboard = () => {
+  const navigate = useNavigate();
   const [overview, setOverview] = useState(emptyOverview);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -129,24 +131,31 @@ const SellerDashboard = () => {
       value: formatCurrency(metrics.sales),
       icon: <BarChart3 size={22} />,
       accent: "bg-emerald-50 text-emerald-600",
+      onClick: () => navigate("/seller/orders"),
     },
     {
       label: "Orders",
       value: formatNumber(metrics.orders),
       icon: <ShoppingBag size={22} />,
       accent: "bg-sky-50 text-sky-600",
+      onClick: () => navigate("/seller/orders"),
     },
     {
       label: "Catalogue",
       value: formatNumber(metrics.products),
       icon: <PackageSearch size={22} />,
       accent: "bg-purple-50 text-purple-600",
+      onClick: () => navigate("/seller/products"),
     },
     {
       label: "Active Coupons",
       value: formatNumber(metrics.coupons),
       icon: <TicketPercent size={22} />,
       accent: "bg-amber-50 text-amber-600",
+      onClick: () =>
+        navigate("/seller/coupons", {
+          state: { status: "active" },
+        }),
     },
   ];
 
@@ -159,7 +168,12 @@ const SellerDashboard = () => {
     >
       <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         {metricCards.map((card) => (
-          <MetricCard key={card.label} {...card} isLoading={loading} />
+          <MetricCard
+            key={card.label}
+            {...card}
+            isLoading={loading}
+            className="cursor-pointer transition hover:-translate-y-0.5 hover:shadow-md"
+          />
         ))}
       </section>
 
@@ -189,10 +203,26 @@ const SellerDashboard = () => {
                   className:
                     "bg-slate-50 text-slate-600 border border-slate-200",
                 };
+                const statusFilter = key === "returned" ? "returned" : key;
                 return (
                   <div
                     key={key}
-                    className="rounded-2xl border border-slate-200 bg-slate-50 p-4"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() =>
+                      navigate("/seller/orders", {
+                        state: { status: statusFilter },
+                      })
+                    }
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        navigate("/seller/orders", {
+                          state: { status: statusFilter },
+                        });
+                      }
+                    }}
+                    className="rounded-2xl border border-slate-200 bg-slate-50 p-4 transition hover:border-blue-200 hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300 cursor-pointer"
                   >
                     <p className="text-xs uppercase tracking-[0.22em] text-slate-500">
                       {config.label}

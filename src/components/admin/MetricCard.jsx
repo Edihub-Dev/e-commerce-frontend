@@ -1,13 +1,33 @@
 import PropTypes from "prop-types";
 import { motion } from "framer-motion";
 
-const MetricCard = ({ icon, label, value, accent, isLoading }) => {
+const MetricCard = ({
+  icon,
+  label,
+  value,
+  accent,
+  isLoading,
+  onClick,
+  className,
+}) => {
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
-      className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 flex items-center gap-4"
+      onClick={onClick}
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onKeyDown={(event) => {
+        if (!onClick) return;
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onClick();
+        }
+      }}
+      className={`bg-white rounded-2xl shadow-sm border border-slate-100 p-6 flex items-center gap-4 ${
+        className ?? ""
+      }`}
     >
       <div
         className={`h-12 w-12 rounded-2xl grid place-items-center text-xl font-semibold ${accent}`}
@@ -34,11 +54,15 @@ MetricCard.propTypes = {
   value: PropTypes.string.isRequired,
   accent: PropTypes.string,
   isLoading: PropTypes.bool,
+  onClick: PropTypes.func,
+  className: PropTypes.string,
 };
 
 MetricCard.defaultProps = {
   accent: "bg-blue-50 text-blue-600",
   isLoading: false,
+  onClick: undefined,
+  className: "",
 };
 
 export default MetricCard;

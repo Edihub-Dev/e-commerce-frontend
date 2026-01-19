@@ -61,8 +61,8 @@ const sanitizeCheckoutItem = (item = {}) => {
     sanitized.gstRate !== undefined && sanitized.gstRate !== null
       ? sanitized.gstRate
       : sanitized.taxRate !== undefined && sanitized.taxRate !== null
-      ? sanitized.taxRate
-      : undefined;
+        ? sanitized.taxRate
+        : undefined;
 
   let gstCandidate = rawGstCandidate;
   if (typeof gstCandidate === "string") {
@@ -174,7 +174,7 @@ export default checkoutSlice.reducer;
 
 export const calculateTotals = (
   items,
-  { shippingFee = 0, taxAmount, discount = 0, currency = "INR" } = {}
+  { shippingFee = 0, taxAmount, discount = 0, currency = "INR" } = {},
 ) => {
   const list = Array.isArray(items) ? items : [];
 
@@ -210,9 +210,9 @@ export const calculateTotals = (
         normalizedShipping +
         normalizedTax -
         normalizedDiscount
-      ).toFixed(2)
+      ).toFixed(2),
     ),
-    0
+    0,
   );
 
   return {

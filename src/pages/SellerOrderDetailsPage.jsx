@@ -144,8 +144,11 @@ const SellerOrderDetailsPage = () => {
     navigate("/seller/orders");
   };
 
-  const isPaymentPaid =
-    (order?.payment?.status || "pending").toLowerCase() === "paid";
+  const paymentStatus = (order?.payment?.status || "pending").toLowerCase();
+  const isPaymentPaid = paymentStatus === "paid";
+  const invoiceUrl = order?.invoice?.url || order?.invoiceUrl;
+  const isInvoiceAvailable = Boolean(invoiceUrl);
+  const canDownloadInvoice = isPaymentPaid || isInvoiceAvailable;
 
   const handleReplacementFieldChange = (field, value) => {
     setReplacementUpdate((prev) => ({
@@ -184,8 +187,10 @@ const SellerOrderDetailsPage = () => {
       return;
     }
 
-    if (!isPaymentPaid) {
-      toast.error("Invoice will be available once the payment is successful.");
+    if (!canDownloadInvoice) {
+      toast.error(
+        "Invoice will be available once payment is successful or the invoice is generated.",
+      );
       return;
     }
 
@@ -286,7 +291,7 @@ const SellerOrderDetailsPage = () => {
 
   const deliveryDate = useMemo(
     () => formatDate(order?.estimatedDeliveryDate),
-    [order?.estimatedDeliveryDate]
+    [order?.estimatedDeliveryDate],
   );
 
   const subtotal = order?.pricing?.subtotal ?? 0;
@@ -347,12 +352,12 @@ const SellerOrderDetailsPage = () => {
         <button
           type="button"
           onClick={handleDownloadInvoice}
-          disabled={downloadingInvoice || !isPaymentPaid}
+          disabled={downloadingInvoice || !canDownloadInvoice}
           className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
           title={
-            isPaymentPaid
+            canDownloadInvoice
               ? undefined
-              : "Invoice will be available once the payment is successful."
+              : "Invoice will be available once payment is successful or the invoice is generated."
           }
         >
           {downloadingInvoice ? (
@@ -360,7 +365,7 @@ const SellerOrderDetailsPage = () => {
           ) : (
             <Download className="h-4 w-4" />
           )}
-          {isPaymentPaid ? "Download invoice" : "Invoice locked"}
+          {canDownloadInvoice ? "Download invoice" : "Invoice locked"}
         </button>
       </div>
 
@@ -657,7 +662,7 @@ const SellerOrderDetailsPage = () => {
                   onChange={(event) =>
                     handleReplacementFieldChange(
                       "trackingId",
-                      event.target.value
+                      event.target.value,
                     )
                   }
                   className="w-full rounded-xl border border-primary/30 px-3 py-2 text-sm focus:border-primary focus:outline-none"
@@ -677,7 +682,7 @@ const SellerOrderDetailsPage = () => {
                   rows={3}
                   ref={notesRef}
                   required={STATUSES_REQUIRING_REASON.has(
-                    replacementUpdate.status
+                    replacementUpdate.status,
                   )}
                   className={`w-full rounded-xl border px-3 py-2 text-sm focus:border-primary focus:outline-none ${
                     STATUSES_REQUIRING_REASON.has(replacementUpdate.status)

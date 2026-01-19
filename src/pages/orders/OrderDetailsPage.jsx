@@ -102,7 +102,7 @@ const resolveStepKey = (label = "") => {
   const matched = TIMELINE_SEQUENCE.find(
     (step) =>
       step.label.toLowerCase() === normalized ||
-      step.key.replace(/_/g, " ") === normalized
+      step.key.replace(/_/g, " ") === normalized,
   );
 
   return matched?.key || null;
@@ -148,13 +148,13 @@ const buildTimeline = (order) => {
   const resolvedCurrentKey = resolveStepKey(mappedStatus) || "order_confirmed";
   const isRejected = resolvedCurrentKey === "rejected";
   const currentIndex = TIMELINE_SEQUENCE.findIndex(
-    (step) => step.key === resolvedCurrentKey
+    (step) => step.key === resolvedCurrentKey,
   );
   const fallbackCurrentIndex = currentIndex === -1 ? 0 : currentIndex;
   const hasTimelineHistory = timelineMap.size > 0;
 
   const hasReturnFlow = Boolean(
-    order.replacementRequest && order.replacementRequest.status !== "none"
+    order.replacementRequest && order.replacementRequest.status !== "none",
   );
   const includeReturnStep =
     hasReturnFlow ||
@@ -169,7 +169,7 @@ const buildTimeline = (order) => {
 
   if (isRejected) {
     const rejectionIndex = baseSequence.findIndex(
-      (step) => step.key === "rejected"
+      (step) => step.key === "rejected",
     );
     if (rejectionIndex !== -1) {
       sequence = baseSequence.filter((_, index) => index <= rejectionIndex);
@@ -186,7 +186,7 @@ const buildTimeline = (order) => {
   return sequence.map((step) => {
     const timelineEntry = timelineMap.get(step.key) || null;
     const stepIndex = sequence.findIndex(
-      (sequenceStep) => sequenceStep.key === step.key
+      (sequenceStep) => sequenceStep.key === step.key,
     );
     const effectiveCurrentIndex = hasTimelineHistory
       ? currentIndex
@@ -381,7 +381,7 @@ const OrderDetailsPage = () => {
 
   const replacementRequest = order?.replacementRequest || {};
   const replacementStatusActive = Boolean(
-    replacementRequest?.status && replacementRequest.status !== "none"
+    replacementRequest?.status && replacementRequest.status !== "none",
   );
 
   const replacementWindowActive = useMemo(() => {
@@ -400,7 +400,7 @@ const OrderDetailsPage = () => {
 
   const canReviewItems = useMemo(
     () => Boolean(deliveredTimestamp && order?.status === "delivered"),
-    [deliveredTimestamp, order?.status]
+    [deliveredTimestamp, order?.status],
   );
 
   const replacementAvailabilityMessage = useMemo(() => {
@@ -543,7 +543,7 @@ const OrderDetailsPage = () => {
               review: response.data?.review,
               ratedAt: response.data?.ratedAt,
             }
-          : item
+          : item,
       );
 
       setOrder((prev) => ({
@@ -591,8 +591,11 @@ const OrderDetailsPage = () => {
     );
   }
 
-  const isPaymentPaid =
-    (order?.payment?.status || "pending").toLowerCase() === "paid";
+  const paymentStatus = (order?.payment?.status || "pending").toLowerCase();
+  const isPaymentPaid = paymentStatus === "paid";
+  const invoiceUrl = order?.invoice?.url || order?.invoiceUrl;
+  const isInvoiceAvailable = Boolean(invoiceUrl);
+  const canDownloadInvoice = isPaymentPaid || isInvoiceAvailable;
 
   const handleDownloadInvoice = async () => {
     if (!order?._id) {
@@ -600,8 +603,10 @@ const OrderDetailsPage = () => {
       return;
     }
 
-    if (!isPaymentPaid) {
-      toast.error("Invoice will be available once the payment is successful.");
+    if (!canDownloadInvoice) {
+      toast.error(
+        "Invoice will be available once payment is successful or the invoice is generated.",
+      );
       return;
     }
 
@@ -797,8 +802,8 @@ const OrderDetailsPage = () => {
                 timelineStep?.isCompleted
                   ? "bg-emerald-500"
                   : timelineStep?.isCurrent
-                  ? "bg-primary/40"
-                  : "bg-slate-200";
+                    ? "bg-primary/40"
+                    : "bg-slate-200";
               const markerVars = {
                 "--timeline-marker-size": "1.5rem",
                 "--timeline-gap": "1.5rem",
@@ -814,7 +819,7 @@ const OrderDetailsPage = () => {
                       <span
                         aria-hidden="true"
                         className={`absolute left-1/2 w-[2px] -translate-x-1/2 ${resolveConnectorClass(
-                          previousStep
+                          previousStep,
                         )}`}
                         style={{
                           top: "calc(-1 * var(--timeline-gap))",
@@ -827,8 +832,8 @@ const OrderDetailsPage = () => {
                         step.isCompleted
                           ? "border-emerald-500 bg-emerald-500 text-white"
                           : step.isCurrent
-                          ? "border-primary bg-white text-primary"
-                          : "border-slate-300 bg-white text-slate-300"
+                            ? "border-primary bg-white text-primary"
+                            : "border-slate-300 bg-white text-slate-300"
                       }`}
                     >
                       <Icon className="h-3.5 w-3.5" />
@@ -837,7 +842,7 @@ const OrderDetailsPage = () => {
                       <span
                         aria-hidden="true"
                         className={`absolute left-1/2 w-[2px] -translate-x-1/2 ${resolveConnectorClass(
-                          step
+                          step,
                         )}`}
                         style={{
                           top: "calc(var(--timeline-marker-size) / 2)",
@@ -1199,15 +1204,15 @@ const OrderDetailsPage = () => {
         <button
           type="button"
           onClick={handleDownloadInvoice}
-          disabled={downloadingInvoice || !isPaymentPaid}
+          disabled={downloadingInvoice || !canDownloadInvoice}
           className="px-5 py-3 rounded-xl bg-primary text-white hover:bg-primary-dark disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
         >
           <Download className="h-4 w-4" />
           {downloadingInvoice
             ? "Preparing Invoice..."
-            : isPaymentPaid
-            ? "Download Invoice"
-            : "Invoice available after payment"}
+            : canDownloadInvoice
+              ? "Download Invoice"
+              : "Invoice available after payment"}
         </button>
       </div>
 
@@ -1243,7 +1248,7 @@ const OrderDetailsPage = () => {
                     onChange={(event) =>
                       handleReplacementInputChange(
                         "itemIndex",
-                        Number(event.target.value)
+                        Number(event.target.value),
                       )
                     }
                     className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none"
@@ -1277,7 +1282,7 @@ const OrderDetailsPage = () => {
                   onChange={(event) =>
                     handleReplacementInputChange(
                       "description",
-                      event.target.value
+                      event.target.value,
                     )
                   }
                   required

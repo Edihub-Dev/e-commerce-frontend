@@ -80,7 +80,7 @@ const getAvailabilityLabel = (status) =>
 const normalizePriceFields = (product = {}) => {
   const priceValue = Number(product.price ?? 0);
   const originalValue = Number(
-    product.originalPrice ?? product.price ?? product.costPrice ?? priceValue
+    product.originalPrice ?? product.price ?? product.costPrice ?? priceValue,
   );
 
   const price =
@@ -93,15 +93,15 @@ const normalizePriceFields = (product = {}) => {
     product.discountPercentage !== null
       ? Number(product.discountPercentage)
       : originalPrice > price && originalPrice > 0
-      ? Math.round(((originalPrice - price) / originalPrice) * 100)
-      : 0;
+        ? Math.round(((originalPrice - price) / originalPrice) * 100)
+        : 0;
 
   const saveAmount =
     product.saveAmount !== undefined && product.saveAmount !== null
       ? Number(product.saveAmount)
       : discountPercentage > 0
-      ? originalPrice - price
-      : 0;
+        ? originalPrice - price
+        : 0;
 
   return {
     price,
@@ -211,14 +211,14 @@ const normalizeSellerProduct = (product = {}) => {
     base.metadata instanceof Map
       ? Object.fromEntries(base.metadata)
       : typeof base.metadata === "object" && base.metadata !== null
-      ? { ...base.metadata }
-      : {};
+        ? { ...base.metadata }
+        : {};
 
   const gallerySource = Array.isArray(base.gallery)
     ? base.gallery
     : Array.isArray(base.images)
-    ? base.images
-    : [];
+      ? base.images
+      : [];
 
   const gallery = gallerySource
     .map((entry) => (entry != null ? String(entry).trim() : ""))
@@ -304,8 +304,8 @@ const buildProductDraft = (product = {}) => {
       ? normalized.sizes
       : buildDefaultSizes()
     : Array.isArray(normalized.sizes)
-    ? normalized.sizes
-    : [];
+      ? normalized.sizes
+      : [];
 
   return {
     name: normalized.name || "",
@@ -413,7 +413,7 @@ const confirmDeletion = ({ entity = "item", name } = {}) => {
   const entityLabel = entity.toLowerCase();
   const nameLabel = name ? ` "${name}"` : "";
   return window.confirm(
-    `Are you sure you want to delete this ${entityLabel}${nameLabel}? This action cannot be undone.`
+    `Are you sure you want to delete this ${entityLabel}${nameLabel}? This action cannot be undone.`,
   );
 };
 
@@ -488,10 +488,10 @@ const AdminSellerDetailsPage = () => {
   const [productsRefreshing, setProductsRefreshing] = useState(false);
   const [productsError, setProductsError] = useState("");
   const [productViewModal, setProductViewModal] = useState(
-    defaultProductViewModalState
+    defaultProductViewModalState,
   );
   const [productEditModal, setProductEditModal] = useState(
-    defaultProductEditModalState
+    defaultProductEditModalState,
   );
   const [productMediaUploading, setProductMediaUploading] = useState({
     thumbnail: false,
@@ -511,6 +511,15 @@ const AdminSellerDetailsPage = () => {
   const [ordersError, setOrdersError] = useState("");
   const [orderEdit, setOrderEdit] = useState(null);
   const [orderView, setOrderView] = useState(null);
+  const [isSavingOrder, setIsSavingOrder] = useState(false);
+  const [orderStatusFilter, setOrderStatusFilter] = useState("");
+  const [orderSellerNameFilter, setOrderSellerNameFilter] = useState("");
+  const [orderMinAmountFilter, setOrderMinAmountFilter] = useState("");
+  const [orderMaxAmountFilter, setOrderMaxAmountFilter] = useState("");
+  const [orderStatusDraft, setOrderStatusDraft] = useState("");
+  const [orderSellerNameDraft, setOrderSellerNameDraft] = useState("");
+  const [orderMinAmountDraft, setOrderMinAmountDraft] = useState("");
+  const [orderMaxAmountDraft, setOrderMaxAmountDraft] = useState("");
 
   const [coupons, setCoupons] = useState([]);
   const [couponsLoading, setCouponsLoading] = useState(true);
@@ -567,7 +576,7 @@ const AdminSellerDetailsPage = () => {
         setProductsRefreshing(false);
       }
     },
-    [selectedSellerId]
+    [selectedSellerId],
   );
 
   const loadOrders = useCallback(
@@ -578,8 +587,28 @@ const AdminSellerDetailsPage = () => {
         } else {
           setOrdersLoading(true);
         }
-        const params =
-          selectedSellerId !== "all" ? { sellerId: selectedSellerId } : {};
+        const params = {};
+
+        if (selectedSellerId !== "all") {
+          params.sellerId = selectedSellerId;
+        }
+
+        if (orderStatusFilter) {
+          params.status = orderStatusFilter;
+        }
+
+        if (orderSellerNameFilter) {
+          params.sellerName = orderSellerNameFilter;
+        }
+
+        if (orderMinAmountFilter) {
+          params.minAmount = orderMinAmountFilter;
+        }
+
+        if (orderMaxAmountFilter) {
+          params.maxAmount = orderMaxAmountFilter;
+        }
+
         const data = await fetchAdminSellerOrders(params);
         setOrders(Array.isArray(data) ? data : []);
         setOrdersError("");
@@ -591,8 +620,55 @@ const AdminSellerDetailsPage = () => {
         setOrdersRefreshing(false);
       }
     },
-    [selectedSellerId]
+    [
+      selectedSellerId,
+      orderStatusFilter,
+      orderSellerNameFilter,
+      orderMinAmountFilter,
+      orderMaxAmountFilter,
+    ],
   );
+
+  const sanitizeAmountInput = (value = "") => value.replace(/[^0-9.]/g, "");
+
+  const handleOrderFiltersSubmit = useCallback(
+    (event) => {
+      event.preventDefault();
+
+      const trimmedStatus = orderStatusDraft.trim();
+      const trimmedSeller = orderSellerNameDraft.trim();
+      const sanitizedMin = sanitizeAmountInput(orderMinAmountDraft);
+      const sanitizedMax = sanitizeAmountInput(orderMaxAmountDraft);
+
+      setOrderStatusDraft(trimmedStatus);
+      setOrderSellerNameDraft(trimmedSeller);
+      setOrderMinAmountDraft(sanitizedMin);
+      setOrderMaxAmountDraft(sanitizedMax);
+
+      setOrderStatusFilter(trimmedStatus);
+      setOrderSellerNameFilter(trimmedSeller);
+      setOrderMinAmountFilter(sanitizedMin);
+      setOrderMaxAmountFilter(sanitizedMax);
+    },
+    [
+      orderStatusDraft,
+      orderSellerNameDraft,
+      orderMinAmountDraft,
+      orderMaxAmountDraft,
+    ],
+  );
+
+  const handleOrderFiltersReset = useCallback(() => {
+    setOrderStatusDraft("");
+    setOrderSellerNameDraft("");
+    setOrderMinAmountDraft("");
+    setOrderMaxAmountDraft("");
+
+    setOrderStatusFilter("");
+    setOrderSellerNameFilter("");
+    setOrderMinAmountFilter("");
+    setOrderMaxAmountFilter("");
+  }, []);
 
   const loadCoupons = useCallback(
     async ({ silent } = { silent: false }) => {
@@ -615,7 +691,7 @@ const AdminSellerDetailsPage = () => {
         setCouponsRefreshing(false);
       }
     },
-    [selectedSellerId]
+    [selectedSellerId],
   );
 
   useEffect(() => {
@@ -624,9 +700,12 @@ const AdminSellerDetailsPage = () => {
 
   useEffect(() => {
     loadProducts();
-    loadOrders();
     loadCoupons();
-  }, [loadProducts, loadOrders, loadCoupons]);
+  }, [loadProducts, loadCoupons]);
+
+  useEffect(() => {
+    loadOrders();
+  }, [loadOrders]);
 
   const filteredSellers = useMemo(() => {
     const query = sellerSearch.trim().toLowerCase();
@@ -634,7 +713,7 @@ const AdminSellerDetailsPage = () => {
     return sellers.filter((seller) =>
       [seller.name, seller.username, seller.email]
         .filter(Boolean)
-        .some((value) => value.toLowerCase().includes(query))
+        .some((value) => value.toLowerCase().includes(query)),
     );
   }, [sellers, sellerSearch]);
 
@@ -642,7 +721,7 @@ const AdminSellerDetailsPage = () => {
     if (selectedSellerId === "all") return null;
     return (
       sellers.find(
-        (seller) => String(seller._id) === String(selectedSellerId)
+        (seller) => String(seller._id) === String(selectedSellerId),
       ) || null
     );
   }, [selectedSellerId, sellers]);
@@ -650,19 +729,19 @@ const AdminSellerDetailsPage = () => {
   const summaries = useMemo(() => {
     const totalSellers = sellers.length;
     const verifiedSellers = sellers.filter(
-      (seller) => seller.isVerified
+      (seller) => seller.isVerified,
     ).length;
     const totalProducts = sellers.reduce(
       (acc, seller) => acc + (seller.metrics?.products || 0),
-      0
+      0,
     );
     const totalOrders = sellers.reduce(
       (acc, seller) => acc + (seller.metrics?.orders || 0),
-      0
+      0,
     );
     const totalCoupons = sellers.reduce(
       (acc, seller) => acc + (seller.metrics?.coupons || 0),
-      0
+      0,
     );
 
     return [
@@ -714,8 +793,8 @@ const AdminSellerDetailsPage = () => {
         prev.map((seller) =>
           seller._id === updated._id
             ? { ...seller, ...updated, metrics: seller.metrics }
-            : seller
-        )
+            : seller,
+        ),
       );
       setSellerEdit(null);
       await loadSellers({ silent: true });
@@ -743,7 +822,7 @@ const AdminSellerDetailsPage = () => {
       await deleteAdminUser(targetSeller._id);
       toast.success("Seller removed");
       setSellers((prev) =>
-        prev.filter((seller) => seller._id !== targetSeller._id)
+        prev.filter((seller) => seller._id !== targetSeller._id),
       );
       if (selectedSellerId === String(targetSeller._id)) {
         setSelectedSellerId("all");
@@ -766,7 +845,7 @@ const AdminSellerDetailsPage = () => {
   const handleViewProduct = useCallback(
     async (productId) => {
       const cached = products.find(
-        (item) => String(item._id) === String(productId)
+        (item) => String(item._id) === String(productId),
       );
 
       setProductViewModal({
@@ -806,7 +885,7 @@ const AdminSellerDetailsPage = () => {
         }
       }
     },
-    [products, loadProducts]
+    [products, loadProducts],
   );
 
   const handleOrderDelete = useCallback(
@@ -829,7 +908,66 @@ const AdminSellerDetailsPage = () => {
         toast.error(error.message || "Unable to delete seller order");
       }
     },
-    [orders, loadOrders]
+    [orders, loadOrders],
+  );
+
+  const handleOrderUpdate = useCallback(
+    async (orderId, updates = {}) => {
+      if (!orderId) {
+        return;
+      }
+
+      setIsSavingOrder(true);
+
+      try {
+        const payload = { ...updates };
+
+        if (payload.estimatedDeliveryDate === "") {
+          payload.estimatedDeliveryDate = null;
+        }
+
+        const updated = await updateAdminSellerOrder(orderId, payload);
+
+        toast.success("Order updated");
+
+        setOrders((prev) => {
+          const identifier = String(updated?._id ?? orderId);
+          return prev.map((order) =>
+            String(order._id) === identifier
+              ? {
+                  ...order,
+                  ...updated,
+                  orderStatus:
+                    updated?.orderStatus ??
+                    payload.orderStatus ??
+                    order.orderStatus,
+                  paymentStatus:
+                    updated?.paymentStatus ??
+                    payload.paymentStatus ??
+                    order.paymentStatus,
+                  estimatedDeliveryDate:
+                    updated?.estimatedDeliveryDate ??
+                    payload.estimatedDeliveryDate ??
+                    order.estimatedDeliveryDate,
+                }
+              : order,
+          );
+        });
+
+        setOrderEdit(null);
+        await loadOrders({ silent: true });
+      } catch (error) {
+        console.error("Failed to update seller order", error);
+        const message =
+          error?.response?.data?.message ||
+          error?.message ||
+          "Unable to update seller order";
+        toast.error(message);
+      } finally {
+        setIsSavingOrder(false);
+      }
+    },
+    [loadOrders],
   );
 
   const handleCloseViewProduct = useCallback(() => {
@@ -853,7 +991,7 @@ const AdminSellerDetailsPage = () => {
   const handleOpenEditProduct = useCallback(
     async (productId) => {
       const cached = products.find(
-        (item) => String(item._id) === String(productId)
+        (item) => String(item._id) === String(productId),
       );
       const normalizedCached = cached ? normalizeSellerProduct(cached) : null;
 
@@ -920,7 +1058,7 @@ const AdminSellerDetailsPage = () => {
         }
       }
     },
-    [products, loadProducts]
+    [products, loadProducts],
   );
 
   const handleCloseEditProduct = useCallback(() => {
@@ -956,7 +1094,7 @@ const AdminSellerDetailsPage = () => {
         toast.error(error.message || "Unable to delete seller product");
       }
     },
-    [products, loadProducts]
+    [products, loadProducts],
   );
 
   const handleChangeProductDraft = useCallback(
@@ -991,7 +1129,7 @@ const AdminSellerDetailsPage = () => {
         return nextDraft;
       });
     },
-    [updateProductDraft]
+    [updateProductDraft],
   );
 
   const handleNameChange = useCallback(
@@ -1016,7 +1154,7 @@ const AdminSellerDetailsPage = () => {
       productEditAuto.hasManualGst,
       productEditAuto.hasManualHsn,
       updateProductDraft,
-    ]
+    ],
   );
 
   const handleTaxFieldChange = useCallback(
@@ -1027,7 +1165,7 @@ const AdminSellerDetailsPage = () => {
       }));
       handleChangeProductDraft(field, value);
     },
-    [handleChangeProductDraft]
+    [handleChangeProductDraft],
   );
 
   const handleToggleProductDraft = useCallback(
@@ -1057,7 +1195,7 @@ const AdminSellerDetailsPage = () => {
               sizes.map((size) => ({
                 ...size,
                 stock: Number(size.stock ?? 0),
-              }))
+              })),
             );
             nextDraft.stock = checked ? String(totalStock) : draft.stock;
           } else {
@@ -1068,7 +1206,7 @@ const AdminSellerDetailsPage = () => {
         return nextDraft;
       });
     },
-    [updateProductDraft]
+    [updateProductDraft],
   );
 
   const handleAvailabilityChange = useCallback(
@@ -1086,7 +1224,7 @@ const AdminSellerDetailsPage = () => {
             (draft.sizes || []).map((size) => ({
               ...size,
               stock: Number(size.stock ?? 0),
-            }))
+            })),
           );
           nextDraft.stock = String(totalStock);
         }
@@ -1094,7 +1232,7 @@ const AdminSellerDetailsPage = () => {
         return nextDraft;
       });
     },
-    [updateProductDraft]
+    [updateProductDraft],
   );
 
   const handlePricingChange = useCallback(
@@ -1104,7 +1242,7 @@ const AdminSellerDetailsPage = () => {
 
         const priceValue = parseFloat(field === "price" ? value : draft.price);
         const originalValue = parseFloat(
-          field === "originalPrice" ? value : draft.originalPrice
+          field === "originalPrice" ? value : draft.originalPrice,
         );
 
         if (
@@ -1115,7 +1253,7 @@ const AdminSellerDetailsPage = () => {
         ) {
           const save = originalValue - priceValue;
           nextDraft.discountPercentage = Math.round(
-            (save / originalValue) * 100
+            (save / originalValue) * 100,
           ).toString();
           nextDraft.saveAmount = save.toFixed(2);
         } else {
@@ -1126,7 +1264,7 @@ const AdminSellerDetailsPage = () => {
         return nextDraft;
       });
     },
-    [updateProductDraft]
+    [updateProductDraft],
   );
 
   const handleFeatureChange = useCallback(
@@ -1142,7 +1280,7 @@ const AdminSellerDetailsPage = () => {
         };
       });
     },
-    [updateProductDraft]
+    [updateProductDraft],
   );
 
   const handleAddFeature = useCallback(() => {
@@ -1164,7 +1302,7 @@ const AdminSellerDetailsPage = () => {
         };
       });
     },
-    [updateProductDraft]
+    [updateProductDraft],
   );
 
   const handleSizeChange = useCallback(
@@ -1196,7 +1334,7 @@ const AdminSellerDetailsPage = () => {
           sizes.map((size) => ({
             ...size,
             stock: Number(size.stock ?? 0),
-          }))
+          })),
         );
 
         return {
@@ -1210,7 +1348,7 @@ const AdminSellerDetailsPage = () => {
         };
       });
     },
-    [updateProductDraft]
+    [updateProductDraft],
   );
 
   const handleAddSize = useCallback(() => {
@@ -1251,28 +1389,28 @@ const AdminSellerDetailsPage = () => {
         };
       });
     },
-    [updateProductDraft]
+    [updateProductDraft],
   );
 
   const handleSizeLabelChange = useCallback(
     (index, value) => {
       handleSizeChange(index, "label", value.toUpperCase());
     },
-    [handleSizeChange]
+    [handleSizeChange],
   );
 
   const handleSizeStockChange = useCallback(
     (index, value) => {
       handleSizeChange(index, "stock", value);
     },
-    [handleSizeChange]
+    [handleSizeChange],
   );
 
   const handleSizeAvailabilityChange = useCallback(
     (index, checked) => {
       handleSizeChange(index, "isAvailable", checked);
     },
-    [handleSizeChange]
+    [handleSizeChange],
   );
 
   const handleThumbnailUpload = useCallback(
@@ -1306,7 +1444,7 @@ const AdminSellerDetailsPage = () => {
         event.target.value = "";
       }
     },
-    [updateProductDraft]
+    [updateProductDraft],
   );
 
   const handleRemoveThumbnail = useCallback(() => {
@@ -1357,7 +1495,7 @@ const AdminSellerDetailsPage = () => {
         event.target.value = "";
       }
     },
-    [updateProductDraft]
+    [updateProductDraft],
   );
 
   const handleRemoveGalleryImage = useCallback(
@@ -1373,7 +1511,7 @@ const AdminSellerDetailsPage = () => {
         };
       });
     },
-    [updateProductDraft]
+    [updateProductDraft],
   );
 
   const handleAddGalleryUrl = useCallback(() => {
@@ -1397,33 +1535,33 @@ const AdminSellerDetailsPage = () => {
 
   const handleSetDraftField = useCallback(
     (field) => (event) => handleChangeProductDraft(field, event.target.value),
-    [handleChangeProductDraft]
+    [handleChangeProductDraft],
   );
 
   const handlePricingField = useCallback(
     (field) => (event) => handlePricingChange(field, event.target.value),
-    [handlePricingChange]
+    [handlePricingChange],
   );
 
   const handleToggleField = useCallback(
     (field) => (event) => handleToggleProductDraft(field, event.target.checked),
-    [handleToggleProductDraft]
+    [handleToggleProductDraft],
   );
 
   const handleSizeLabelInput = useCallback(
     (index) => (event) => handleSizeLabelChange(index, event.target.value),
-    [handleSizeLabelChange]
+    [handleSizeLabelChange],
   );
 
   const handleSizeStockInput = useCallback(
     (index) => (event) => handleSizeStockChange(index, event.target.value),
-    [handleSizeStockChange]
+    [handleSizeStockChange],
   );
 
   const handleSizeAvailabilityToggle = useCallback(
     (index) => (event) =>
       handleSizeAvailabilityChange(index, event.target.checked),
-    [handleSizeAvailabilityChange]
+    [handleSizeAvailabilityChange],
   );
 
   const handleSubmitProductEdit = useCallback(
@@ -1501,7 +1639,7 @@ const AdminSellerDetailsPage = () => {
       try {
         const updated = await updateAdminSellerProduct(
           productEditModal.data._id,
-          payload
+          payload,
         );
 
         toast.success("Product updated");
@@ -1512,8 +1650,8 @@ const AdminSellerDetailsPage = () => {
           prev.map((product) =>
             String(product._id) === String(updated._id)
               ? normalizeSellerProduct({ ...product, ...normalizedUpdated })
-              : product
-          )
+              : product,
+          ),
         );
 
         setProductEditModal((prev) => ({
@@ -1537,7 +1675,7 @@ const AdminSellerDetailsPage = () => {
         }));
       }
     },
-    [productEditModal, loadProducts]
+    [productEditModal, loadProducts],
   );
 
   const handleCouponUpdate = async (couponId, updates) => {
@@ -1546,8 +1684,8 @@ const AdminSellerDetailsPage = () => {
       toast.success("Coupon updated");
       setCoupons((prev) =>
         prev.map((coupon) =>
-          coupon._id === updated._id ? { ...coupon, ...updated } : coupon
-        )
+          coupon._id === updated._id ? { ...coupon, ...updated } : coupon,
+        ),
       );
       setCouponEdit(null);
       await loadSellers({ silent: true });
@@ -1724,6 +1862,9 @@ const AdminSellerDetailsPage = () => {
                       <tr>
                         <th className="px-4 py-3 text-left font-semibold text-slate-500">
                           Seller
+                        </th>
+                        <th className="px-4 py-3 text-left font-semibold text-slate-500">
+                          Customer
                         </th>
                         <th className="px-4 py-3 text-left font-semibold text-slate-500">
                           Verification
@@ -1918,7 +2059,7 @@ const AdminSellerDetailsPage = () => {
                             product.availabilityStatus
                           ] || AVAILABILITY_BADGE_CLASSES.in_stock;
                         const availabilityLabel = getAvailabilityLabel(
-                          product.availabilityStatus
+                          product.availabilityStatus,
                         );
                         return (
                           <tr
@@ -2028,6 +2169,96 @@ const AdminSellerDetailsPage = () => {
                 </button>
               </div>
 
+              <form
+                onSubmit={handleOrderFiltersSubmit}
+                className="mt-4 grid gap-3 md:grid-cols-2 lg:grid-cols-5"
+              >
+                <label className="flex flex-col gap-1 text-sm text-slate-600">
+                  <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                    Order status
+                  </span>
+                  <select
+                    value={orderStatusDraft}
+                    onChange={(event) =>
+                      setOrderStatusDraft(event.target.value)
+                    }
+                    className="rounded-xl border border-slate-200 px-3 py-2 focus:border-blue-400 focus:outline-none"
+                  >
+                    <option value="">All statuses</option>
+                    {ORDER_STATUS_OPTIONS.map((statusOption) => (
+                      <option key={statusOption} value={statusOption}>
+                        {statusOption.replace(/_/g, " ")}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="flex flex-col gap-1 text-sm text-slate-600">
+                  <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                    Seller name
+                  </span>
+                  <input
+                    type="text"
+                    value={orderSellerNameDraft}
+                    onChange={(event) =>
+                      setOrderSellerNameDraft(event.target.value)
+                    }
+                    placeholder="e.g. Vishal"
+                    className="rounded-xl border border-slate-200 px-3 py-2 focus:border-blue-400 focus:outline-none"
+                  />
+                </label>
+                <label className="flex flex-col gap-1 text-sm text-slate-600">
+                  <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                    Min amount (₹)
+                  </span>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={orderMinAmountDraft}
+                    onChange={(event) =>
+                      setOrderMinAmountDraft(
+                        sanitizeAmountInput(event.target.value),
+                      )
+                    }
+                    placeholder="0"
+                    className="rounded-xl border border-slate-200 px-3 py-2 focus:border-blue-400 focus:outline-none"
+                  />
+                </label>
+                <label className="flex flex-col gap-1 text-sm text-slate-600">
+                  <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                    Max amount (₹)
+                  </span>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={orderMaxAmountDraft}
+                    onChange={(event) =>
+                      setOrderMaxAmountDraft(
+                        sanitizeAmountInput(event.target.value),
+                      )
+                    }
+                    placeholder="1000"
+                    className="rounded-xl border border-slate-200 px-3 py-2 focus:border-blue-400 focus:outline-none"
+                  />
+                </label>
+                <div className="flex items-end gap-2 md:col-span-2 lg:col-span-1">
+                  <button
+                    type="submit"
+                    disabled={ordersLoading || ordersRefreshing}
+                    className="inline-flex flex-1 items-center justify-center rounded-xl border border-blue-600 bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:border-blue-300 disabled:bg-blue-300"
+                  >
+                    Apply filters
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleOrderFiltersReset}
+                    disabled={ordersLoading || ordersRefreshing}
+                    className="inline-flex items-center justify-center rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 transition hover:border-slate-300 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    Reset
+                  </button>
+                </div>
+              </form>
+
               {ordersError && (
                 <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-600">
                   {ordersError}
@@ -2058,6 +2289,9 @@ const AdminSellerDetailsPage = () => {
                           Seller
                         </th>
                         <th className="px-4 py-3 text-left font-semibold text-slate-500">
+                          Customer
+                        </th>
+                        <th className="px-4 py-3 text-left font-semibold text-slate-500">
                           Totals
                         </th>
                         <th className="px-4 py-3 text-left font-semibold text-slate-500">
@@ -2083,8 +2317,28 @@ const AdminSellerDetailsPage = () => {
                           </td>
                           <td className="px-4 py-3 align-top text-xs text-slate-500">
                             {order.sellerId?.name ||
+                              order.sellerId?.companyName ||
                               order.sellerId?.username ||
                               "Seller"}
+                          </td>
+                          <td className="px-4 py-3 align-top text-xs text-slate-500">
+                            <div className="grid gap-1">
+                              <span className="text-sm font-medium text-slate-700">
+                                {order.customerName ||
+                                  order.buyerName ||
+                                  order.shippingAddress?.fullName ||
+                                  "Customer"}
+                              </span>
+                              {order.customerEmail ||
+                              order.buyerEmail ||
+                              order.shippingAddress?.email ? (
+                                <span className="text-xs text-slate-500 break-all">
+                                  {order.customerEmail ||
+                                    order.buyerEmail ||
+                                    order.shippingAddress?.email}
+                                </span>
+                              ) : null}
+                            </div>
                           </td>
                           <td className="px-4 py-3 align-top text-xs text-slate-500">
                             <div className="grid gap-1">
@@ -2363,8 +2617,8 @@ const AdminSellerDetailsPage = () => {
               {isSavingSeller
                 ? "Saving..."
                 : sellerEdit?.isVerified
-                ? "Mark Unverified"
-                : "Mark Verified"}
+                  ? "Mark Unverified"
+                  : "Mark Verified"}
             </button>
             <button
               type="button"
@@ -2478,7 +2732,7 @@ const AdminSellerDetailsPage = () => {
                     <p className="text-xs text-slate-500">
                       Availability:{" "}
                       {getAvailabilityLabel(
-                        productViewModal.data.availabilityStatus
+                        productViewModal.data.availabilityStatus,
                       )}
                     </p>
                   </div>
@@ -2542,7 +2796,7 @@ const AdminSellerDetailsPage = () => {
                           >
                             {feature}
                           </li>
-                        )
+                        ),
                       )}
                     </ul>
                   </div>
@@ -2685,7 +2939,7 @@ const AdminSellerDetailsPage = () => {
                   onChange={(event) =>
                     handleChangeProductDraft(
                       "originalPrice",
-                      event.target.value
+                      event.target.value,
                     )
                   }
                   className="rounded-xl border border-slate-200 px-3 py-2 focus:border-blue-400 focus:outline-none"
@@ -2714,7 +2968,7 @@ const AdminSellerDetailsPage = () => {
                   onChange={(event) =>
                     handleChangeProductDraft(
                       "availabilityStatus",
-                      event.target.value
+                      event.target.value,
                     )
                   }
                   className="rounded-xl border border-slate-200 px-3 py-2 focus:border-blue-400 focus:outline-none"
@@ -2800,7 +3054,11 @@ const AdminSellerDetailsPage = () => {
       <BaseModal
         isOpen={Boolean(orderEdit)}
         title={orderEdit ? `Update order ${orderEdit.orderId}` : "Update order"}
-        onClose={() => setOrderEdit(null)}
+        onClose={() => {
+          if (!isSavingOrder) {
+            setOrderEdit(null);
+          }
+        }}
         footer={
           <button
             type="button"
@@ -2812,9 +3070,10 @@ const AdminSellerDetailsPage = () => {
                 estimatedDeliveryDate: orderEdit.estimatedDeliveryDate,
               });
             }}
+            disabled={isSavingOrder}
             className="inline-flex items-center justify-center rounded-xl border border-blue-600 bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700"
           >
-            Save Changes
+            {isSavingOrder ? "Saving..." : "Save Changes"}
           </button>
         }
       >

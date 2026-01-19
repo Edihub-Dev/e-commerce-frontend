@@ -1864,9 +1864,6 @@ const AdminSellerDetailsPage = () => {
                           Seller
                         </th>
                         <th className="px-4 py-3 text-left font-semibold text-slate-500">
-                          Customer
-                        </th>
-                        <th className="px-4 py-3 text-left font-semibold text-slate-500">
                           Verification
                         </th>
                         <th className="px-4 py-3 text-left font-semibold text-slate-500">

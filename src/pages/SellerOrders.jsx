@@ -114,7 +114,7 @@ const SellerOrders = () => {
   const [searchFilter, setSearchFilter] = useState("");
   const [status, setStatus] = useState(() => locationState.status || "");
   const [paymentStatus, setPaymentStatus] = useState(
-    () => locationState.paymentStatus || ""
+    () => locationState.paymentStatus || "",
   );
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
@@ -145,7 +145,7 @@ const SellerOrders = () => {
   const [portalTarget, setPortalTarget] = useState(null);
 
   const isViewingOverlayOpen = Boolean(
-    viewingOrderLoading || viewingOrderError || viewingOrder
+    viewingOrderLoading || viewingOrderError || viewingOrder,
   );
   const isEditingOverlayOpen = Boolean(editingOrder);
   const isAnyModalOpen = isViewingOverlayOpen || isEditingOverlayOpen;
@@ -272,7 +272,18 @@ const SellerOrders = () => {
   }, [meta.statusCounts, orders]);
 
   const buildExportRows = useCallback(() => {
-    if (!Array.isArray(orders) || orders.length === 0) {
+    const targetOrders = Array.isArray(orders)
+      ? selectedOrderIds.length
+        ? orders.filter((order) => {
+            const orderKey = order?.orderId ?? order?.id ?? order?._id;
+            return (
+              orderKey != null && selectedOrderIds.includes(String(orderKey))
+            );
+          })
+        : orders
+      : [];
+
+    if (!targetOrders.length) {
       return [];
     }
 
@@ -324,8 +335,7 @@ const SellerOrders = () => {
         return source;
       }
     };
-
-    return orders.map((order) => {
+    return targetOrders.map((order) => {
       const items = Array.isArray(order.items) ? order.items : [];
       const primaryItem = items[0] || {};
       const address = order.shippingAddress || {};
@@ -389,8 +399,8 @@ const SellerOrders = () => {
       row["Invoice Date"] = invoice.generatedAt
         ? formatDate(invoice.generatedAt)
         : order.invoiceDate
-        ? formatDate(order.invoiceDate)
-        : "--";
+          ? formatDate(order.invoiceDate)
+          : "--";
       row["Invoice"] = invoiceUrl;
 
       Object.defineProperty(row, "__qrfolioLink", {
@@ -404,7 +414,7 @@ const SellerOrders = () => {
 
       return row;
     });
-  }, [orders]);
+  }, [orders, selectedOrderIds]);
 
   const handleExportCsv = useCallback(() => {
     const rows = buildExportRows();
@@ -419,7 +429,7 @@ const SellerOrders = () => {
       ...rows.map((row) =>
         header
           .map((key) => `"${String(row[key] ?? "").replace(/"/g, '""')}"`)
-          .join(",")
+          .join(","),
       ),
     ].join("\n");
 
@@ -519,10 +529,10 @@ const SellerOrders = () => {
         const extension = blob.type.includes("png")
           ? "png"
           : blob.type.includes("jpeg") || blob.type.includes("jpg")
-          ? "jpeg"
-          : blob.type.includes("webp")
-          ? "webp"
-          : "png";
+            ? "jpeg"
+            : blob.type.includes("webp")
+              ? "webp"
+              : "png";
 
         const payload = { dataUrl, extension };
         imageCache.set(normalizedUrl, payload);
@@ -531,7 +541,7 @@ const SellerOrders = () => {
         console.error(
           "Failed to load QR image for XLSX export",
           normalizedUrl,
-          error
+          error,
         );
         imageCache.set(normalizedUrl, null);
         return null;
@@ -736,7 +746,7 @@ const SellerOrders = () => {
       }
 
       return ["png", "jpg", "jpeg", "gif", "bmp", "webp", "svg"].includes(
-        extension
+        extension,
       );
     };
 
@@ -797,10 +807,10 @@ const SellerOrders = () => {
         const format = blob.type.includes("png")
           ? "PNG"
           : blob.type.includes("jpeg") || blob.type.includes("jpg")
-          ? "JPEG"
-          : blob.type.includes("webp")
-          ? "WEBP"
-          : undefined;
+            ? "JPEG"
+            : blob.type.includes("webp")
+              ? "WEBP"
+              : undefined;
 
         const payload = { dataUrl, format };
         imageCache.set(normalizedUrl, payload);
@@ -809,7 +819,7 @@ const SellerOrders = () => {
         console.error(
           "Failed to load image for PDF export",
           normalizedUrl,
-          error
+          error,
         );
         imageCache.set(normalizedUrl, null);
         return null;
@@ -897,7 +907,7 @@ const SellerOrders = () => {
           const fallbackLines = !hasImage
             ? doc.splitTextToSize(
                 normalizeDisplayText(cellValue.fallback || "Image unavailable"),
-                column.width - 12
+                column.width - 12,
               )
             : [];
 
@@ -920,11 +930,11 @@ const SellerOrders = () => {
 
         const { text, link } = resolveCellValue(rowData[column.key]);
         const normalizedText = normalizeDisplayText(
-          typeof text === "string" ? text.replace(/\r?\n/g, "\n") : text
+          typeof text === "string" ? text.replace(/\r?\n/g, "\n") : text,
         );
         const lines = doc.splitTextToSize(
           normalizedText || "--",
-          column.width - 12
+          column.width - 12,
         );
 
         return {
@@ -936,7 +946,7 @@ const SellerOrders = () => {
       });
 
       const rowHeight = Math.max(
-        ...cellInfos.map((entry) => entry.requiredHeight || 26)
+        ...cellInfos.map((entry) => entry.requiredHeight || 26),
       );
 
       if (currentY + rowHeight > pageHeight - bottomMargin) {
@@ -974,7 +984,7 @@ const SellerOrders = () => {
                 imageX,
                 imageY,
                 targetWidth,
-                targetHeight
+                targetHeight,
               );
 
               if (cellInfo.url) {
@@ -1099,7 +1109,7 @@ const SellerOrders = () => {
         item: normalizeDisplayText(
           `${row["Primary Item"] || "--"}${
             row["Primary SKU"] ? ` (SKU: ${row["Primary SKU"]})` : ""
-          }`
+          }`,
         ),
         size: normalizeDisplayText(row["Primary Size"] || "--"),
         buyer: normalizeDisplayText(buyerLabel),
@@ -1116,7 +1126,7 @@ const SellerOrders = () => {
           : {
               fallback: resolveInvoiceFallback(
                 invoiceAssetUrl,
-                shouldAttemptInvoiceImage
+                shouldAttemptInvoiceImage,
               ),
               url: normalizedInvoiceUrl,
             },
@@ -1185,7 +1195,7 @@ const SellerOrders = () => {
     setSelectedOrderIds((prev) =>
       prev.includes(key)
         ? prev.filter((itemId) => itemId !== key)
-        : [...prev, key]
+        : [...prev, key],
     );
   };
 
@@ -1205,15 +1215,15 @@ const SellerOrders = () => {
     }
 
     const paymentStatusValue = String(
-      order.paymentStatus || "pending"
+      order.paymentStatus || "pending",
     ).toLowerCase();
     const hasInvoiceAsset = Boolean(
-      order?.invoice?.url || order?.invoiceUrl || order?.invoice?.number
+      order?.invoice?.url || order?.invoiceUrl || order?.invoice?.number,
     );
 
     if (!hasInvoiceAsset && paymentStatusValue !== "paid") {
       toast.error(
-        "Invoice will be available once payment succeeds or the seller updates it manually."
+        "Invoice will be available once payment succeeds or the seller updates it manually.",
       );
       return;
     }
@@ -1252,7 +1262,7 @@ const SellerOrders = () => {
       return;
     }
     const confirmed = window.confirm(
-      "Are you sure you want to delete this order?"
+      "Are you sure you want to delete this order?",
     );
     if (!confirmed) return;
 
@@ -1286,7 +1296,7 @@ const SellerOrders = () => {
     const confirmed = window.confirm(
       `Delete ${selectedOrderIds.length} selected order${
         selectedOrderIds.length > 1 ? "s" : ""
-      }? This cannot be undone.`
+      }? This cannot be undone.`,
     );
     if (!confirmed) return;
 
@@ -1414,7 +1424,7 @@ const SellerOrders = () => {
 
   const isDeliveryDateLocked = editingOrder
     ? ["delivered", "returned"].includes(
-        (editingOrder.status || "").toString().toLowerCase()
+        (editingOrder.status || "").toString().toLowerCase(),
       )
     : false;
 
@@ -1454,7 +1464,7 @@ const SellerOrders = () => {
 
     if (requiresPaymentSuccess && !isPaymentSuccessful) {
       toast.error(
-        "Payment must be successful before marking an order as delivered."
+        "Payment must be successful before marking an order as delivered.",
       );
       return;
     }
@@ -1826,7 +1836,7 @@ const SellerOrders = () => {
                   const customerEmail = order.buyerEmail || "";
                   const isSelected = selectedOrderIds.includes(orderKey);
                   const paymentStatusValue = String(
-                    order.paymentStatus || "pending"
+                    order.paymentStatus || "pending",
                   ).toLowerCase();
                   const isPaymentPaid = paymentStatusValue === "paid";
                   const statusKey = String(order.status || "").toLowerCase();
@@ -2014,11 +2024,11 @@ const SellerOrders = () => {
                 "Product";
               const customerName = order.buyerName || "Customer";
               const paymentStatusValue = String(
-                order.paymentStatus || "pending"
+                order.paymentStatus || "pending",
               ).toLowerCase();
               const isPaymentPaid = paymentStatusValue === "paid";
               const statusKey = String(
-                order.status || "processing"
+                order.status || "processing",
               ).toLowerCase();
               const statusClass =
                 statusBadgeClasses[statusKey] ||
@@ -2356,7 +2366,8 @@ const SellerOrders = () => {
                                     <p className="text-xs text-slate-500">
                                       Total:{" "}
                                       {formatCurrency(
-                                        (item.price || 0) * (item.quantity || 0)
+                                        (item.price || 0) *
+                                          (item.quantity || 0),
                                       )}
                                     </p>
                                   </div>
@@ -2392,25 +2403,25 @@ const SellerOrders = () => {
                               <p>
                                 Subtotal:{" "}
                                 {formatCurrency(
-                                  viewingOrder.pricing?.subtotal || 0
+                                  viewingOrder.pricing?.subtotal || 0,
                                 )}
                               </p>
                               <p>
                                 Shipping:{" "}
                                 {formatCurrency(
-                                  viewingOrder.pricing?.shippingFee || 0
+                                  viewingOrder.pricing?.shippingFee || 0,
                                 )}
                               </p>
                               <p>
                                 Tax:{" "}
                                 {formatCurrency(
-                                  viewingOrder.pricing?.taxAmount || 0
+                                  viewingOrder.pricing?.taxAmount || 0,
                                 )}
                               </p>
                               <p className="font-semibold text-slate-900">
                                 Total:{" "}
                                 {formatCurrency(
-                                  viewingOrder.pricing?.total || 0
+                                  viewingOrder.pricing?.total || 0,
                                 )}
                               </p>
                             </div>
@@ -2492,7 +2503,7 @@ const SellerOrders = () => {
                             onChange={(event) =>
                               handleEditFieldChange(
                                 "rejectionPermanent",
-                                event.target.checked
+                                event.target.checked,
                               )
                             }
                           />
@@ -2518,7 +2529,7 @@ const SellerOrders = () => {
                             onChange={(event) =>
                               handleEditFieldChange(
                                 "paymentStatus",
-                                event.target.value
+                                event.target.value,
                               )
                             }
                             className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
@@ -2542,7 +2553,7 @@ const SellerOrders = () => {
                             onChange={(event) =>
                               handleEditFieldChange(
                                 "paymentMethod",
-                                event.target.value
+                                event.target.value,
                               )
                             }
                             className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
@@ -2608,7 +2619,7 @@ const SellerOrders = () => {
               )}
             </AnimatePresence>
           </>,
-          portalTarget
+          portalTarget,
         )}
     </motion.div>
   );

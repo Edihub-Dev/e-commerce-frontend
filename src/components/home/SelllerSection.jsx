@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 import ProductCard from "../ProductCard";
 import SectionHeader from "../SectionHeader";
@@ -18,6 +18,21 @@ const SellerSection = () => {
   const SHOW_ADMIN_FIRST = false;
 
   const SKELETON_COUNT = 6;
+
+  const productsCount = products.length;
+  const sellerProductsCount = sellerProducts.length;
+
+  const officialGridColumns = useMemo(() => {
+    const hasMultipleCards = loading || productsCount > 1;
+    const baseCols = hasMultipleCards ? "grid-cols-2" : "grid-cols-1";
+    return `${baseCols} sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6`;
+  }, [loading, productsCount]);
+
+  const sellerGridColumns = useMemo(() => {
+    const hasMultipleCards = sellerLoading || sellerProductsCount > 1;
+    const baseCols = hasMultipleCards ? "grid-cols-2" : "grid-cols-1";
+    return `${baseCols} sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5`;
+  }, [sellerLoading, sellerProductsCount]);
 
   const sortSellerListings = (items = []) => {
     const parseSku = (sku) => {
@@ -128,7 +143,7 @@ const SellerSection = () => {
             sortOrder: "desc",
             limit: 8,
           },
-          { suppressToast: true }
+          { suppressToast: true },
         );
 
         if (!isMounted) return;
@@ -138,7 +153,7 @@ const SellerSection = () => {
         const sorted = sortSellerListings(featured);
         setSellerProducts(sorted.slice(0, 8));
         setSellerError(
-          featured.length ? "" : "No featured seller products yet."
+          featured.length ? "" : "No featured seller products yet.",
         );
       } catch (err) {
         console.error("Failed to load seller spotlight", err);
@@ -178,7 +193,9 @@ const SellerSection = () => {
         className="w-full overflow-hidden flex flex-col"
         variants={staggerContainer}
       >
-        <div className="flex flex-col sm:grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4 sm:gap-4 min-h-[360px]">
+        <div
+          className={`grid ${officialGridColumns} gap-4 sm:gap-4 min-h-[360px]`}
+        >
           {loading
             ? Array.from({ length: SKELETON_COUNT }).map((_, index) => (
                 <div
@@ -246,7 +263,7 @@ const SellerSection = () => {
         className="w-full overflow-hidden"
         variants={staggerContainer}
       >
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+        <div className={`grid ${sellerGridColumns} gap-4`}>
           {sellerLoading
             ? Array.from({ length: 6 }).map((_, index) => (
                 <div

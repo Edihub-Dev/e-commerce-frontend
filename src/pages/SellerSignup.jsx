@@ -11,6 +11,7 @@ const initialState = {
   fullName: "",
   companyName: "",
   companyEmail: "",
+  contactNumber: "",
   gstNumber: "",
   location: "",
   password: "",
@@ -44,6 +45,7 @@ const SellerSignup = () => {
   const [pendingDetails, setPendingDetails] = useState(null);
 
   const companyEmailRef = useRef(null);
+  const contactNumberRef = useRef(null);
   const locationRef = useRef(null);
   const passwordRef = useRef(null);
   const confirmPasswordRef = useRef(null);
@@ -63,6 +65,7 @@ const SellerSignup = () => {
           fullName: parsed.fullName || "",
           companyName: parsed.companyName,
           companyEmail: parsed.companyEmail,
+          contactNumber: parsed.contactNumber || "",
           location: parsed.location || "",
           gstNumber: parsed.gstNumber || "",
           submittedAt: parsed.submittedAt,
@@ -116,6 +119,7 @@ const SellerSignup = () => {
         fullName: normalizeString(formData.fullName),
         companyName: normalizeString(formData.companyName),
         companyEmail: normalizeEmail(formData.companyEmail),
+        contactNumber: normalizeString(formData.contactNumber),
         gstNumber: normalizeString(formData.gstNumber),
         location: normalizeString(formData.location),
       };
@@ -126,7 +130,10 @@ const SellerSignup = () => {
           normalizedPayload.companyEmail &&
         normalizeString(pendingDetails.companyName) ===
           normalizedPayload.companyName &&
-        normalizeString(pendingDetails.fullName) === normalizedPayload.fullName;
+        normalizeString(pendingDetails.fullName) ===
+          normalizedPayload.fullName &&
+        normalizeString(pendingDetails.contactNumber) ===
+          normalizedPayload.contactNumber;
 
       if (pendingMatch) {
         setSubmissionDetails({
@@ -137,7 +144,7 @@ const SellerSignup = () => {
         setShowReviewCard(true);
         toast.info(
           "This seller application is already in review. We'll notify you after approval.",
-          { autoClose: 2500 }
+          { autoClose: 2500 },
         );
         return;
       }
@@ -146,6 +153,7 @@ const SellerSignup = () => {
         fullName: formData.fullName,
         companyName: formData.companyName,
         companyEmail: formData.companyEmail,
+        contactNumber: formData.contactNumber,
         gstNumber: formData.gstNumber,
         location: formData.location,
         password: formData.password,
@@ -154,13 +162,14 @@ const SellerSignup = () => {
 
       toast.success(
         "Application submitted. We'll email you once it's reviewed.",
-        { autoClose: 2000 }
+        { autoClose: 2000 },
       );
 
       const latestDetails = {
         fullName: normalizedPayload.fullName,
         companyName: normalizedPayload.companyName,
         companyEmail: normalizedPayload.companyEmail,
+        contactNumber: normalizedPayload.contactNumber,
         gstNumber: normalizedPayload.gstNumber,
         location: normalizedPayload.location,
         submittedAt: new Date().toISOString(),
@@ -171,6 +180,7 @@ const SellerSignup = () => {
         fullName: latestDetails.fullName,
         companyName: latestDetails.companyName,
         companyEmail: latestDetails.companyEmail,
+        contactNumber: latestDetails.contactNumber,
       });
       setFormData(initialState);
       setShowReviewCard(true);
@@ -189,6 +199,13 @@ const SellerSignup = () => {
     hasPendingApplication &&
     normalizedCompanyEmail &&
     normalizedCompanyEmail === pendingEmail;
+
+  const normalizePhone = (value = "") => value.replace(/[^0-9]/g, "");
+  const pendingPhone = normalizePhone(pendingDetails?.contactNumber);
+  const matchesPendingPhone =
+    hasPendingApplication &&
+    normalizePhone(formData.contactNumber) === pendingPhone &&
+    pendingPhone.length === 10;
 
   return (
     <motion.div
@@ -349,6 +366,39 @@ const SellerSignup = () => {
                   {errors.companyEmail && (
                     <p className="mt-1 text-sm text-red-600">
                       {errors.companyEmail}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="contactNumber"
+                    className="block text-sm font-medium text-gray-700"
+                  >
+                    Company Contact Number
+                  </label>
+                  <input
+                    type="tel"
+                    id="contactNumber"
+                    name="contactNumber"
+                    value={formData.contactNumber}
+                    onChange={handleChange}
+                    ref={contactNumberRef}
+                    onKeyDown={(event) =>
+                      handleFieldKeyDown(event, locationRef)
+                    }
+                    className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary sm:text-sm ${
+                      errors.contactNumber
+                        ? "border-red-500"
+                        : "border-gray-300"
+                    }`}
+                    placeholder="10-digit mobile number"
+                    inputMode="numeric"
+                    autoComplete="tel"
+                  />
+                  {errors.contactNumber && (
+                    <p className="mt-1 text-sm text-red-600">
+                      {errors.contactNumber}
                     </p>
                   )}
                 </div>

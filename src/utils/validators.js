@@ -67,6 +67,13 @@ export const sellerSignupSchema = Joi.object({
       "string.empty": "Company email is required",
       "string.email": "Please enter a valid company email",
     }),
+  contactNumber: Joi.string()
+    .pattern(/^[6-9]\d{9}$/)
+    .required()
+    .messages({
+      "string.pattern.base": "Please enter a valid 10-digit mobile number",
+      "string.empty": "Company contact number is required",
+    }),
   gstNumber: Joi.string()
     .allow("", null)
     .pattern(/^[0-9A-Z]{15}$/)

@@ -102,27 +102,27 @@ const SellerDashboard = () => {
 
   const metrics = useMemo(
     () => overview.metrics || emptyOverview.metrics,
-    [overview.metrics]
+    [overview.metrics],
   );
 
   const statusBreakdown = useMemo(
     () => overview.statusBreakdown || emptyOverview.statusBreakdown,
-    [overview.statusBreakdown]
+    [overview.statusBreakdown],
   );
 
   const inventory = useMemo(
     () => overview.inventory || emptyOverview.inventory,
-    [overview.inventory]
+    [overview.inventory],
   );
 
   const topProducts = useMemo(
     () => overview.topProducts || emptyOverview.topProducts,
-    [overview.topProducts]
+    [overview.topProducts],
   );
 
   const recentOrders = useMemo(
     () => overview.recentOrders || emptyOverview.recentOrders,
-    [overview.recentOrders]
+    [overview.recentOrders],
   );
 
   const metricCards = [
@@ -370,43 +370,98 @@ const SellerDashboard = () => {
               </div>
             ) : recentOrders.length ? (
               <ul className="mt-6 space-y-3 text-sm">
-                {recentOrders.map((order) => (
-                  <li
-                    key={order.id}
-                    className="space-y-2 rounded-2xl border border-slate-200 bg-slate-50 p-4"
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="text-xs uppercase tracking-[0.18em] text-slate-500">
-                        {new Date(order.createdAt).toLocaleDateString("en-IN", {
-                          year: "numeric",
-                          month: "short",
-                          day: "numeric",
-                        })}
-                      </p>
-                      <span
-                        className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] font-semibold ${
-                          statusChipConfig[order.status]?.className ||
-                          "bg-white/10 text-slate-200 border border-white/10"
-                        }`}
-                      >
-                        {statusChipConfig[order.status]?.label || order.status}
-                      </span>
-                    </div>
-                    <p className="truncate text-base font-semibold text-slate-900">
-                      {order.items?.[0]?.productName ||
-                        order.items?.[0]?.itemName ||
-                        "Order"}
-                    </p>
-                    <div className="flex items-center justify-between text-xs text-slate-400">
-                      <span className="text-slate-500">
-                        {order.totalQuantity || 0} items
-                      </span>
-                      <strong className="text-emerald-600">
-                        {formatCurrency(order.total)}
-                      </strong>
-                    </div>
-                  </li>
-                ))}
+                {recentOrders.map((order) => {
+                  const orderIdentifier =
+                    order.orderId || order.id || order._id || "";
+                  const createdDate = order.createdAt
+                    ? new Date(order.createdAt).toLocaleDateString("en-IN", {
+                        year: "numeric",
+                        month: "short",
+                        day: "numeric",
+                      })
+                    : "--";
+                  const primaryItem = order.items?.[0] || {};
+                  const productName =
+                    primaryItem.productName ||
+                    primaryItem.itemName ||
+                    primaryItem.name ||
+                    "Order";
+                  const itemCount =
+                    order.totalQuantity ??
+                    order.totalItems ??
+                    (Array.isArray(order.items) ? order.items.length : 0);
+                  const customerName =
+                    order.customerName ||
+                    order.buyerName ||
+                    order.shippingAddress?.fullName ||
+                    "Customer";
+                  const totalAmount = formatCurrency(
+                    order.total ??
+                      order.totalAmount ??
+                      order.pricing?.total ??
+                      0,
+                  );
+                  const statusConfig = statusChipConfig[order.status] || {
+                    label: order.status || "Processing",
+                    className:
+                      "bg-slate-100 text-slate-600 border border-slate-200",
+                  };
+
+                  const handleNavigateToOrder = () => {
+                    if (!orderIdentifier) {
+                      return;
+                    }
+                    navigate(`/seller/orders/${orderIdentifier}`);
+                  };
+
+                  return (
+                    <li
+                      key={order.id || orderIdentifier}
+                      role="button"
+                      tabIndex={0}
+                      onClick={handleNavigateToOrder}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          handleNavigateToOrder();
+                        }
+                      }}
+                      className="rounded-2xl border border-slate-200 bg-slate-50 p-4 transition hover:border-blue-200 hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300 cursor-pointer"
+                    >
+                      <div className="flex flex-col gap-3 sm:grid sm:grid-cols-[minmax(0,1fr)_minmax(110px,150px)] sm:items-start sm:gap-4">
+                        <div className="min-w-0 space-y-2">
+                          <div className="flex flex-wrap items-center gap-2 text-[11px] uppercase tracking-[0.18em] text-slate-500">
+                            <span>{createdDate}</span>
+                            {orderIdentifier && (
+                              <span className="text-[10px] font-medium tracking-[0.12em] text-slate-600">
+                                #{orderIdentifier}
+                              </span>
+                            )}
+                          </div>
+                          <p className="max-w-full truncate text-[10px] font-semibold leading-snug text-slate-900 sm:text-[11px] whitespace-nowrap">
+                            {productName}
+                          </p>
+                          <span className="text-[10px] font-medium uppercase tracking-[0.16em] text-slate-500 sm:text-[11px]">
+                            {itemCount} {itemCount === 1 ? "item" : "items"}
+                          </span>
+                        </div>
+                        <div className="flex w-full min-w-0 flex-col items-start gap-2 text-[11px] text-slate-500 sm:w-full sm:items-end sm:text-right sm:text-xs">
+                          <p className="w-full truncate text-[12px] font-semibold text-slate-900 sm:text-right sm:text-sm">
+                            {customerName}
+                          </p>
+                          <span
+                            className={`inline-flex max-w-full items-center gap-2 truncate rounded-full px-3 py-[6px] text-[10px] font-semibold ${statusConfig.className}`}
+                          >
+                            {statusConfig.label}
+                          </span>
+                          <strong className="text-[13px] font-semibold text-emerald-600 sm:text-sm">
+                            {totalAmount}
+                          </strong>
+                        </div>
+                      </div>
+                    </li>
+                  );
+                })}
               </ul>
             ) : (
               <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-6 text-center text-sm text-slate-500">

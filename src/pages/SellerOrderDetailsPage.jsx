@@ -83,6 +83,20 @@ const formatDate = (value, fallback = "--") => {
       });
 };
 
+const buildTrackingUrl = (courier, trackingId) => {
+  if (!trackingId) return null;
+  const normalizedCourier = String(courier || "")
+    .trim()
+    .toLowerCase();
+
+  if (normalizedCourier === "triupati" || normalizedCourier === "tirupati") {
+    const encodedId = encodeURIComponent(trackingId.trim());
+    return `https://trackcourier.io/track-and-trace/tirupati-courier/${encodedId}`;
+  }
+
+  return null;
+};
+
 const SellerOrderDetailsPage = () => {
   const { orderId } = useParams();
   const navigate = useNavigate();
@@ -431,7 +445,24 @@ const SellerOrderDetailsPage = () => {
           Tracking Updates
         </h2>
         <p className="mt-2 text-sm text-slate-600">
-          Tracking ID: {order?.shipping?.trackingId || "To be assigned"}
+          Tracking ID:{" "}
+          {order?.shipping?.trackingId ? (
+            <a
+              href={
+                buildTrackingUrl(
+                  order?.shipping?.courier,
+                  order.shipping.trackingId,
+                ) || undefined
+              }
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-semibold text-blue-600 underline-offset-4 hover:underline"
+            >
+              {order.shipping.trackingId}
+            </a>
+          ) : (
+            "To be assigned"
+          )}
         </p>
         <p className="mt-1 text-xs text-slate-400">
           Courier: {order?.shipping?.courier || "Triupati"}

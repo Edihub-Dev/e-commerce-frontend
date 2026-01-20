@@ -224,6 +224,20 @@ const buildTimeline = (order) => {
   });
 };
 
+const buildTrackingUrl = (courier, trackingId) => {
+  if (!trackingId) return null;
+  const normalizedCourier = String(courier || "")
+    .trim()
+    .toLowerCase();
+
+  if (normalizedCourier === "triupati" || normalizedCourier === "tirupati") {
+    const encodedId = encodeURIComponent(trackingId.trim());
+    return `https://trackcourier.io/track-and-trace/tirupati-courier/${encodedId}`;
+  }
+
+  return null;
+};
+
 const OrderDetailsPage = () => {
   const { orderId } = useParams();
   const navigate = useNavigate();
@@ -784,7 +798,24 @@ const OrderDetailsPage = () => {
             Tracking Updates
           </h2>
           <p className="text-sm text-medium-text">
-            Tracking ID: {order?.shipping?.trackingId || "To be assigned"}
+            Tracking ID:{" "}
+            {order?.shipping?.trackingId ? (
+              <a
+                href={
+                  buildTrackingUrl(
+                    order?.shipping?.courier,
+                    order.shipping.trackingId,
+                  ) || undefined
+                }
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-semibold text-primary underline-offset-4 hover:underline"
+              >
+                {order.shipping.trackingId}
+              </a>
+            ) : (
+              "To be assigned"
+            )}
           </p>
           <p className="text-xs text-slate-400">
             Courier: {order?.shipping?.courier || "Ekart Logistics"}

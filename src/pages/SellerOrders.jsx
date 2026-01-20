@@ -53,6 +53,13 @@ const SORT_OPTIONS = [
   { value: "asc", label: "Oldest first" },
 ];
 
+const COURIER_OPTIONS = [
+  { value: "Triupati", label: "Triupati" },
+  { value: "Ekart Logistics", label: "Ekart Logistics" },
+  { value: "Delhivery", label: "Delhivery" },
+  { value: "Bluedart", label: "Bluedart" },
+];
+
 const SUMMARY_CONFIG = [
   { key: "processing", label: "Processing Orders" },
   { key: "shipped", label: "Shipped Orders" },
@@ -134,6 +141,8 @@ const SellerOrders = () => {
     paymentMethod: "",
     estimatedDeliveryDate: "",
     rejectionPermanent: false,
+    courier: "Triupati",
+    trackingId: "",
   });
   const todayInputValue = useMemo(() => toDateInputValue(new Date()), []);
   const [isSavingEdit, setIsSavingEdit] = useState(false);
@@ -1335,6 +1344,9 @@ const SellerOrders = () => {
         throw new Error("Order details not found");
       }
 
+      const defaultCourier =
+        (fullOrder.shipping && fullOrder.shipping.courier) || "Triupati";
+
       const nextForm = {
         status: fullOrder.status || "processing",
         paymentStatus: fullOrder.payment?.status || "",
@@ -1342,6 +1354,8 @@ const SellerOrders = () => {
         estimatedDeliveryDate:
           toDateInputValue(fullOrder.estimatedDeliveryDate) || "",
         rejectionPermanent: Boolean(fullOrder.rejectionPermanent),
+        courier: defaultCourier,
+        trackingId: fullOrder.shipping?.trackingId || "",
       };
 
       setEditingOrder(fullOrder);
@@ -1477,6 +1491,14 @@ const SellerOrders = () => {
         paymentMethod: editForm.paymentMethod || undefined,
         estimatedDeliveryDate: editForm.estimatedDeliveryDate || null,
       };
+
+      if (editForm.courier) {
+        payload.courier = editForm.courier;
+      }
+
+      if (editForm.trackingId) {
+        payload.trackingId = editForm.trackingId;
+      }
 
       const nextStatusLower = (editForm.status || "").toString().toLowerCase();
 
@@ -2588,6 +2610,44 @@ const SellerOrders = () => {
                           </p>
                         ) : null}
                       </label>
+
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        <label className="block text-sm font-medium text-slate-700">
+                          Courier
+                          <select
+                            value={editForm.courier}
+                            onChange={(event) =>
+                              handleEditFieldChange(
+                                "courier",
+                                event.target.value,
+                              )
+                            }
+                            className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                          >
+                            {COURIER_OPTIONS.map((option) => (
+                              <option key={option.value} value={option.value}>
+                                {option.label}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+
+                        <label className="block text-sm font-medium text-slate-700">
+                          Tracking ID
+                          <input
+                            type="text"
+                            value={editForm.trackingId}
+                            onChange={(event) =>
+                              handleEditFieldChange(
+                                "trackingId",
+                                event.target.value,
+                              )
+                            }
+                            className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            placeholder="To be assigned"
+                          />
+                        </label>
+                      </div>
                     </div>
 
                     <div className="mt-6 flex flex-wrap items-center justify-end gap-3">

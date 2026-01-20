@@ -427,6 +427,18 @@ const SellerOrderDetailsPage = () => {
       </motion.div>
 
       <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <h2 className="text-lg font-semibold text-slate-900">
+          Tracking Updates
+        </h2>
+        <p className="mt-2 text-sm text-slate-600">
+          Tracking ID: {order?.shipping?.trackingId || "To be assigned"}
+        </p>
+        <p className="mt-1 text-xs text-slate-400">
+          Courier: {order?.shipping?.courier || "Triupati"}
+        </p>
+      </section>
+
+      <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
         <h2 className="text-lg font-semibold text-slate-900">Order items</h2>
         <div className="mt-4 divide-y divide-slate-200">
           {items.map((item, index) => (

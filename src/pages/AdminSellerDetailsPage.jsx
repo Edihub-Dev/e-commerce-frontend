@@ -16,6 +16,7 @@ import {
   Loader2,
   UploadCloud,
   X,
+  Download,
 } from "lucide-react";
 import Sidebar from "../components/admin/Sidebar";
 import Navbar from "../components/admin/Navbar";
@@ -34,6 +35,7 @@ import {
   deleteAdminSellerCoupon,
 } from "../services/adminSellersApi";
 import { updateAdminUser, deleteAdminUser } from "../services/adminUsersApi";
+import api from "../utils/api";
 import toast from "react-hot-toast";
 
 const STATUS_LABELS = {
@@ -504,11 +506,17 @@ const AdminSellerDetailsPage = () => {
   const [newGalleryUrl, setNewGalleryUrl] = useState("");
   const thumbnailInputRef = useRef(null);
   const galleryInputRef = useRef(null);
+  const ordersHeaderCheckboxRef = useRef(null);
+  const couponsHeaderCheckboxRef = useRef(null);
 
   const [orders, setOrders] = useState([]);
   const [ordersLoading, setOrdersLoading] = useState(true);
   const [ordersRefreshing, setOrdersRefreshing] = useState(false);
   const [ordersError, setOrdersError] = useState("");
+  const [orderSelection, setOrderSelection] = useState(() => new Set());
+  const [ordersPage, setOrdersPage] = useState(1);
+  const [ordersRowsPerPage, setOrdersRowsPerPage] = useState(10);
+  const [downloadingInvoiceId, setDownloadingInvoiceId] = useState(null);
   const [orderEdit, setOrderEdit] = useState(null);
   const [orderView, setOrderView] = useState(null);
   const [isSavingOrder, setIsSavingOrder] = useState(false);
@@ -525,6 +533,9 @@ const AdminSellerDetailsPage = () => {
   const [couponsLoading, setCouponsLoading] = useState(true);
   const [couponsRefreshing, setCouponsRefreshing] = useState(false);
   const [couponsError, setCouponsError] = useState("");
+  const [couponSelection, setCouponSelection] = useState(() => new Set());
+  const [couponsPage, setCouponsPage] = useState(1);
+  const [couponsRowsPerPage, setCouponsRowsPerPage] = useState(10);
   const [couponEdit, setCouponEdit] = useState(null);
   const [couponView, setCouponView] = useState(null);
 
@@ -629,6 +640,30 @@ const AdminSellerDetailsPage = () => {
     ],
   );
 
+  const loadCoupons = useCallback(
+    async ({ silent } = { silent: false }) => {
+      try {
+        if (silent) {
+          setCouponsRefreshing(true);
+        } else {
+          setCouponsLoading(true);
+        }
+        const params =
+          selectedSellerId !== "all" ? { sellerId: selectedSellerId } : {};
+        const data = await fetchAdminSellerCoupons(params);
+        setCoupons(Array.isArray(data) ? data : []);
+        setCouponsError("");
+      } catch (error) {
+        console.error("Failed to load seller coupons", error);
+        setCouponsError(error.message || "Unable to load seller coupons");
+      } finally {
+        setCouponsLoading(false);
+        setCouponsRefreshing(false);
+      }
+    },
+    [selectedSellerId],
+  );
+
   const sanitizeAmountInput = (value = "") => value.replace(/[^0-9.]/g, "");
 
   const handleOrderFiltersSubmit = useCallback(
@@ -670,29 +705,389 @@ const AdminSellerDetailsPage = () => {
     setOrderMaxAmountFilter("");
   }, []);
 
-  const loadCoupons = useCallback(
-    async ({ silent } = { silent: false }) => {
-      try {
-        if (silent) {
-          setCouponsRefreshing(true);
-        } else {
-          setCouponsLoading(true);
-        }
-        const params =
-          selectedSellerId !== "all" ? { sellerId: selectedSellerId } : {};
-        const data = await fetchAdminSellerCoupons(params);
-        setCoupons(Array.isArray(data) ? data : []);
-        setCouponsError("");
-      } catch (error) {
-        console.error("Failed to load seller coupons", error);
-        setCouponsError(error.message || "Unable to load seller coupons");
-      } finally {
-        setCouponsLoading(false);
-        setCouponsRefreshing(false);
-      }
-    },
-    [selectedSellerId],
+  const ordersPagination = useMemo(() => {
+    const rows = Math.max(ordersRowsPerPage, 1);
+    const total = orders.length;
+    const totalPages = Math.max(1, Math.ceil(Math.max(total, 1) / rows));
+    const currentPage = Math.min(Math.max(ordersPage, 1), totalPages);
+    const startIndex = (currentPage - 1) * rows;
+    const endIndex = Math.min(startIndex + rows, total);
+    const items = orders.slice(startIndex, endIndex);
+    return {
+      total,
+      totalPages,
+      currentPage,
+      startIndex,
+      endIndex,
+      items,
+    };
+  }, [orders, ordersPage, ordersRowsPerPage]);
+
+  const paginatedOrders = ordersPagination.items;
+
+  const couponsPagination = useMemo(() => {
+    const rows = Math.max(couponsRowsPerPage, 1);
+    const total = coupons.length;
+    const totalPages = Math.max(1, Math.ceil(Math.max(total, 1) / rows));
+    const currentPage = Math.min(Math.max(couponsPage, 1), totalPages);
+    const startIndex = (currentPage - 1) * rows;
+    const endIndex = Math.min(startIndex + rows, total);
+    const items = coupons.slice(startIndex, endIndex);
+    return {
+      total,
+      totalPages,
+      currentPage,
+      startIndex,
+      endIndex,
+      items,
+    };
+  }, [coupons, couponsPage, couponsRowsPerPage]);
+
+  const paginatedCoupons = couponsPagination.items;
+
+  const ordersPageIds = useMemo(
+    () => paginatedOrders.map((order) => String(order._id)),
+    [paginatedOrders],
   );
+  const couponsPageIds = useMemo(
+    () => paginatedCoupons.map((coupon) => String(coupon._id)),
+    [paginatedCoupons],
+  );
+
+  const areAllOrdersSelected =
+    ordersPageIds.length > 0 &&
+    ordersPageIds.every((id) => orderSelection.has(id));
+  const areSomeOrdersSelected = ordersPageIds.some((id) =>
+    orderSelection.has(id),
+  );
+
+  const areAllCouponsSelected =
+    couponsPageIds.length > 0 &&
+    couponsPageIds.every((id) => couponSelection.has(id));
+  const areSomeCouponsSelected = couponsPageIds.some((id) =>
+    couponSelection.has(id),
+  );
+
+  const handleToggleOrderSelection = useCallback((orderId) => {
+    const id = String(orderId ?? "");
+    if (!id) return;
+    setOrderSelection((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }, []);
+
+  const handleToggleAllOrders = useCallback(() => {
+    if (!ordersPageIds.length) return;
+    setOrderSelection((prev) => {
+      const next = new Set(prev);
+      const allSelected = ordersPageIds.every((id) => next.has(id));
+      if (allSelected) {
+        ordersPageIds.forEach((id) => next.delete(id));
+      } else {
+        ordersPageIds.forEach((id) => next.add(id));
+      }
+      return next;
+    });
+  }, [ordersPageIds]);
+
+  const handleOrdersRowsPerPageChange = useCallback((event) => {
+    setOrdersRowsPerPage(Number(event.target.value) || 10);
+    setOrdersPage(1);
+  }, []);
+
+  const handleOrdersPageChange = useCallback(
+    (nextPage) => {
+      const clamped = Math.min(
+        Math.max(nextPage, 1),
+        ordersPagination.totalPages || 1,
+      );
+      setOrdersPage(clamped);
+    },
+    [ordersPagination.totalPages],
+  );
+
+  const handleToggleCouponSelection = useCallback((couponId) => {
+    const id = String(couponId ?? "");
+    if (!id) return;
+    setCouponSelection((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }, []);
+
+  const handleToggleAllCoupons = useCallback(() => {
+    if (!couponsPageIds.length) return;
+    setCouponSelection((prev) => {
+      const next = new Set(prev);
+      const allSelected = couponsPageIds.every((id) => next.has(id));
+      if (allSelected) {
+        couponsPageIds.forEach((id) => next.delete(id));
+      } else {
+        couponsPageIds.forEach((id) => next.add(id));
+      }
+      return next;
+    });
+  }, [couponsPageIds]);
+
+  const handleCouponsRowsPerPageChange = useCallback((event) => {
+    setCouponsRowsPerPage(Number(event.target.value) || 10);
+    setCouponsPage(1);
+  }, []);
+
+  const handleCouponsPageChange = useCallback(
+    (nextPage) => {
+      const clamped = Math.min(
+        Math.max(nextPage, 1),
+        couponsPagination.totalPages || 1,
+      );
+      setCouponsPage(clamped);
+    },
+    [couponsPagination.totalPages],
+  );
+
+  const handleBulkDeleteOrders = useCallback(async () => {
+    if (!orderSelection.size) {
+      toast.error("Select at least one order");
+      return;
+    }
+    const confirmed = confirmDeletion({
+      entity: "seller orders",
+      name: `${orderSelection.size} selected`,
+    });
+    if (!confirmed) return;
+    try {
+      await Promise.all(
+        Array.from(orderSelection).map((orderId) =>
+          deleteAdminSellerOrder(orderId),
+        ),
+      );
+      toast.success("Selected orders removed");
+      setOrderSelection(new Set());
+      await loadOrders({ silent: true });
+    } catch (error) {
+      console.error("Failed to bulk delete seller orders", error);
+      toast.error(error.message || "Unable to delete selected orders");
+    }
+  }, [orderSelection, loadOrders]);
+
+  const handleBulkDeleteCoupons = useCallback(async () => {
+    if (!couponSelection.size) {
+      toast.error("Select at least one coupon");
+      return;
+    }
+    const confirmed = confirmDeletion({
+      entity: "coupons",
+      name: `${couponSelection.size} selected`,
+    });
+    if (!confirmed) return;
+    try {
+      await Promise.all(
+        Array.from(couponSelection).map((couponId) =>
+          deleteAdminSellerCoupon(couponId),
+        ),
+      );
+      toast.success("Selected coupons removed");
+      setCouponSelection(new Set());
+      await loadCoupons({ silent: true });
+    } catch (error) {
+      console.error("Failed to bulk delete seller coupons", error);
+      toast.error(error.message || "Unable to delete selected coupons");
+    }
+  }, [couponSelection, loadCoupons]);
+
+  const serializeOrdersForExport = useCallback(
+    (sourceOrders) => {
+      const dataset = Array.isArray(sourceOrders) ? sourceOrders : orders;
+      return dataset.map((order) => ({
+        orderId: order.orderId || order._id,
+        seller:
+          order.sellerId?.name ||
+          order.sellerId?.companyName ||
+          order.sellerId?.username ||
+          "Seller",
+        customer:
+          order.customerName ||
+          order.buyerName ||
+          order.shippingAddress?.fullName ||
+          "Customer",
+        customerEmail:
+          order.customerEmail ||
+          order.buyerEmail ||
+          order.shippingAddress?.email ||
+          "",
+        revenue: order.totals?.revenue ?? 0,
+        quantity: order.totals?.quantity ?? 0,
+        orderStatus: order.orderStatus,
+        paymentStatus: order.paymentStatus,
+        createdAt: order.createdAt,
+      }));
+    },
+    [orders],
+  );
+
+  const serializeCouponsForExport = useCallback(
+    (sourceCoupons) => {
+      const dataset = Array.isArray(sourceCoupons) ? sourceCoupons : coupons;
+      return dataset.map((coupon) => ({
+        code: coupon.code,
+        seller: coupon.sellerId?.name || coupon.sellerId?.username || "Seller",
+        discount:
+          coupon.discountType === "percentage"
+            ? `${coupon.discountValue}%`
+            : coupon.discountValue,
+        minOrderAmount: coupon.minOrderAmount || 0,
+        usage: `${coupon.usageCount || 0}/${coupon.maxRedemptions || "∞"}`,
+        isActive: coupon.isActive ? "Yes" : "No",
+        createdAt: coupon.createdAt,
+      }));
+    },
+    [coupons],
+  );
+
+  const handleExportCsv = useCallback((rows, filenamePrefix) => {
+    if (!rows.length) {
+      toast.error("Nothing to export");
+      return;
+    }
+    const header = Object.keys(rows[0]);
+    const csv = [
+      header.join(","),
+      ...rows.map((row) =>
+        header
+          .map((key) => {
+            const value = row[key] ?? "";
+            return `"${String(value).replace(/"/g, '""')}"`;
+          })
+          .join(","),
+      ),
+    ].join("\n");
+    const blob = new Blob(["\uFEFF" + csv], {
+      type: "text/csv;charset=utf-8;",
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${filenamePrefix}-${new Date()
+      .toISOString()
+      .slice(0, 10)}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    toast.success("CSV exported");
+  }, []);
+
+  const handleExportOrders = useCallback(() => {
+    const hasSelection = orderSelection.size > 0;
+    const selectedOrders = hasSelection
+      ? orders.filter((order) => orderSelection.has(String(order._id)))
+      : undefined;
+    const rows = serializeOrdersForExport(selectedOrders);
+    if (!rows.length) {
+      toast.error(
+        hasSelection ? "No selected orders to export" : "Nothing to export",
+      );
+      return;
+    }
+    handleExportCsv(
+      rows,
+      hasSelection ? "seller-orders-selected" : "seller-orders",
+    );
+  }, [handleExportCsv, orderSelection, orders, serializeOrdersForExport]);
+
+  const handleExportCoupons = useCallback(() => {
+    const hasSelection = couponSelection.size > 0;
+    const selectedCoupons = hasSelection
+      ? coupons.filter((coupon) => couponSelection.has(String(coupon._id)))
+      : undefined;
+    const rows = serializeCouponsForExport(selectedCoupons);
+    if (!rows.length) {
+      toast.error(
+        hasSelection ? "No selected coupons to export" : "Nothing to export",
+      );
+      return;
+    }
+    handleExportCsv(
+      rows,
+      hasSelection ? "seller-coupons-selected" : "seller-coupons",
+    );
+  }, [couponSelection, coupons, handleExportCsv, serializeCouponsForExport]);
+
+  const handleDownloadInvoice = useCallback(async (order) => {
+    const sellerOrderId = order?._id;
+    const baseOrderIdRaw = order?.orderId || sellerOrderId;
+    const baseOrderId = baseOrderIdRaw ? String(baseOrderIdRaw) : "";
+
+    if (!baseOrderId) {
+      toast.error("Order details unavailable");
+      return;
+    }
+
+    try {
+      if (sellerOrderId) {
+        setDownloadingInvoiceId(String(sellerOrderId));
+      }
+      const response = await api.get(`/orders/${baseOrderId}/invoice`, {
+        responseType: "blob",
+        headers: { Accept: "application/pdf" },
+      });
+
+      const blob = response.data;
+      const disposition = response.headers?.["content-disposition"] || "";
+      const match = disposition.match(/filename="?([^";]+)"?/i);
+      const filename = match?.[1] || `invoice-${baseOrderId}.pdf`;
+
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      toast.success("Invoice downloaded");
+    } catch (error) {
+      console.error("Invoice download failed", error);
+      const message =
+        error?.response?.data?.message ||
+        (error?.response?.status === 404
+          ? "Invoice not found for this order. Try regenerating from the main order record."
+          : error?.message) ||
+        "Unable to download invoice";
+      toast.error(message);
+    } finally {
+      setDownloadingInvoiceId(null);
+    }
+  }, []);
+
+  const isOrderInvoiceAvailable = useCallback((order) => {
+    const normalized = String(
+      order?.paymentStatus || order?.payment?.status || "",
+    ).toLowerCase();
+    const hasInvoiceAsset = Boolean(
+      order?.invoice?.url ||
+      order?.invoiceUrl ||
+      order?.invoice?.number ||
+      order?.invoiceNumber,
+    );
+    return (
+      hasInvoiceAsset ||
+      ["paid", "success", "successful", "completed", "confirmed"].includes(
+        normalized,
+      )
+    );
+  }, []);
 
   useEffect(() => {
     loadSellers();
@@ -706,6 +1101,54 @@ const AdminSellerDetailsPage = () => {
   useEffect(() => {
     loadOrders();
   }, [loadOrders]);
+
+  useEffect(() => {
+    const rows = Math.max(ordersRowsPerPage, 1);
+    const totalPages = Math.max(
+      1,
+      Math.ceil(Math.max(orders.length, 1) / rows),
+    );
+    setOrdersPage((prev) => Math.min(Math.max(prev, 1), totalPages));
+    setOrderSelection((prev) => {
+      if (!prev.size) return prev;
+      const availableIds = new Set(orders.map((order) => String(order._id)));
+      const next = new Set(
+        Array.from(prev).filter((id) => availableIds.has(String(id))),
+      );
+      return next.size === prev.size ? prev : next;
+    });
+  }, [orders, ordersRowsPerPage]);
+
+  useEffect(() => {
+    const rows = Math.max(couponsRowsPerPage, 1);
+    const totalPages = Math.max(
+      1,
+      Math.ceil(Math.max(coupons.length, 1) / rows),
+    );
+    setCouponsPage((prev) => Math.min(Math.max(prev, 1), totalPages));
+    setCouponSelection((prev) => {
+      if (!prev.size) return prev;
+      const availableIds = new Set(coupons.map((coupon) => String(coupon._id)));
+      const next = new Set(
+        Array.from(prev).filter((id) => availableIds.has(String(id))),
+      );
+      return next.size === prev.size ? prev : next;
+    });
+  }, [coupons, couponsRowsPerPage]);
+
+  useEffect(() => {
+    if (ordersHeaderCheckboxRef.current) {
+      ordersHeaderCheckboxRef.current.indeterminate =
+        areSomeOrdersSelected && !areAllOrdersSelected;
+    }
+  }, [areAllOrdersSelected, areSomeOrdersSelected]);
+
+  useEffect(() => {
+    if (couponsHeaderCheckboxRef.current) {
+      couponsHeaderCheckboxRef.current.indeterminate =
+        areSomeCouponsSelected && !areAllCouponsSelected;
+    }
+  }, [areAllCouponsSelected, areSomeCouponsSelected]);
 
   const filteredSellers = useMemo(() => {
     const query = sellerSearch.trim().toLowerCase();
@@ -2275,116 +2718,257 @@ const AdminSellerDetailsPage = () => {
                   subtitle="Seller orders will surface as soon as customers purchase."
                 />
               ) : (
-                <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
-                  <table className="min-w-full divide-y divide-slate-100 text-sm">
-                    <thead className="bg-slate-50/80">
-                      <tr>
-                        <th className="px-4 py-3 text-left font-semibold text-slate-500">
-                          Order
-                        </th>
-                        <th className="px-4 py-3 text-left font-semibold text-slate-500">
-                          Seller
-                        </th>
-                        <th className="px-4 py-3 text-left font-semibold text-slate-500">
-                          Customer
-                        </th>
-                        <th className="px-4 py-3 text-left font-semibold text-slate-500">
-                          Totals
-                        </th>
-                        <th className="px-4 py-3 text-left font-semibold text-slate-500">
-                          Status
-                        </th>
-                        <th className="px-4 py-3 text-right font-semibold text-slate-500">
-                          Actions
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {orders.map((order) => (
-                        <tr key={order._id} className="hover:bg-slate-50/50">
-                          <td className="px-4 py-3 align-top">
-                            <div className="flex flex-col gap-1">
-                              <span className="text-sm font-semibold text-slate-900">
-                                {order.orderId}
-                              </span>
-                              <span className="text-xs text-slate-500">
-                                {order.items?.length || 0} item(s)
-                              </span>
-                            </div>
-                          </td>
-                          <td className="px-4 py-3 align-top text-xs text-slate-500">
-                            {order.sellerId?.name ||
-                              order.sellerId?.companyName ||
-                              order.sellerId?.username ||
-                              "Seller"}
-                          </td>
-                          <td className="px-4 py-3 align-top text-xs text-slate-500">
-                            <div className="grid gap-1">
-                              <span className="text-sm font-medium text-slate-700">
-                                {order.customerName ||
-                                  order.buyerName ||
-                                  order.shippingAddress?.fullName ||
-                                  "Customer"}
-                              </span>
-                              {order.customerEmail ||
-                              order.buyerEmail ||
-                              order.shippingAddress?.email ? (
-                                <span className="text-xs text-slate-500 break-all">
-                                  {order.customerEmail ||
-                                    order.buyerEmail ||
-                                    order.shippingAddress?.email}
-                                </span>
-                              ) : null}
-                            </div>
-                          </td>
-                          <td className="px-4 py-3 align-top text-xs text-slate-500">
-                            <div className="grid gap-1">
-                              <span>
-                                Revenue: {formatCurrency(order.totals?.revenue)}
-                              </span>
-                              <span>
-                                Quantity: {order.totals?.quantity ?? 0}
-                              </span>
-                            </div>
-                          </td>
-                          <td className="px-4 py-3 align-top text-xs text-slate-500">
-                            <div className="grid gap-1">
-                              <span>Order: {order.orderStatus}</span>
-                              <span>Payment: {order.paymentStatus}</span>
-                            </div>
-                          </td>
-                          <td className="px-4 py-3 align-top">
-                            <div className="flex items-center justify-end gap-2">
-                              <button
-                                type="button"
-                                onClick={() => setOrderView(order)}
-                                className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-500 transition hover:border-blue-200 hover:text-blue-600"
-                                aria-label="View order"
-                              >
-                                <Eye size={16} />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setOrderEdit(order)}
-                                className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-500 transition hover:border-blue-200 hover:text-blue-600"
-                                aria-label="Edit order"
-                              >
-                                <PencilLine size={16} />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleOrderDelete(order._id)}
-                                className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-rose-200 text-rose-500 transition hover:border-rose-300 hover:text-rose-600"
-                                aria-label="Delete order"
-                              >
-                                <Trash2 size={16} />
-                              </button>
-                            </div>
-                          </td>
+                <div className="space-y-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                  <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-slate-500">
+                    <span>
+                      Showing{" "}
+                      {ordersPagination.total
+                        ? ordersPagination.startIndex + 1
+                        : 0}
+                      -{ordersPagination.endIndex} of {ordersPagination.total}
+                    </span>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={handleExportOrders}
+                        className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 font-medium text-slate-600 transition hover:border-blue-200 hover:text-blue-600"
+                      >
+                        Export CSV
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleBulkDeleteOrders}
+                        disabled={!orderSelection.size}
+                        className="inline-flex items-center gap-2 rounded-xl border border-rose-200 px-3 py-2 font-medium text-rose-600 transition hover:border-rose-300 hover:text-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        Bulk delete ({orderSelection.size})
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-slate-100 text-sm">
+                      <thead className="bg-slate-50/80">
+                        <tr>
+                          <th className="w-12 px-4 py-3 text-left font-semibold text-slate-500">
+                            <input
+                              ref={ordersHeaderCheckboxRef}
+                              type="checkbox"
+                              checked={areAllOrdersSelected}
+                              onChange={handleToggleAllOrders}
+                              className="h-4 w-4 rounded border border-slate-300 text-blue-600 focus:ring-blue-500"
+                            />
+                          </th>
+                          <th className="px-4 py-3 text-left font-semibold text-slate-500">
+                            Order
+                          </th>
+                          <th className="px-4 py-3 text-left font-semibold text-slate-500">
+                            Seller
+                          </th>
+                          <th className="px-4 py-3 text-left font-semibold text-slate-500">
+                            Customer
+                          </th>
+                          <th className="px-4 py-3 text-left font-semibold text-slate-500">
+                            Totals
+                          </th>
+                          <th className="px-4 py-3 text-left font-semibold text-slate-500">
+                            Status
+                          </th>
+                          <th className="px-4 py-3 text-right font-semibold text-slate-500">
+                            Actions
+                          </th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {paginatedOrders.map((order) => {
+                          const orderId = String(order._id);
+                          const invoiceReady = isOrderInvoiceAvailable(order);
+                          const isSelected = orderSelection.has(orderId);
+                          return (
+                            <tr key={orderId} className="hover:bg-slate-50/50">
+                              <td className="px-4 py-3 align-top">
+                                <input
+                                  type="checkbox"
+                                  checked={isSelected}
+                                  onChange={() =>
+                                    handleToggleOrderSelection(orderId)
+                                  }
+                                  className="h-4 w-4 rounded border border-slate-300 text-blue-600 focus:ring-blue-500"
+                                />
+                              </td>
+                              <td className="px-4 py-3 align-top">
+                                <div className="flex flex-col gap-1">
+                                  <span className="text-sm font-semibold text-slate-900">
+                                    {order.orderId || orderId}
+                                  </span>
+                                  <span className="text-xs text-slate-500">
+                                    {order.items?.length || 0} item(s)
+                                  </span>
+                                </div>
+                              </td>
+                              <td className="px-4 py-3 align-top text-xs text-slate-500">
+                                {order.sellerId?.name ||
+                                  order.sellerId?.companyName ||
+                                  order.sellerId?.username ||
+                                  "Seller"}
+                              </td>
+                              <td className="px-4 py-3 align-top text-xs text-slate-500">
+                                <div className="grid gap-1">
+                                  <span className="text-sm font-medium text-slate-700">
+                                    {order.customerName ||
+                                      order.buyerName ||
+                                      order.shippingAddress?.fullName ||
+                                      "Customer"}
+                                  </span>
+                                  {order.customerEmail ||
+                                  order.buyerEmail ||
+                                  order.shippingAddress?.email ? (
+                                    <span className="break-all text-xs text-slate-500">
+                                      {order.customerEmail ||
+                                        order.buyerEmail ||
+                                        order.shippingAddress?.email}
+                                    </span>
+                                  ) : null}
+                                </div>
+                              </td>
+                              <td className="px-4 py-3 align-top text-xs text-slate-500">
+                                <div className="grid gap-1">
+                                  <span>
+                                    Total:{" "}
+                                    {formatCurrency(
+                                      order.orderPricing?.total ??
+                                        order.totals?.revenue,
+                                    )}
+                                  </span>
+                                  <span>
+                                    Quantity:{" "}
+                                    {order.orderPricing?.quantity ??
+                                      order.totals?.quantity ??
+                                      0}
+                                  </span>
+                                </div>
+                              </td>
+                              <td className="px-4 py-3 align-top text-xs text-slate-500">
+                                <div className="grid gap-1">
+                                  <span>Order: {order.orderStatus}</span>
+                                  <span>Payment: {order.paymentStatus}</span>
+                                </div>
+                              </td>
+                              <td className="px-4 py-3 align-top">
+                                <div className="flex items-center justify-end gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => setOrderView(order)}
+                                    className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-500 transition hover:border-blue-200 hover:text-blue-600"
+                                    aria-label="View order"
+                                  >
+                                    <Eye size={16} />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDownloadInvoice(order)}
+                                    disabled={
+                                      !invoiceReady ||
+                                      downloadingInvoiceId === orderId
+                                    }
+                                    className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-500 transition hover:border-blue-200 hover:text-blue-600 disabled:cursor-not-allowed disabled:border-slate-200 disabled:text-slate-300"
+                                    aria-label="Download invoice"
+                                    title={
+                                      invoiceReady
+                                        ? "Download invoice"
+                                        : "Invoice available after payment"
+                                    }
+                                  >
+                                    {downloadingInvoiceId === orderId ? (
+                                      <Loader2
+                                        size={16}
+                                        className="animate-spin"
+                                      />
+                                    ) : (
+                                      <Download size={16} />
+                                    )}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => setOrderEdit(order)}
+                                    className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-500 transition hover:border-blue-200 hover:text-blue-600"
+                                    aria-label="Edit order"
+                                  >
+                                    <PencilLine size={16} />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOrderDelete(order._id)}
+                                    className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-rose-200 text-rose-500 transition hover:border-rose-300 hover:text-rose-600"
+                                    aria-label="Delete order"
+                                  >
+                                    <Trash2 size={16} />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div className="flex flex-col gap-3 border-t border-slate-100 pt-4 text-sm text-slate-600 md:flex-row md:items-center md:justify-between">
+                    <div className="flex items-center gap-2">
+                      Rows per page
+                      <select
+                        value={ordersRowsPerPage}
+                        onChange={handleOrdersRowsPerPageChange}
+                        className="rounded-xl border border-slate-200 px-3 py-2 focus:border-blue-400 focus:outline-none"
+                      >
+                        {[10, 20, 50].map((option) => (
+                          <option key={option} value={option}>
+                            {option}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleOrdersPageChange(
+                            ordersPagination.currentPage - 1,
+                          )
+                        }
+                        disabled={ordersPagination.currentPage <= 1}
+                        className="rounded-xl border border-slate-200 px-3 py-1 transition hover:border-blue-200 hover:text-blue-600 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        Prev
+                      </button>
+                      <span>
+                        Page{" "}
+                        <span className="font-semibold">
+                          {ordersPagination.currentPage}
+                        </span>{" "}
+                        of
+                        <span className="font-semibold">
+                          {" "}
+                          {ordersPagination.totalPages}
+                        </span>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleOrdersPageChange(
+                            ordersPagination.currentPage + 1,
+                          )
+                        }
+                        disabled={
+                          ordersPagination.currentPage >=
+                          ordersPagination.totalPages
+                        }
+                        className="rounded-xl border border-slate-200 px-3 py-1 transition hover:border-blue-200 hover:text-blue-600 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        Next
+                      </button>
+                    </div>
+                  </div>
                 </div>
               )}
             </section>
@@ -2433,101 +3017,212 @@ const AdminSellerDetailsPage = () => {
                   subtitle="Seller-generated coupons will surface here."
                 />
               ) : (
-                <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
-                  <table className="min-w-full divide-y divide-slate-100 text-sm">
-                    <thead className="bg-slate-50/80">
-                      <tr>
-                        <th className="px-4 py-3 text-left font-semibold text-slate-500">
-                          Code
-                        </th>
-                        <th className="px-4 py-3 text-left font-semibold text-slate-500">
-                          Seller
-                        </th>
-                        <th className="px-4 py-3 text-left font-semibold text-slate-500">
-                          Discount
-                        </th>
-                        <th className="px-4 py-3 text-left font-semibold text-slate-500">
-                          Usage
-                        </th>
-                        <th className="px-4 py-3 text-right font-semibold text-slate-500">
-                          Actions
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {coupons.map((coupon) => (
-                        <tr key={coupon._id} className="hover:bg-slate-50/50">
-                          <td className="px-4 py-3 align-top">
-                            <div className="flex flex-col gap-1">
-                              <span className="text-sm font-semibold text-slate-900">
-                                {coupon.code}
-                              </span>
-                              <span className="text-xs text-slate-500">
-                                {coupon.description || "—"}
-                              </span>
-                            </div>
-                          </td>
-                          <td className="px-4 py-3 align-top text-xs text-slate-500">
-                            {coupon.sellerId?.name ||
-                              coupon.sellerId?.username ||
-                              "Seller"}
-                          </td>
-                          <td className="px-4 py-3 align-top text-xs text-slate-500">
-                            <div className="grid gap-1">
-                              <span>
-                                {coupon.discountType === "percentage"
-                                  ? `${coupon.discountValue}%`
-                                  : formatCurrency(coupon.discountValue)}
-                              </span>
-                              <span>
-                                Min order:{" "}
-                                {formatCurrency(coupon.minOrderAmount || 0)}
-                              </span>
-                            </div>
-                          </td>
-                          <td className="px-4 py-3 align-top text-xs text-slate-500">
-                            <div className="grid gap-1">
-                              <span>
-                                Active: {coupon.isActive ? "Yes" : "No"}
-                              </span>
-                              <span>
-                                Redeemed: {coupon.usageCount || 0} /{" "}
-                                {coupon.maxRedemptions || "∞"}
-                              </span>
-                            </div>
-                          </td>
-                          <td className="px-4 py-3 align-top">
-                            <div className="flex items-center justify-end gap-2">
-                              <button
-                                type="button"
-                                onClick={() => setCouponView(coupon)}
-                                className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-500 transition hover:border-blue-200 hover:text-blue-600"
-                                aria-label="View coupon"
-                              >
-                                <Eye size={16} />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setCouponEdit(coupon)}
-                                className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-500 transition hover:border-blue-200 hover:text-blue-600"
-                                aria-label="Edit coupon"
-                              >
-                                <PencilLine size={16} />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleCouponDelete(coupon._id)}
-                                className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-rose-200 text-rose-500 transition hover:border-rose-300 hover:text-rose-600"
-                                aria-label="Delete coupon"
-                              >
-                                <Trash2 size={16} />
-                              </button>
-                            </div>
-                          </td>
+                <div className="space-y-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                  <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-slate-500">
+                    <span>
+                      Showing{" "}
+                      {couponsPagination.total
+                        ? couponsPagination.startIndex + 1
+                        : 0}
+                      -{couponsPagination.endIndex} of {couponsPagination.total}
+                    </span>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={handleExportCoupons}
+                        className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 font-medium text-slate-600 transition hover:border-blue-200 hover:text-blue-600"
+                      >
+                        Export CSV
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleBulkDeleteCoupons}
+                        disabled={!couponSelection.size}
+                        className="inline-flex items-center gap-2 rounded-xl border border-rose-200 px-3 py-2 font-medium text-rose-600 transition hover:border-rose-300 hover:text-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        Bulk delete ({couponSelection.size})
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-slate-100 text-sm">
+                      <thead className="bg-slate-50/80">
+                        <tr>
+                          <th className="w-12 px-4 py-3 text-left font-semibold text-slate-500">
+                            <input
+                              ref={couponsHeaderCheckboxRef}
+                              type="checkbox"
+                              checked={areAllCouponsSelected}
+                              onChange={handleToggleAllCoupons}
+                              className="h-4 w-4 rounded border border-slate-300 text-blue-600 focus:ring-blue-500"
+                            />
+                          </th>
+                          <th className="px-4 py-3 text-left font-semibold text-slate-500">
+                            Code
+                          </th>
+                          <th className="px-4 py-3 text-left font-semibold text-slate-500">
+                            Seller
+                          </th>
+                          <th className="px-4 py-3 text-left font-semibold text-slate-500">
+                            Discount
+                          </th>
+                          <th className="px-4 py-3 text-left font-semibold text-slate-500">
+                            Usage
+                          </th>
+                          <th className="px-4 py-3 text-right font-semibold text-slate-500">
+                            Actions
+                          </th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {paginatedCoupons.map((coupon) => {
+                          const couponId = String(coupon._id);
+                          const isSelected = couponSelection.has(couponId);
+                          return (
+                            <tr key={couponId} className="hover:bg-slate-50/50">
+                              <td className="px-4 py-3 align-top">
+                                <input
+                                  type="checkbox"
+                                  checked={isSelected}
+                                  onChange={() =>
+                                    handleToggleCouponSelection(couponId)
+                                  }
+                                  className="h-4 w-4 rounded border border-slate-300 text-blue-600 focus:ring-blue-500"
+                                />
+                              </td>
+                              <td className="px-4 py-3 align-top">
+                                <div className="flex flex-col gap-1">
+                                  <span className="text-sm font-semibold text-slate-900">
+                                    {coupon.code}
+                                  </span>
+                                  <span className="text-xs text-slate-500">
+                                    {coupon.description || "—"}
+                                  </span>
+                                </div>
+                              </td>
+                              <td className="px-4 py-3 align-top text-xs text-slate-500">
+                                {coupon.sellerId?.name ||
+                                  coupon.sellerId?.username ||
+                                  "Seller"}
+                              </td>
+                              <td className="px-4 py-3 align-top text-xs text-slate-500">
+                                <div className="grid gap-1">
+                                  <span>
+                                    {coupon.discountType === "percentage"
+                                      ? `${coupon.discountValue}%`
+                                      : formatCurrency(coupon.discountValue)}
+                                  </span>
+                                  <span>
+                                    Min order:{" "}
+                                    {formatCurrency(coupon.minOrderAmount || 0)}
+                                  </span>
+                                </div>
+                              </td>
+                              <td className="px-4 py-3 align-top text-xs text-slate-500">
+                                <div className="grid gap-1">
+                                  <span>
+                                    Active: {coupon.isActive ? "Yes" : "No"}
+                                  </span>
+                                  <span>
+                                    Redeemed: {coupon.usageCount || 0} /{" "}
+                                    {coupon.maxRedemptions || "∞"}
+                                  </span>
+                                </div>
+                              </td>
+                              <td className="px-4 py-3 align-top">
+                                <div className="flex items-center justify-end gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => setCouponView(coupon)}
+                                    className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-500 transition hover:border-blue-200 hover:text-blue-600"
+                                    aria-label="View coupon"
+                                  >
+                                    <Eye size={16} />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => setCouponEdit(coupon)}
+                                    className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-500 transition hover:border-blue-200 hover:text-blue-600"
+                                    aria-label="Edit coupon"
+                                  >
+                                    <PencilLine size={16} />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      handleCouponDelete(coupon._id)
+                                    }
+                                    className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-rose-200 text-rose-500 transition hover:border-rose-300 hover:text-rose-600"
+                                    aria-label="Delete coupon"
+                                  >
+                                    <Trash2 size={16} />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div className="flex flex-col gap-3 border-t border-slate-100 pt-4 text-sm text-slate-600 md:flex-row md:items-center md:justify-between">
+                    <div className="flex items-center gap-2">
+                      Rows per page
+                      <select
+                        value={couponsRowsPerPage}
+                        onChange={handleCouponsRowsPerPageChange}
+                        className="rounded-xl border border-slate-200 px-3 py-2 focus:border-blue-400 focus:outline-none"
+                      >
+                        {[10, 20, 50].map((option) => (
+                          <option key={option} value={option}>
+                            {option}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleCouponsPageChange(
+                            couponsPagination.currentPage - 1,
+                          )
+                        }
+                        disabled={couponsPagination.currentPage <= 1}
+                        className="rounded-xl border border-slate-200 px-3 py-1 transition hover:border-blue-200 hover:text-blue-600 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        Prev
+                      </button>
+                      <span>
+                        Page{" "}
+                        <span className="font-semibold">
+                          {couponsPagination.currentPage}
+                        </span>{" "}
+                        of
+                        <span className="font-semibold">
+                          {" "}
+                          {couponsPagination.totalPages}
+                        </span>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleCouponsPageChange(
+                            couponsPagination.currentPage + 1,
+                          )
+                        }
+                        disabled={
+                          couponsPagination.currentPage >=
+                          couponsPagination.totalPages
+                        }
+                        className="rounded-xl border border-slate-200 px-3 py-1 transition hover:border-blue-200 hover:text-blue-600 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        Next
+                      </button>
+                    </div>
+                  </div>
                 </div>
               )}
             </section>

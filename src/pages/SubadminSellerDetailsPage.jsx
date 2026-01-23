@@ -936,12 +936,225 @@ const SubadminSellerDetailsPage = () => {
     let pageWidth = doc.internal.pageSize.getWidth();
     let pageHeight = doc.internal.pageSize.getHeight();
 
-    const drawHeader = () => {
-      doc.setFontSize(14);
-      doc.setTextColor(30, 41, 59);
-      doc.text("Seller Orders", tableStartX, currentY - 32);
+    const ensurePageMetrics = () => {
+      pageWidth = doc.internal.pageSize.getWidth();
+      pageHeight = doc.internal.pageSize.getHeight();
+    };
 
-      doc.setFontSize(9);
+    const normalizeDisplayText = (value) => {
+      if (value === null || value === undefined) {
+        return "--";
+      }
+
+      const text = Array.isArray(value) ? value.join(" ") : String(value);
+      return text.replace(/\u00a0/g, " ").trim() || "--";
+    };
+
+    const normalizeLink = (value) => {
+      if (!value || typeof value !== "string") {
+        return null;
+      }
+
+      const trimmed = value.trim();
+      if (!trimmed || trimmed === "--") {
+        return null;
+      }
+
+      try {
+        return new URL(trimmed).toString();
+      } catch (error) {
+        try {
+          const base = window.location?.origin || "";
+          if (!base) return trimmed;
+          return new URL(trimmed.replace(/^\/+/, ""), base).toString();
+        } catch (_nestedError) {
+          return trimmed;
+        }
+      }
+    };
+
+    const extractExtensionFromPath = (path) => {
+      if (!path || typeof path !== "string") {
+        return "";
+      }
+
+      const sanitized = path.split("?")[0].split("#")[0];
+      const segments = sanitized.split("/").filter(Boolean);
+      if (!segments.length) {
+        return "";
+      }
+
+      const lastSegment = segments[segments.length - 1];
+      const dotIndex = lastSegment.lastIndexOf(".");
+      if (dotIndex === -1 || dotIndex === lastSegment.length - 1) {
+        return "";
+      }
+
+      return lastSegment.slice(dotIndex + 1).toLowerCase();
+    };
+
+    const inferFileExtension = (value) => {
+      if (!value || typeof value !== "string") {
+        return "";
+      }
+
+      try {
+        const parsed = new URL(value, window.location?.origin || undefined);
+        return extractExtensionFromPath(parsed.pathname || "");
+      } catch (_error) {
+        return extractExtensionFromPath(value);
+      }
+    };
+
+    const isLikelyImageLink = (value) => {
+      const extension = inferFileExtension(value);
+      if (!extension) {
+        return false;
+      }
+
+      return ["png", "jpg", "jpeg", "gif", "bmp", "webp", "svg"].includes(
+        extension,
+      );
+    };
+
+    const resolveInvoiceFallback = (url, attemptedImage) => {
+      if (!url) {
+        return "Invoice unavailable";
+      }
+
+      if (attemptedImage) {
+        return "Invoice image unavailable";
+      }
+
+      const extension = inferFileExtension(url);
+      if (!extension) {
+        return "Invoice file";
+      }
+
+      if (extension === "pdf") {
+        return "Invoice ";
+      }
+
+      return `Invoice ${extension.toUpperCase()}`;
+    };
+
+    const imageCache = new Map();
+
+    const loadImageData = async (rawUrl) => {
+      const normalizedUrl = normalizeLink(rawUrl);
+      if (!normalizedUrl) {
+        return null;
+      }
+
+      if (imageCache.has(normalizedUrl)) {
+        return imageCache.get(normalizedUrl);
+      }
+
+      try {
+        const response = await fetch(normalizedUrl, {
+          credentials: "include",
+        });
+        if (!response.ok) {
+          throw new Error(`Unexpected status ${response.status}`);
+        }
+
+        const blob = await response.blob();
+        if (!blob.type || !blob.type.startsWith("image/")) {
+          imageCache.set(normalizedUrl, null);
+          return null;
+        }
+
+        const dataUrl = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+
+        const format = blob.type.includes("png")
+          ? "PNG"
+          : blob.type.includes("jpeg") || blob.type.includes("jpg")
+            ? "JPEG"
+            : blob.type.includes("webp")
+              ? "WEBP"
+              : undefined;
+
+        const payload = { dataUrl, format };
+        imageCache.set(normalizedUrl, payload);
+        return payload;
+      } catch (error) {
+        console.error(
+          "Failed to load image for PDF export",
+          normalizedUrl,
+          error,
+        );
+        imageCache.set(normalizedUrl, null);
+        return null;
+      }
+    };
+
+    const formatAmount = (value) => {
+      const resolvedNumber = Number.isFinite(Number(value)) ? Number(value) : 0;
+
+      const normalized = new Intl.NumberFormat("en-IN", {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
+      }).format(resolvedNumber);
+
+      return `INR ${normalized}`;
+    };
+
+    const resolveCellValue = (value) => {
+      if (value && typeof value === "object" && !Array.isArray(value)) {
+        return {
+          text: value.text !== undefined ? value.text : "--",
+          link: normalizeLink(value.link || value.url),
+        };
+      }
+
+      return {
+        text: value,
+        link: null,
+      };
+    };
+
+    const drawColumnHeader = () => {
+      doc.setFont("Helvetica", "bold");
+      doc.setFontSize(10);
+      doc.setTextColor(255, 255, 255);
+      doc.setFillColor(15, 23, 42);
+      doc.setDrawColor(15, 23, 42);
+
+      let cursorX = tableStartX;
+      columns.forEach((column) => {
+        doc.setFillColor(15, 23, 42);
+        doc.setTextColor(255, 255, 255);
+        doc.rect(cursorX, currentY, column.width, headerHeight, "FD");
+        const textY = currentY + headerHeight / 2 + 1;
+        doc.text(column.label, cursorX + column.width / 2, textY, {
+          align: "center",
+          baseline: "middle",
+        });
+        cursorX += column.width;
+      });
+
+      currentY += headerHeight;
+      doc.setDrawColor(221, 226, 233);
+      doc.setFont("Helvetica", "normal");
+      doc.setFontSize(bodyFontSize);
+      doc.setTextColor(30, 41, 59);
+    };
+
+    const drawHeader = () => {
+      doc.setFont("Helvetica", "bold");
+      doc.setFontSize(18);
+      doc.setTextColor(30, 41, 59);
+      const title = "Seller Orders";
+      const textWidth = doc.getTextWidth(title);
+      const centerX = tableStartX + tableWidth / 2;
+      doc.text(title, centerX - textWidth / 2, marginY - 30);
+
+      doc.setFontSize(10);
       doc.setTextColor(100, 116, 139);
       doc.text(
         `Exported on ${new Date().toLocaleString("en-IN", {
@@ -952,166 +1165,138 @@ const SubadminSellerDetailsPage = () => {
           minute: "2-digit",
         })}`,
         tableStartX,
-        currentY - 16,
+        marginY - 14,
       );
 
-      doc.setDrawColor(226, 232, 240);
-      doc.setFillColor(248, 250, 252);
-      doc.roundedRect(
-        tableStartX - 8,
-        currentY - headerHeight,
-        tableWidth + 16,
-        headerHeight,
-        6,
-        6,
-        "DF",
-      );
-
-      let x = tableStartX;
-      doc.setFontSize(9);
-      doc.setTextColor(100, 116, 139);
-      columns.forEach((column) => {
-        const textX =
-          column.align === "right"
-            ? x + column.width - 4
-            : column.align === "center"
-              ? x + column.width / 2
-              : x + 4;
-        const align = column.align || "left";
-        doc.text(column.label, textX, currentY - 8, { align });
-        x += column.width;
-      });
+      currentY = marginY;
+      drawColumnHeader();
     };
 
     const drawRow = async (row, rowIndex) => {
       const qrLink = row.__qrfolioLink || row["QR Folio Image"];
       const invoiceLink = row.__invoiceLink || row.Invoice;
 
-      const qrImageUrl = qrLink || null;
-      const invoiceImageUrl = invoiceLink || null;
+      const qrImageCandidate = qrLink && isLikelyImageLink(qrLink);
+      const invoiceImageCandidate =
+        invoiceLink && isLikelyImageLink(invoiceLink);
 
-      const fetchImageDataUrl = async (url) => {
-        if (!url) return null;
-        try {
-          const response = await fetch(url, { credentials: "include" });
-          if (!response.ok) return null;
-          const blob = await response.blob();
-          if (!blob.type.startsWith("image/")) return null;
-
-          return await new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result);
-            reader.onerror = reject;
-            reader.readAsDataURL(blob);
-          });
-        } catch (_error) {
-          return null;
-        }
-      };
-
-      const qrDataUrl = qrImageUrl ? await fetchImageDataUrl(qrImageUrl) : null;
-      const invoiceDataUrl = invoiceImageUrl
-        ? await fetchImageDataUrl(invoiceImageUrl)
+      const qrImage = qrImageCandidate ? await loadImageData(qrLink) : null;
+      const invoiceImage = invoiceImageCandidate
+        ? await loadImageData(invoiceLink)
         : null;
 
       const baseRow = {
-        orderId: row["Order ID"],
-        status: row.Status,
-        payment: row["Payment Status"],
-        total:
-          row["Total Amount"] !== undefined
-            ? Number(row["Total Amount"]).toLocaleString("en-IN", {
-                style: "currency",
-                currency: "INR",
-                maximumFractionDigits: 0,
-              })
-            : "-",
-        item: row["Primary Item"],
-        size: row["Primary Size"] || "-",
-        buyer: row["Buyer Name"],
-        qty: row["Item Count"],
-        ship: row["Shipping Address"],
+        orderId: normalizeDisplayText(row["Order ID"]),
+        status: normalizeDisplayText(row.Status),
+        payment: normalizeDisplayText(row["Payment Status"]),
+        total: formatAmount(row["Total Amount"]),
+        item: normalizeDisplayText(row["Primary Item"]),
+        size: normalizeDisplayText(row["Primary Size"] || "-"),
+        buyer: normalizeDisplayText(row["Buyer Name"]),
+        qty: normalizeDisplayText(row["Item Count"]),
+        ship: normalizeDisplayText(row["Shipping Address"]),
+        qr: qrImage,
+        invoice: invoiceImage,
       };
 
-      const rowHeight = Math.max(
-        bodyLineHeight * 2,
-        columns.some((column) => column.type === "image") ? 72 : 0,
+      const estimatedHeight = Math.max(
+        bodyLineHeight * 3,
+        columns.some((column) => column.type === "image") ? 80 : 0,
       );
 
-      if (currentY + rowHeight > pageHeight - bottomMargin) {
+      if (currentY + estimatedHeight > pageHeight - bottomMargin) {
         doc.addPage();
-        pageWidth = doc.internal.pageSize.getWidth();
-        pageHeight = doc.internal.pageSize.getHeight();
-        currentY = marginY;
+        ensurePageMetrics();
         drawHeader();
-        currentY += 8;
       }
 
-      doc.setDrawColor(241, 245, 249);
-      doc.setFillColor(rowIndex % 2 === 0 ? 255 : 250, 250, 250);
-      doc.roundedRect(
-        tableStartX - 6,
-        currentY - 4,
-        tableWidth + 12,
-        rowHeight,
-        4,
-        4,
-        "DF",
-      );
+      let rowHeight = headerHeight + 8;
+      const rowTopY = currentY;
 
-      let x = tableStartX;
       doc.setFontSize(bodyFontSize);
       doc.setTextColor(30, 41, 59);
 
-      const drawTextCell = (text, column, alignOverride) => {
-        const columnAlign = alignOverride || column.align || "left";
-        const textX =
-          columnAlign === "right"
-            ? x + column.width - 4
-            : columnAlign === "center"
-              ? x + column.width / 2
-              : x + 4;
-        const maxWidth = column.width - 8;
-        const lines = doc.splitTextToSize(String(text ?? ""), maxWidth);
-        doc.text(lines, textX, currentY + bodyLineHeight, {
-          align: columnAlign,
-        });
-      };
-
+      let cursorX = tableStartX;
       columns.forEach((column) => {
+        const value = baseRow[column.key];
         if (column.type === "image") {
-          const centerX = x + column.width / 2;
-          const imageY = currentY + 8;
-          const sourceDataUrl =
-            column.key === "qr" ? qrDataUrl : invoiceDataUrl;
-          if (sourceDataUrl) {
+          if (value && value.dataUrl) {
             try {
+              const imageY = currentY + 10;
               doc.addImage(
-                sourceDataUrl,
-                "PNG",
-                centerX - column.imageWidth / 2,
+                value.dataUrl,
+                value.format || "PNG",
+                cursorX + (column.width - column.imageWidth) / 2,
                 imageY,
                 column.imageWidth,
                 column.imageHeight,
               );
-            } catch (_error) {
-              drawTextCell("Image", column, "center");
+              rowHeight = Math.max(rowHeight, column.imageHeight + 24);
+            } catch (error) {
+              console.error("Failed to render image in PDF row", error);
+              const fallbackLabel =
+                column.key === "invoice"
+                  ? resolveInvoiceFallback(invoiceLink, true)
+                  : "Image";
+              const text = normalizeDisplayText(fallbackLabel);
+              const textY = currentY + headerHeight + bodyLineHeight;
+              doc.text(text, cursorX + column.width / 2, textY, {
+                align: "center",
+              });
             }
+          } else if (column.key === "invoice") {
+            const fallbackValue = resolveCellValue(row.Invoice);
+            const displayText =
+              fallbackValue.link && isLikelyImageLink(fallbackValue.link)
+                ? resolveInvoiceFallback(fallbackValue.link, true)
+                : resolveInvoiceFallback(invoiceLink, false);
+            const text = normalizeDisplayText(displayText);
+            const textY = currentY + headerHeight + bodyLineHeight;
+            doc.text(text, cursorX + column.width / 2, textY, {
+              align: "center",
+            });
           } else {
-            drawTextCell("--", column, "center");
+            const text = normalizeDisplayText("--");
+            const textY = currentY + headerHeight + bodyLineHeight;
+            doc.text(text, cursorX + column.width / 2, textY, {
+              align: "center",
+            });
           }
         } else {
-          const value = baseRow[column.key];
-          drawTextCell(value, column);
+          const display = normalizeDisplayText(value);
+          const maxWidth = column.width - 12;
+          const lines = doc.splitTextToSize(display, maxWidth);
+          const textY = currentY + headerHeight + bodyLineHeight;
+          const align = column.align || "left";
+          const textX =
+            align === "right"
+              ? cursorX + column.width - 6
+              : align === "center"
+                ? cursorX + column.width / 2
+                : cursorX + 6;
+          doc.text(lines, textX, textY, { align });
+          const contentHeight = lines.length * bodyLineHeight + 8;
+          rowHeight = Math.max(rowHeight, contentHeight + headerHeight);
         }
-        x += column.width;
+
+        cursorX += column.width;
       });
 
-      currentY += rowHeight + 4;
+      doc.setDrawColor(226, 232, 240);
+      doc.setLineWidth(0.5);
+      doc.line(tableStartX, rowTopY, tableStartX + tableWidth, rowTopY);
+      doc.line(
+        tableStartX,
+        rowTopY + rowHeight,
+        tableStartX + tableWidth,
+        rowTopY + rowHeight,
+      );
+
+      currentY = rowTopY + rowHeight + 2;
     };
 
+    ensurePageMetrics();
     drawHeader();
-    currentY += 8;
 
     // eslint-disable-next-line no-restricted-syntax
     for (const [index, row] of rows.entries()) {

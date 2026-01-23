@@ -5,7 +5,7 @@ import { Link, useLocation } from "react-router-dom";
 const navItems = [
   { label: "Dashboard", icon: LayoutDashboard, to: "/subadmin" },
   { label: "Customers", icon: Users, to: "/subadmin/customers" },
-  { label: "User Dashboard", icon: UserCircle2, to: "/subadmin/user" },
+  { label: "User Dashboard", icon: UserCircle2, to: "/" },
 ];
 
 const SubadminSidebar = ({ active, className, onNavigate }) => {
@@ -15,7 +15,13 @@ const SubadminSidebar = ({ active, className, onNavigate }) => {
   const resolveActive = (item) => {
     if (active && item.label === active) return true;
     if (item.to === "/subadmin" && currentPath === "/subadmin") return true;
-    if (item.to !== "/subadmin" && currentPath.startsWith(item.to)) return true;
+    if (item.to === "/" && currentPath === "/") return true;
+    if (
+      item.to !== "/subadmin" &&
+      item.to !== "/" &&
+      currentPath.startsWith(item.to)
+    )
+      return true;
     return false;
   };
 

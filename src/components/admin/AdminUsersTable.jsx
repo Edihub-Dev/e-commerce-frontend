@@ -80,7 +80,7 @@ const AdminUsersTable = ({
     }
 
     setSelectedIds((prev) =>
-      prev.filter((id) => users.some((usr) => usr._id === id))
+      prev.filter((id) => users.some((usr) => usr._id === id)),
     );
   }, [enableManagement, users]);
 
@@ -159,7 +159,7 @@ const AdminUsersTable = ({
 
       const { data } = await api.put(
         `/admin/users/${selectedUser._id}`,
-        payload
+        payload,
       );
       toast.success("Team member updated");
       setIsSaving(false);
@@ -184,7 +184,7 @@ const AdminUsersTable = ({
           role: normalizeRole(user.role),
         }))
         .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)),
-    [users]
+    [users],
   );
 
   const filteredUsers = useMemo(() => {
@@ -204,8 +204,8 @@ const AdminUsersTable = ({
         statusFilter === "all"
           ? true
           : statusFilter === "verified"
-          ? Boolean(usr.isVerified)
-          : !usr.isVerified;
+            ? Boolean(usr.isVerified)
+            : !usr.isVerified;
 
       return matchesQuery && matchesRole && matchesStatus;
     });
@@ -292,7 +292,7 @@ const AdminUsersTable = ({
             const stringValue = String(value ?? "");
             return `"${stringValue.replace(/"/g, '""')}"`;
           })
-          .join(",")
+          .join(","),
       )
       .join("\n");
 
@@ -304,7 +304,7 @@ const AdminUsersTable = ({
     link.href = url;
     link.setAttribute(
       "download",
-      `team-members-${new Date().toISOString().slice(0, 10)}.csv`
+      `team-members-${new Date().toISOString().slice(0, 10)}.csv`,
     );
     document.body.appendChild(link);
     link.click();
@@ -343,7 +343,7 @@ const AdminUsersTable = ({
     setSelectedIds((prev) =>
       prev.includes(userId)
         ? prev.filter((id) => id !== userId)
-        : [...prev, userId]
+        : [...prev, userId],
     );
   };
 
@@ -364,14 +364,14 @@ const AdminUsersTable = ({
 
       if (deletedIds.length) {
         toast.success(
-          `Deleted ${deletedIds.length} user${deletedIds.length > 1 ? "s" : ""}`
+          `Deleted ${deletedIds.length} user${deletedIds.length > 1 ? "s" : ""}`,
         );
         onUserUpdated?.({ __bulkDelete: true, deletedIds });
       }
 
       if (skippedIds.length) {
         toast.warn(
-          `Skipped ${skippedIds.length} user${skippedIds.length > 1 ? "s" : ""}`
+          `Skipped ${skippedIds.length} user${skippedIds.length > 1 ? "s" : ""}`,
         );
       }
 
@@ -389,7 +389,7 @@ const AdminUsersTable = ({
 
   const selectedUsersDetails = useMemo(
     () => filteredUsers.filter((usr) => selectedIds.includes(usr._id)),
-    [filteredUsers, selectedIds]
+    [filteredUsers, selectedIds],
   );
 
   return (
@@ -494,7 +494,7 @@ const AdminUsersTable = ({
                       checked={
                         paginatedUsers.length > 0 &&
                         paginatedUsers.every((usr) =>
-                          selectedIds.includes(usr._id)
+                          selectedIds.includes(usr._id),
                         )
                       }
                       onChange={handleToggleAll}
@@ -629,13 +629,15 @@ const AdminUsersTable = ({
                       >
                         <Eye size={14} />
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => openDrawer(usr)}
-                        className="inline-flex items-center gap-1 rounded-full border border-slate-200 px-2.5 py-1 text-[10px] font-medium text-slate-500 hover:border-blue-200 hover:text-blue-600 transition"
-                      >
-                        <PencilLine size={14} />
-                      </button>
+                      {enableManagement && (
+                        <button
+                          type="button"
+                          onClick={() => openDrawer(usr)}
+                          className="inline-flex items-center gap-1 rounded-full border border-slate-200 px-2.5 py-1 text-[10px] font-medium text-slate-500 hover:border-blue-200 hover:text-blue-600 transition"
+                        >
+                          <PencilLine size={14} />
+                        </button>
+                      )}
                       {enableManagement && (
                         <button
                           type="button"
@@ -810,13 +812,15 @@ const AdminUsersTable = ({
                         >
                           <Eye size={14} /> View
                         </button>
-                        <button
-                          type="button"
-                          onClick={() => openDrawer(usr)}
-                          className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 px-3 py-1.5 font-semibold text-slate-600 hover:border-blue-200 hover:text-blue-600"
-                        >
-                          <PencilLine size={14} /> Edit
-                        </button>
+                        {enableManagement && (
+                          <button
+                            type="button"
+                            onClick={() => openDrawer(usr)}
+                            className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-slate-200 px-3 py-2 text-xs font-medium text-slate-600 transition hover:border-blue-200 hover:text-blue-600"
+                          >
+                            <PencilLine size={14} /> Edit
+                          </button>
+                        )}
                         {enableManagement && (
                           <button
                             type="button"
@@ -1497,9 +1501,9 @@ AdminUsersTable.propTypes = {
           addressLine: PropTypes.string,
           alternatePhone: PropTypes.string,
           isDefault: PropTypes.bool,
-        })
+        }),
       ),
-    })
+    }),
   ),
   isLoading: PropTypes.bool,
   error: PropTypes.string,

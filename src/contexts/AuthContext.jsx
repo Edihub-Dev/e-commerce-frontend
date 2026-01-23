@@ -15,7 +15,7 @@ const decodeTokenPayload = (token) => {
       atob(base64)
         .split("")
         .map((char) => `%${char.charCodeAt(0).toString(16).padStart(2, "0")}`)
-        .join("")
+        .join(""),
     );
     return JSON.parse(jsonPayload);
   } catch (error) {
@@ -91,7 +91,7 @@ export const AuthProvider = ({ children }) => {
       } catch (storageError) {
         console.warn(
           "Failed to clear auth storage on force logout",
-          storageError
+          storageError,
         );
       }
 
@@ -138,7 +138,7 @@ export const AuthProvider = ({ children }) => {
       const { data } = await api.post("/auth/register", userData);
       toast.success(
         data.message || "Account created. Check your email for the code.",
-        { autoClose: 1000 }
+        { autoClose: 1000 },
       );
       return data;
     } catch (error) {
@@ -210,11 +210,14 @@ export const AuthProvider = ({ children }) => {
 
   const isSeller = Boolean(user?.role === "seller");
 
+  const isSubadmin = Boolean(user?.role === "subadmin");
+
   const value = {
     user,
     isAuthenticated,
     isAdmin,
     isSeller,
+    isSubadmin,
     loading,
     login,
     signup,

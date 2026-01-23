@@ -7,8 +7,9 @@ const ProtectedRoute = ({
   children,
   requireAdmin = false,
   requireSeller = false,
+  requireSubadmin = false,
 }) => {
-  const { isAuthenticated, loading, isAdmin, isSeller } = useAuth();
+  const { isAuthenticated, loading, isAdmin, isSeller, isSubadmin } = useAuth();
   const location = useLocation();
 
   if (loading) {
@@ -27,6 +28,10 @@ const ProtectedRoute = ({
     return <Navigate to="/seller/register" replace />;
   }
 
+  if (requireSubadmin && !isSubadmin) {
+    return <Navigate to="/" replace />;
+  }
+
   return children;
 };
 
@@ -34,11 +39,13 @@ ProtectedRoute.propTypes = {
   children: PropTypes.node.isRequired,
   requireAdmin: PropTypes.bool,
   requireSeller: PropTypes.bool,
+  requireSubadmin: PropTypes.bool,
 };
 
 ProtectedRoute.defaultProps = {
   requireAdmin: false,
   requireSeller: false,
+  requireSubadmin: false,
 };
 
 export default ProtectedRoute;

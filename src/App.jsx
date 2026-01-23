@@ -13,8 +13,8 @@ const CheckoutLayout = lazy(() => import("./pages/checkout/CheckoutLayout"));
 const CheckoutOrder = lazy(() => import("./pages/checkout/CheckoutOrder"));
 const CheckoutAddress = lazy(() => import("./pages/checkout/CheckoutAddress"));
 const CheckoutPayment = lazy(() => import("./pages/checkout/CheckoutPayment"));
-const CheckoutConfirmation = lazy(() =>
-  import("./pages/checkout/CheckoutConfirmation")
+const CheckoutConfirmation = lazy(
+  () => import("./pages/checkout/CheckoutConfirmation"),
 );
 const OrdersPage = lazy(() => import("./pages/orders/OrdersPage"));
 const OrderDetailsPage = lazy(() => import("./pages/orders/OrderDetailsPage"));
@@ -29,8 +29,8 @@ const Contact = lazy(() => import("./pages/Contact"));
 const OffersPage = lazy(() => import("./pages/OffersPage"));
 const HelpSupport = lazy(() => import("./pages/HelpSupport"));
 const PrivacyPolicy = lazy(() => import("./pages/legal/PrivacyPolicy"));
-const TermsAndConditions = lazy(() =>
-  import("./pages/legal/TermsAndConditions")
+const TermsAndConditions = lazy(
+  () => import("./pages/legal/TermsAndConditions"),
 );
 const ReturnPolicy = lazy(() => import("./pages/legal/ReturnPolicy"));
 const SearchResults = lazy(() => import("./pages/SearchResults"));
@@ -39,31 +39,41 @@ const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
 const AdminProductsPage = lazy(() => import("./pages/AdminProductsPage"));
 const AdminAddProductPage = lazy(() => import("./pages/AdminAddProductPage"));
 const AdminOrdersPage = lazy(() => import("./pages/AdminOrdersPage"));
-const AdminOrderDetailsPage = lazy(() =>
-  import("./pages/AdminOrderDetailsPage")
+const AdminOrderDetailsPage = lazy(
+  () => import("./pages/AdminOrderDetailsPage"),
 );
 const AdminHelpSupportPage = lazy(() => import("./pages/AdminHelpSupportPage"));
-const AdminHeroCarouselPage = lazy(() =>
-  import("./pages/AdminHeroCarouselPage")
+const AdminHeroCarouselPage = lazy(
+  () => import("./pages/AdminHeroCarouselPage"),
 );
 const AdminCustomersPage = lazy(() => import("./pages/AdminCustomersPage"));
 const AdminCouponsPage = lazy(() => import("./pages/AdminCouponsPage"));
-const AdminFooterCategoriesPage = lazy(() =>
-  import("./pages/AdminFooterCategoriesPage")
+const AdminFooterCategoriesPage = lazy(
+  () => import("./pages/AdminFooterCategoriesPage"),
 );
-const AdminOfferLightboxPage = lazy(() =>
-  import("./pages/AdminOfferLightboxPage")
+const AdminOfferLightboxPage = lazy(
+  () => import("./pages/AdminOfferLightboxPage"),
 );
-const AdminSellerDetailsPage = lazy(() =>
-  import("./pages/AdminSellerDetailsPage")
+const AdminSellerDetailsPage = lazy(
+  () => import("./pages/AdminSellerDetailsPage"),
+);
+const SubadminDashboard = lazy(() => import("./pages/SubadminDashboard"));
+const SubadminSellerDetailsPage = lazy(
+  () => import("./pages/SubadminSellerDetailsPage"),
+);
+const SubadminCustomersPage = lazy(
+  () => import("./pages/SubadminCustomersPage"),
+);
+const SubadminUserDashboard = lazy(
+  () => import("./pages/SubadminUserDashboard"),
 );
 const SellerSignup = lazy(() => import("./pages/SellerSignup"));
 const SellerDashboard = lazy(() => import("./pages/SellerDashboard"));
 const SellerLayout = lazy(() => import("./components/seller/SellerLayout"));
 const SellerProducts = lazy(() => import("./pages/SellerProducts"));
 const SellerOrders = lazy(() => import("./pages/SellerOrders"));
-const SellerOrderDetailsPage = lazy(() =>
-  import("./pages/SellerOrderDetailsPage")
+const SellerOrderDetailsPage = lazy(
+  () => import("./pages/SellerOrderDetailsPage"),
 );
 const SellerCoupons = lazy(() => import("./pages/SellerCoupons"));
 const SellerAddProduct = lazy(() => import("./pages/SellerAddProduct"));
@@ -187,6 +197,38 @@ function App() {
             />
             <Route path="coupons" element={<SellerCoupons />} />
           </Route>
+          <Route
+            path="/subadmin"
+            element={
+              <ProtectedRoute requireSubadmin>
+                <SubadminDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/subadmin/sellers/:sellerId"
+            element={
+              <ProtectedRoute requireSubadmin>
+                <SubadminSellerDetailsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/subadmin/customers"
+            element={
+              <ProtectedRoute requireSubadmin>
+                <SubadminCustomersPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/subadmin/user"
+            element={
+              <ProtectedRoute requireSubadmin>
+                <SubadminUserDashboard />
+              </ProtectedRoute>
+            }
+          />
           <Route
             path="/admin"
             element={

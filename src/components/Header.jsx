@@ -48,14 +48,15 @@ const Header = () => {
   const [navCategories, setNavCategories] = useState([]);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [localSearchQuery, setLocalSearchQuery] = useState("");
-  const { isAuthenticated, user, logout, isAdmin, isSeller } = useAuth();
+  const { isAuthenticated, user, logout, isAdmin, isSeller, isSubadmin } =
+    useAuth();
   const { cartCount } = useCart();
   const profileMenuRef = useRef(null);
   const searchInputRef = useRef(null);
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { addresses, loading: addressesLoading } = useSelector(
-    (state) => state.address
+    (state) => state.address,
   );
   const { shippingAddress } = useSelector((state) => state.checkout);
   const { searchQuery, setSearchQuery, searchProducts, clearSearch } =
@@ -84,7 +85,7 @@ const Header = () => {
       searchProducts(trimmed);
       navigate(`/search?q=${encodeURIComponent(trimmed)}`);
     },
-    [localSearchQuery, setSearchQuery, searchProducts, clearSearch, navigate]
+    [localSearchQuery, setSearchQuery, searchProducts, clearSearch, navigate],
   );
 
   const persistLocationLabel = useCallback(
@@ -110,7 +111,7 @@ const Header = () => {
         console.debug("Persist location label failed", error);
       }
     },
-    [isAuthenticated]
+    [isAuthenticated],
   );
 
   useEffect(() => {
@@ -192,7 +193,7 @@ const Header = () => {
             name
               .toLowerCase()
               .replace(/[^a-z0-9]+/g, "-")
-              .replace(/^-+|-+$/g, "") || "other"
+              .replace(/^-+|-+$/g, "") || "other",
           );
 
           if (!categoryMap.has(name)) {
@@ -231,12 +232,12 @@ const Header = () => {
         const data = Array.isArray(response)
           ? response
           : Array.isArray(response?.data)
-          ? response.data
-          : Array.isArray(response?.addresses)
-          ? response.addresses
-          : Array.isArray(response?.data?.addresses)
-          ? response.data.addresses
-          : [];
+            ? response.data
+            : Array.isArray(response?.addresses)
+              ? response.addresses
+              : Array.isArray(response?.data?.addresses)
+                ? response.data.addresses
+                : [];
         if (isMounted) {
           dispatch(setAddresses(data));
         }
@@ -530,6 +531,18 @@ const Header = () => {
                         Seller Dashboard
                       </Link>
                     )}
+                    {isSubadmin && (
+                      <Link
+                        to="/subadmin"
+                        onClick={() => {
+                          setIsProfileMenuOpen(false);
+                          setIsProfilePinned(false);
+                        }}
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      >
+                        Subadmin Dashboard
+                      </Link>
+                    )}
                     <Link
                       to="/profile"
                       onClick={() => {
@@ -691,6 +704,16 @@ const Header = () => {
                       >
                         <LayoutDashboard className="h-5 w-5" />
                         <span>Seller Dashboard</span>
+                      </Link>
+                    )}
+                    {isSubadmin && (
+                      <Link
+                        to="/subadmin"
+                        className={mobileMenuItemClasses}
+                        onClick={() => setIsMenuOpen(false)}
+                      >
+                        <LayoutDashboard className="h-5 w-5" />
+                        <span>Subadmin Dashboard</span>
                       </Link>
                     )}
                     <Link

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ExcelJS from "exceljs";
 import jsPDF from "jspdf";
 import { toast } from "react-hot-toast";
@@ -105,6 +105,11 @@ const COUPON_STATUS_OPTIONS = [
   { value: "expired", label: "Expired" },
 ];
 
+const getOrderKey = (order) => {
+  if (!order) return "";
+  return order.orderId || order.id || order._id || "";
+};
+
 const SubadminSellerDetailsPage = () => {
   const { sellerId } = useParams();
   const location = useLocation();
@@ -157,6 +162,8 @@ const SubadminSellerDetailsPage = () => {
   });
   const [savingShipping, setSavingShipping] = useState(false);
   const [downloadingInvoiceId, setDownloadingInvoiceId] = useState(null);
+  const [selectedOrderIds, setSelectedOrderIds] = useState([]);
+  const selectAllCheckboxRef = useRef(null);
 
   const [coupons, setCoupons] = useState([]);
   const [couponsLoading, setCouponsLoading] = useState(true);
@@ -382,6 +389,22 @@ const SubadminSellerDetailsPage = () => {
     loadCoupons();
   }, [sellerId, loadProducts, loadOrders, loadCoupons]);
 
+  useEffect(() => {
+    if (!orders.length) {
+      setSelectedOrderIds((prev) => (prev.length ? [] : prev));
+      return;
+    }
+
+    const validKeys = new Set(
+      orders.map((order) => String(getOrderKey(order))).filter(Boolean),
+    );
+
+    setSelectedOrderIds((prev) => {
+      const pruned = prev.filter((id) => validKeys.has(String(id)));
+      return pruned.length === prev.length ? prev : pruned;
+    });
+  }, [orders]);
+
   const productStatusOptions = useMemo(() => {
     const statuses = new Set();
     products.forEach((product) => {
@@ -503,6 +526,19 @@ const SubadminSellerDetailsPage = () => {
     );
   };
 
+  const resolveCustomerPhone = (order) => {
+    if (!order) return "--";
+    return (
+      order.buyerPhone ||
+      order.customerPhone ||
+      order.shippingAddress?.mobile ||
+      order.shipping?.mobile ||
+      order.buyer?.phone ||
+      order.buyer?.mobile ||
+      "--"
+    );
+  };
+
   const filteredOrders = useMemo(() => {
     const query = ordersSearch.trim().toLowerCase();
     const sorted = [...orders].sort((a, b) => {
@@ -528,8 +564,92 @@ const SubadminSellerDetailsPage = () => {
     });
   }, [orders, ordersSearch]);
 
+  const selectedOrderIdSet = useMemo(
+    () => new Set(selectedOrderIds.map((value) => String(value))),
+    [selectedOrderIds],
+  );
+
+  const filteredSelectedCount = useMemo(() => {
+    if (!filteredOrders.length || selectedOrderIdSet.size === 0) {
+      return 0;
+    }
+
+    let count = 0;
+    filteredOrders.forEach((order) => {
+      const key = String(getOrderKey(order));
+      if (key && selectedOrderIdSet.has(key)) {
+        count += 1;
+      }
+    });
+    return count;
+  }, [filteredOrders, selectedOrderIdSet]);
+
+  useEffect(() => {
+    const checkbox = selectAllCheckboxRef.current;
+    if (!checkbox) return;
+
+    if (!filteredOrders.length) {
+      checkbox.indeterminate = false;
+      return;
+    }
+
+    checkbox.indeterminate =
+      filteredSelectedCount > 0 &&
+      filteredSelectedCount < filteredOrders.length;
+  }, [filteredOrders, filteredSelectedCount]);
+
+  const handleToggleSelectAll = useCallback(() => {
+    if (!filteredOrders.length) {
+      setSelectedOrderIds([]);
+      return;
+    }
+
+    const visibleKeys = filteredOrders
+      .map((order) => String(getOrderKey(order)))
+      .filter(Boolean);
+
+    const hasUnselectedVisible = visibleKeys.some(
+      (key) => !selectedOrderIdSet.has(key),
+    );
+
+    if (hasUnselectedVisible) {
+      setSelectedOrderIds((prev) => {
+        const next = new Set(prev.map((id) => String(id)));
+        visibleKeys.forEach((key) => next.add(key));
+        return Array.from(next);
+      });
+      return;
+    }
+
+    const keysToRemove = new Set(visibleKeys);
+    setSelectedOrderIds((prev) =>
+      prev.filter((id) => !keysToRemove.has(String(id))),
+    );
+  }, [filteredOrders, selectedOrderIdSet]);
+
+  const handleToggleRowSelection = useCallback((orderId) => {
+    const key = String(orderId || "");
+    if (!key) return;
+
+    setSelectedOrderIds((prev) =>
+      prev.includes(key) ? prev.filter((id) => id !== key) : [...prev, key],
+    );
+  }, []);
+
   const buildExportRows = useCallback(() => {
     if (!Array.isArray(filteredOrders) || !filteredOrders.length) {
+      return [];
+    }
+
+    const targetOrders =
+      selectedOrderIdSet.size > 0
+        ? filteredOrders.filter((order) => {
+            const key = String(getOrderKey(order));
+            return key && selectedOrderIdSet.has(key);
+          })
+        : filteredOrders;
+
+    if (!targetOrders.length) {
       return [];
     }
 
@@ -578,7 +698,7 @@ const SubadminSellerDetailsPage = () => {
       }
     };
 
-    return filteredOrders.map((order) => {
+    return targetOrders.map((order) => {
       const items = Array.isArray(order.items) ? order.items : [];
       const primaryItem = items[0] || {};
       const address = order.shippingAddress || order.shipping || {};
@@ -683,7 +803,7 @@ const SubadminSellerDetailsPage = () => {
 
       return row;
     });
-  }, [filteredOrders]);
+  }, [filteredOrders, selectedOrderIdSet]);
 
   const handleExportCsv = useCallback(() => {
     const rows = buildExportRows();
@@ -1973,6 +2093,19 @@ const SubadminSellerDetailsPage = () => {
                   <table className="min-w-full divide-y divide-slate-200 text-xs">
                     <thead className="bg-slate-50">
                       <tr>
+                        <th className="px-3 py-2 text-center font-semibold text-slate-600 w-12">
+                          <input
+                            ref={selectAllCheckboxRef}
+                            type="checkbox"
+                            className="h-4 w-4 rounded border-slate-300 text-slate-700 focus:ring-blue-500"
+                            checked={
+                              filteredOrders.length > 0 &&
+                              filteredSelectedCount === filteredOrders.length
+                            }
+                            onChange={handleToggleSelectAll}
+                            aria-label="Select all visible orders"
+                          />
+                        </th>
                         <th className="px-3 py-2 text-left font-semibold text-slate-600 w-12">
                           S/N
                         </th>
@@ -1981,6 +2114,9 @@ const SubadminSellerDetailsPage = () => {
                         </th>
                         <th className="px-3 py-2 text-left font-semibold text-slate-600">
                           Customer
+                        </th>
+                        <th className="px-3 py-2 text-left font-semibold text-slate-600">
+                          Mobile
                         </th>
                         <th className="px-3 py-2 text-left font-semibold text-slate-600">
                           Status
@@ -2009,7 +2145,7 @@ const SubadminSellerDetailsPage = () => {
                       {ordersLoading ? (
                         <tr>
                           <td
-                            colSpan={9}
+                            colSpan={12}
                             className="px-3 py-6 text-center text-slate-500"
                           >
                             Loading orders...
@@ -2018,7 +2154,7 @@ const SubadminSellerDetailsPage = () => {
                       ) : filteredOrders.length === 0 ? (
                         <tr>
                           <td
-                            colSpan={9}
+                            colSpan={12}
                             className="px-3 py-6 text-center text-slate-500"
                           >
                             No orders found for this seller.
@@ -2026,8 +2162,7 @@ const SubadminSellerDetailsPage = () => {
                         </tr>
                       ) : (
                         filteredOrders.map((order, index) => {
-                          const orderKey =
-                            order.orderId || order.id || order._id;
+                          const orderKey = getOrderKey(order);
                           const paymentStatus =
                             order.paymentStatus ||
                             order.payment?.status ||
@@ -2036,12 +2171,28 @@ const SubadminSellerDetailsPage = () => {
                           const courier = order.shipping?.courier || "Triupati";
                           const trackingId = order.shipping?.trackingId || "";
                           const customerName = resolveCustomerName(order);
+                          const customerPhone = resolveCustomerPhone(order);
                           const orderKeyString = String(orderKey || "");
+                          const isSelected = Boolean(
+                            orderKeyString &&
+                            selectedOrderIdSet.has(orderKeyString),
+                          );
                           const isDownloading =
                             downloadingInvoiceId === orderKeyString;
 
                           return (
                             <tr key={order._id} className="hover:bg-slate-50">
+                              <td className="px-3 py-2 align-middle text-center">
+                                <input
+                                  type="checkbox"
+                                  className="h-4 w-4 rounded border-slate-300 text-slate-700 focus:ring-blue-500"
+                                  checked={isSelected}
+                                  onChange={() =>
+                                    handleToggleRowSelection(orderKeyString)
+                                  }
+                                  aria-label={`Select order ${orderKeyString}`}
+                                />
+                              </td>
                               <td className="px-3 py-2 align-middle text-center text-[11px] font-semibold text-slate-500">
                                 {index + 1}
                               </td>
@@ -2050,6 +2201,9 @@ const SubadminSellerDetailsPage = () => {
                               </td>
                               <td className="px-3 py-2 align-middle text-slate-700">
                                 {customerName}
+                              </td>
+                              <td className="px-3 py-2 align-middle text-slate-700">
+                                {customerPhone || "--"}
                               </td>
                               <td className="px-3 py-2 align-middle text-slate-700">
                                 {order.orderStatus ||

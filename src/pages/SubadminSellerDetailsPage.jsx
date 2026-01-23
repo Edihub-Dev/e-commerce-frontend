@@ -1145,163 +1145,261 @@ const SubadminSellerDetailsPage = () => {
       doc.setTextColor(30, 41, 59);
     };
 
-    const drawHeader = () => {
-      doc.setFont("Helvetica", "bold");
-      doc.setFontSize(18);
-      doc.setTextColor(30, 41, 59);
-      const title = "Seller Orders";
-      const textWidth = doc.getTextWidth(title);
-      const centerX = tableStartX + tableWidth / 2;
-      doc.text(title, centerX - textWidth / 2, marginY - 30);
+    const renderPageHeader = (isFirstPage) => {
+      ensurePageMetrics();
+      const title = isFirstPage ? "Seller Orders" : "Seller Orders (cont.)";
+      const titleOffset = isFirstPage ? 32 : 24;
 
-      doc.setFontSize(10);
-      doc.setTextColor(100, 116, 139);
-      doc.text(
-        `Exported on ${new Date().toLocaleString("en-IN", {
-          year: "numeric",
-          month: "short",
-          day: "numeric",
-          hour: "2-digit",
-          minute: "2-digit",
-        })}`,
-        tableStartX,
-        marginY - 14,
-      );
+      doc.setFont("Helvetica", "bold");
+      doc.setFontSize(isFirstPage ? 16 : 12);
+      doc.setTextColor(30, 41, 59);
+      doc.text(title, pageWidth / 2, marginY - titleOffset, {
+        align: "center",
+      });
 
       currentY = marginY;
       drawColumnHeader();
     };
 
-    const drawRow = async (row, rowIndex) => {
-      const qrLink = row.__qrfolioLink || row["QR Folio Image"];
-      const invoiceLink = row.__invoiceLink || row.Invoice;
+    const appendRow = (rowData, rowIndex) => {
+      const cellInfos = columns.map((column) => {
+        if (column.type === "image") {
+          const cellValue = rowData[column.key] || {};
+          const hasImage = Boolean(cellValue.image && cellValue.image.dataUrl);
+          const linkUrl =
+            typeof cellValue.url === "string" && cellValue.url.trim()
+              ? cellValue.url.trim()
+              : null;
 
-      const qrImageCandidate = qrLink && isLikelyImageLink(qrLink);
-      const invoiceImageCandidate =
-        invoiceLink && isLikelyImageLink(invoiceLink);
+          const fallbackLines = !hasImage
+            ? doc.splitTextToSize(
+                normalizeDisplayText(cellValue.fallback || "Image unavailable"),
+                column.width - 12,
+              )
+            : [];
 
-      const qrImage = qrImageCandidate ? await loadImageData(qrLink) : null;
-      const invoiceImage = invoiceImageCandidate
-        ? await loadImageData(invoiceLink)
-        : null;
+          const imageHeight = column.imageHeight || 52;
+          const requiredHeight = hasImage
+            ? Math.max(imageHeight + 16, 26)
+            : Math.max((fallbackLines.length || 1) * bodyLineHeight + 16, 26);
 
-      const baseRow = {
-        orderId: normalizeDisplayText(row["Order ID"]),
-        status: normalizeDisplayText(row.Status),
-        payment: normalizeDisplayText(row["Payment Status"]),
-        total: formatAmount(row["Total Amount"]),
-        item: normalizeDisplayText(row["Primary Item"]),
-        size: normalizeDisplayText(row["Primary Size"] || "-"),
-        buyer: normalizeDisplayText(row["Buyer Name"]),
-        qty: normalizeDisplayText(row["Item Count"]),
-        ship: normalizeDisplayText(row["Shipping Address"]),
-        qr: qrImage,
-        invoice: invoiceImage,
-      };
+          return {
+            type: "image",
+            hasImage,
+            image: cellValue.image || null,
+            url: linkUrl,
+            fallbackLines,
+            requiredHeight,
+            imageWidth: column.imageWidth || 52,
+            imageHeight,
+          };
+        }
 
-      const estimatedHeight = Math.max(
-        bodyLineHeight * 3,
-        columns.some((column) => column.type === "image") ? 80 : 0,
+        const { text, link } = resolveCellValue(rowData[column.key]);
+        const normalizedText = normalizeDisplayText(
+          typeof text === "string" ? text.replace(/\r?\n/g, "\n") : text,
+        );
+        const lines = doc.splitTextToSize(
+          normalizedText || "--",
+          column.width - 12,
+        );
+
+        return {
+          type: "text",
+          lines: lines.length ? lines : ["--"],
+          link,
+          requiredHeight: Math.max(lines.length * bodyLineHeight + 16, 26),
+        };
+      });
+
+      const rowHeight = Math.max(
+        ...cellInfos.map((entry) => entry.requiredHeight || 26),
       );
 
-      if (currentY + estimatedHeight > pageHeight - bottomMargin) {
-        doc.addPage();
-        ensurePageMetrics();
-        drawHeader();
+      if (currentY + rowHeight > pageHeight - bottomMargin) {
+        doc.addPage({ orientation: "landscape", unit: "pt", format: "a4" });
+        renderPageHeader(false);
       }
 
-      let rowHeight = headerHeight + 8;
-      const rowTopY = currentY;
+      if (rowIndex % 2 === 0) {
+        doc.setFillColor(248, 250, 252);
+        doc.setDrawColor(248, 250, 252);
+        doc.rect(tableStartX, currentY, tableWidth, rowHeight, "F");
+      }
 
+      doc.setDrawColor(221, 226, 233);
+      doc.setFont("Helvetica", "normal");
       doc.setFontSize(bodyFontSize);
       doc.setTextColor(30, 41, 59);
 
       let cursorX = tableStartX;
-      columns.forEach((column) => {
-        const value = baseRow[column.key];
+      columns.forEach((column, columnIndex) => {
+        const cellInfo = cellInfos[columnIndex];
+        doc.rect(cursorX, currentY, column.width, rowHeight);
+
         if (column.type === "image") {
-          if (value && value.dataUrl) {
+          if (cellInfo.hasImage && cellInfo.image?.dataUrl) {
+            const targetWidth = Math.min(cellInfo.imageWidth, column.width - 8);
+            const targetHeight = cellInfo.imageHeight;
+            const imageX = cursorX + (column.width - targetWidth) / 2;
+            const imageY = currentY + (rowHeight - targetHeight) / 2;
+
             try {
-              const imageY = currentY + 10;
               doc.addImage(
-                value.dataUrl,
-                value.format || "PNG",
-                cursorX + (column.width - column.imageWidth) / 2,
+                cellInfo.image.dataUrl,
+                cellInfo.image.format || "PNG",
+                imageX,
                 imageY,
-                column.imageWidth,
-                column.imageHeight,
+                targetWidth,
+                targetHeight,
               );
-              rowHeight = Math.max(rowHeight, column.imageHeight + 24);
+
+              if (cellInfo.url) {
+                doc.link(imageX, imageY, targetWidth, targetHeight, {
+                  url: cellInfo.url,
+                });
+              }
             } catch (error) {
-              console.error("Failed to render image in PDF row", error);
-              const fallbackLabel =
-                column.key === "invoice"
-                  ? resolveInvoiceFallback(invoiceLink, true)
-                  : "Image";
-              const text = normalizeDisplayText(fallbackLabel);
-              const textY = currentY + headerHeight + bodyLineHeight;
-              doc.text(text, cursorX + column.width / 2, textY, {
-                align: "center",
-              });
+              console.error("Failed to add image to PDF", error);
             }
-          } else if (column.key === "invoice") {
-            const fallbackValue = resolveCellValue(row.Invoice);
-            const displayText =
-              fallbackValue.link && isLikelyImageLink(fallbackValue.link)
-                ? resolveInvoiceFallback(fallbackValue.link, true)
-                : resolveInvoiceFallback(invoiceLink, false);
-            const text = normalizeDisplayText(displayText);
-            const textY = currentY + headerHeight + bodyLineHeight;
-            doc.text(text, cursorX + column.width / 2, textY, {
-              align: "center",
-            });
-          } else {
-            const text = normalizeDisplayText("--");
-            const textY = currentY + headerHeight + bodyLineHeight;
-            doc.text(text, cursorX + column.width / 2, textY, {
-              align: "center",
+          } else if (cellInfo.fallbackLines.length) {
+            cellInfo.fallbackLines.forEach((line, lineIndex) => {
+              const textY = currentY + 12 + lineIndex * bodyLineHeight;
+
+              if (cellInfo.url && lineIndex === 0) {
+                doc.setTextColor(37, 99, 235);
+                doc.textWithLink(line, cursorX + 6, textY, {
+                  url: cellInfo.url,
+                });
+                doc.setTextColor(30, 41, 59);
+              } else {
+                doc.text(line, cursorX + 6, textY, { baseline: "top" });
+              }
             });
           }
-        } else {
-          const display = normalizeDisplayText(value);
-          const maxWidth = column.width - 12;
-          const lines = doc.splitTextToSize(display, maxWidth);
-          const textY = currentY + headerHeight + bodyLineHeight;
-          const align = column.align || "left";
-          const textX =
-            align === "right"
-              ? cursorX + column.width - 6
-              : align === "center"
-                ? cursorX + column.width / 2
-                : cursorX + 6;
-          doc.text(lines, textX, textY, { align });
-          const contentHeight = lines.length * bodyLineHeight + 8;
-          rowHeight = Math.max(rowHeight, contentHeight + headerHeight);
+
+          cursorX += column.width;
+          return;
         }
+
+        const { lines, link } = cellInfo;
+        lines.forEach((line, lineIndex) => {
+          const textY = currentY + 12 + lineIndex * bodyLineHeight;
+          const align = column.align || "left";
+          const textOptions = { baseline: "top" };
+
+          if (align === "center") {
+            textOptions.align = "center";
+            if (link && lines.length === 1 && lineIndex === 0) {
+              doc.setTextColor(37, 99, 235);
+              doc.textWithLink(line, cursorX + column.width / 2, textY, {
+                align: "center",
+                url: link,
+              });
+              doc.setTextColor(30, 41, 59);
+            } else {
+              doc.text(line, cursorX + column.width / 2, textY, textOptions);
+            }
+          } else if (align === "right") {
+            textOptions.align = "right";
+            if (link && lines.length === 1 && lineIndex === 0) {
+              doc.setTextColor(37, 99, 235);
+              doc.textWithLink(line, cursorX + column.width - 6, textY, {
+                align: "right",
+                url: link,
+              });
+              doc.setTextColor(30, 41, 59);
+            } else {
+              doc.text(line, cursorX + column.width - 6, textY, textOptions);
+            }
+          } else {
+            if (link && lines.length === 1 && lineIndex === 0) {
+              doc.setTextColor(37, 99, 235);
+              doc.textWithLink(line, cursorX + 6, textY, {
+                url: link,
+              });
+              doc.setTextColor(30, 41, 59);
+            } else {
+              doc.text(line, cursorX + 6, textY, textOptions);
+            }
+          }
+        });
 
         cursorX += column.width;
       });
 
-      doc.setDrawColor(226, 232, 240);
-      doc.setLineWidth(0.5);
-      doc.line(tableStartX, rowTopY, tableStartX + tableWidth, rowTopY);
-      doc.line(
-        tableStartX,
-        rowTopY + rowHeight,
-        tableStartX + tableWidth,
-        rowTopY + rowHeight,
-      );
-
-      currentY = rowTopY + rowHeight + 2;
+      currentY += rowHeight;
     };
 
-    ensurePageMetrics();
-    drawHeader();
+    renderPageHeader(true);
 
-    // eslint-disable-next-line no-restricted-syntax
-    for (const [index, row] of rows.entries()) {
-      // eslint-disable-next-line no-await-in-loop
-      await drawRow(row, index);
+    for (let index = 0; index < rows.length; index += 1) {
+      const row = rows[index];
+      const paymentLabel =
+        `${row["Payment Status"] || ""}` +
+        `${row["Payment Method"] ? ` (${row["Payment Method"]})` : ""}`;
+      const buyerLabel = [
+        row["Buyer Name"],
+        row["Buyer Email"],
+        row["Buyer Phone"],
+      ]
+        .filter(Boolean)
+        .join(" • ");
+      const shippingAddress = (row["Shipping Address"] || "")
+        .split("\n")
+        .map((entry) => entry.trim())
+        .filter(Boolean)
+        .join(", ");
+
+      const qrLink = row.__qrfolioLink || row["QR Folio Image"];
+      const invoiceLink = row.__invoiceLink || row["Invoice"];
+
+      const normalizedQrUrl = normalizeLink(qrLink);
+      const normalizedInvoiceUrl = normalizeLink(invoiceLink);
+      const invoiceAssetUrl = normalizedInvoiceUrl || invoiceLink;
+      const shouldAttemptInvoiceImage = isLikelyImageLink(invoiceAssetUrl);
+
+      const [qrImage, invoiceImageRaw] = await Promise.all([
+        loadImageData(qrLink),
+        shouldAttemptInvoiceImage
+          ? loadImageData(invoiceLink)
+          : Promise.resolve(null),
+      ]);
+
+      const invoiceImage = shouldAttemptInvoiceImage ? invoiceImageRaw : null;
+
+      const rowData = {
+        orderId: normalizeDisplayText(row["Order ID"]),
+        status: normalizeDisplayText(row.Status),
+        payment: normalizeDisplayText(paymentLabel),
+        total: formatAmount(row["Total Amount"]),
+        item: normalizeDisplayText(
+          `${row["Primary Item"] || "--"}$${
+            row["Primary SKU"] ? ` (SKU: ${row["Primary SKU"]})` : ""
+          }`,
+        ),
+        size: normalizeDisplayText(row["Primary Size"] || "--"),
+        buyer: normalizeDisplayText(buyerLabel),
+        qty: normalizeDisplayText(row["Item Count"] ?? 0),
+        ship: normalizeDisplayText(shippingAddress),
+        qr: qrImage
+          ? { image: qrImage, url: normalizedQrUrl }
+          : {
+              fallback: "QR image unavailable",
+              url: normalizedQrUrl,
+            },
+        invoice: invoiceImage
+          ? { image: invoiceImage, url: normalizedInvoiceUrl }
+          : {
+              fallback: resolveInvoiceFallback(
+                invoiceAssetUrl,
+                shouldAttemptInvoiceImage,
+              ),
+              url: normalizedInvoiceUrl,
+            },
+      };
+
+      appendRow(rowData, index);
     }
 
     doc.save(`seller-orders-${new Date().toISOString().slice(0, 10)}.pdf`);

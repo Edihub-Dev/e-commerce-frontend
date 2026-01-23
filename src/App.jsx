@@ -61,6 +61,9 @@ const SubadminDashboard = lazy(() => import("./pages/SubadminDashboard"));
 const SubadminSellerDetailsPage = lazy(
   () => import("./pages/SubadminSellerDetailsPage"),
 );
+const SubadminOrderDetailsPage = lazy(
+  () => import("./pages/SubadminOrderDetailsPage"),
+);
 const SubadminCustomersPage = lazy(
   () => import("./pages/SubadminCustomersPage"),
 );
@@ -210,6 +213,14 @@ function App() {
             element={
               <ProtectedRoute requireSubadmin>
                 <SubadminSellerDetailsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/subadmin/sellers/:sellerId/orders/:orderId"
+            element={
+              <ProtectedRoute requireSubadmin>
+                <SubadminOrderDetailsPage />
               </ProtectedRoute>
             }
           />

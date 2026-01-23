@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import { toast } from "react-hot-toast";
 import api, {
@@ -97,9 +97,12 @@ const buildTrackingUrl = (courier, trackingId) => {
   return null;
 };
 
-const SellerOrderDetailsPage = () => {
+const SellerOrderDetailsPage = ({
+  allowReplacementActions: allowReplacementActionsProp,
+} = {}) => {
   const { orderId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -113,6 +116,22 @@ const SellerOrderDetailsPage = () => {
   });
   const [savingReplacement, setSavingReplacement] = useState(false);
   const notesRef = useRef(null);
+
+  const allowReplacementActions =
+    allowReplacementActionsProp ??
+    location.state?.allowReplacementActions ??
+    true;
+
+  const isSubadminRoute = location.pathname.startsWith("/subadmin");
+  const fallbackReturnTo =
+    location.state?.returnTo ||
+    (isSubadminRoute && sellerId
+      ? `/subadmin/sellers/${sellerId}`
+      : "/seller/orders");
+  const returnState = location.state?.returnState;
+  const returnLabel =
+    location.state?.returnLabel ||
+    (isSubadminRoute ? "Back to seller orders" : "Back to orders");
 
   const loadOrder = useCallback(async () => {
     try {
@@ -155,7 +174,7 @@ const SellerOrderDetailsPage = () => {
   }, [loadOrder]);
 
   const handleBack = () => {
-    navigate("/seller/orders");
+    navigate(fallbackReturnTo, { state: returnState });
   };
 
   const paymentStatus = (order?.payment?.status || "pending").toLowerCase();
@@ -182,6 +201,9 @@ const SellerOrderDetailsPage = () => {
   }, [replacementUpdate.status]);
 
   const handleQuickDecision = (status) => {
+    if (!allowReplacementActions) {
+      return;
+    }
     setReplacementUpdate((prev) => ({
       ...prev,
       status,
@@ -245,7 +267,7 @@ const SellerOrderDetailsPage = () => {
 
   const handleSubmitReplacementUpdate = async (event) => {
     event.preventDefault();
-    if (!order?._id) return;
+    if (!allowReplacementActions || !order?._id) return;
 
     if (
       STATUSES_REQUIRING_REASON.has(replacementUpdate.status) &&
@@ -361,7 +383,7 @@ const SellerOrderDetailsPage = () => {
           onClick={handleBack}
           className="inline-flex items-center gap-2 text-sm text-slate-500 transition hover:text-slate-700"
         >
-          <ArrowLeft className="h-4 w-4" /> Back to orders
+          <ArrowLeft className="h-4 w-4" /> {returnLabel}
         </button>
         <button
           type="button"
@@ -595,22 +617,24 @@ const SellerOrderDetailsPage = () => {
               <h3 className="text-lg font-semibold text-slate-900">
                 Return & Replace request
               </h3>
-              <div className="flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => handleQuickDecision("approved")}
-                  className="inline-flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-100"
-                >
-                  <ClipboardCheck className="h-4 w-4" /> Approve request
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleQuickDecision("rejected")}
-                  className="inline-flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700 hover:bg-rose-100"
-                >
-                  <RotateCcw className="h-4 w-4" /> Reject request
-                </button>
-              </div>
+              {allowReplacementActions ? (
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleQuickDecision("approved")}
+                    className="inline-flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-100"
+                  >
+                    <ClipboardCheck className="h-4 w-4" /> Approve request
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleQuickDecision("rejected")}
+                    className="inline-flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700 hover:bg-rose-100"
+                  >
+                    <RotateCcw className="h-4 w-4" /> Reject request
+                  </button>
+                </div>
+              ) : null}
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
@@ -658,122 +682,133 @@ const SellerOrderDetailsPage = () => {
               </div>
             </div>
 
-            <form
-              className="mt-6 grid gap-4 md:grid-cols-[1fr_1fr]"
-              onSubmit={handleSubmitReplacementUpdate}
-            >
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-primary">
-                  Update status
-                </label>
-                <select
-                  value={replacementUpdate.status}
-                  onChange={(event) =>
-                    handleReplacementFieldChange("status", event.target.value)
-                  }
-                  className="w-full rounded-xl border border-primary/30 px-3 py-2 text-sm focus:border-primary focus:outline-none"
-                  required
-                >
-                  {REPLACEMENT_STATUS_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
+            {allowReplacementActions ? (
+              <form
+                className="mt-6 grid gap-4 md:grid-cols-[1fr_1fr]"
+                onSubmit={handleSubmitReplacementUpdate}
+              >
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-primary">
+                    Update status
+                  </label>
+                  <select
+                    value={replacementUpdate.status}
+                    onChange={(event) =>
+                      handleReplacementFieldChange("status", event.target.value)
+                    }
+                    className="w-full rounded-xl border border-primary/30 px-3 py-2 text-sm focus:border-primary focus:outline-none"
+                    required
+                  >
+                    {REPLACEMENT_STATUS_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-primary">
-                  Courier (optional)
-                </label>
-                <input
-                  value={replacementUpdate.courier}
-                  onChange={(event) =>
-                    handleReplacementFieldChange("courier", event.target.value)
-                  }
-                  className="w-full rounded-xl border border-primary/30 px-3 py-2 text-sm focus:border-primary focus:outline-none"
-                  placeholder="e.g. Delhivery"
-                />
-              </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-primary">
+                    Courier (optional)
+                  </label>
+                  <input
+                    value={replacementUpdate.courier}
+                    onChange={(event) =>
+                      handleReplacementFieldChange(
+                        "courier",
+                        event.target.value,
+                      )
+                    }
+                    className="w-full rounded-xl border border-primary/30 px-3 py-2 text-sm focus:border-primary focus:outline-none"
+                    placeholder="e.g. Delhivery"
+                  />
+                </div>
 
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-primary">
-                  Tracking ID (optional)
-                </label>
-                <input
-                  value={replacementUpdate.trackingId}
-                  onChange={(event) =>
-                    handleReplacementFieldChange(
-                      "trackingId",
-                      event.target.value,
-                    )
-                  }
-                  className="w-full rounded-xl border border-primary/30 px-3 py-2 text-sm focus:border-primary focus:outline-none"
-                  placeholder="e.g. AWB123456"
-                />
-              </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-primary">
+                    Tracking ID (optional)
+                  </label>
+                  <input
+                    value={replacementUpdate.trackingId}
+                    onChange={(event) =>
+                      handleReplacementFieldChange(
+                        "trackingId",
+                        event.target.value,
+                      )
+                    }
+                    className="w-full rounded-xl border border-primary/30 px-3 py-2 text-sm focus:border-primary focus:outline-none"
+                    placeholder="e.g. AWB123456"
+                  />
+                </div>
 
-              <div className="space-y-2 md:col-span-2">
-                <label className="text-sm font-medium text-primary">
-                  Notes for customer
-                </label>
-                <textarea
-                  value={replacementUpdate.notes}
-                  onChange={(event) =>
-                    handleReplacementFieldChange("notes", event.target.value)
-                  }
-                  rows={3}
-                  ref={notesRef}
-                  required={STATUSES_REQUIRING_REASON.has(
-                    replacementUpdate.status,
-                  )}
-                  className={`w-full rounded-xl border px-3 py-2 text-sm focus:border-primary focus:outline-none ${
-                    STATUSES_REQUIRING_REASON.has(replacementUpdate.status)
-                      ? "border-rose-200"
-                      : "border-primary/30"
-                  }`}
-                  placeholder={
-                    STATUSES_REQUIRING_REASON.has(replacementUpdate.status)
-                      ? "Explain why you are rejecting this request."
-                      : "Share updates or next actions (optional)."
-                  }
-                />
-                {STATUSES_REQUIRING_REASON.has(replacementUpdate.status) ? (
-                  <p className="text-xs text-rose-500">
-                    A reason is required when rejecting.
-                  </p>
-                ) : (
-                  <p className="text-xs text-slate-500">
-                    Optional message shared with the customer.
-                  </p>
-                )}
-              </div>
-
-              <div className="flex flex-wrap items-center justify-end gap-3 md:col-span-2">
-                <button
-                  type="submit"
-                  disabled={
-                    savingReplacement ||
-                    (STATUSES_REQUIRING_REASON.has(replacementUpdate.status) &&
-                      !(
-                        replacementUpdate.notes &&
-                        replacementUpdate.notes.trim()
-                      ))
-                  }
-                  className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-primary-dark disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {savingReplacement ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" /> Saving...
-                    </>
+                <div className="space-y-2 md:col-span-2">
+                  <label className="text-sm font-medium text-primary">
+                    Notes for customer
+                  </label>
+                  <textarea
+                    value={replacementUpdate.notes}
+                    onChange={(event) =>
+                      handleReplacementFieldChange("notes", event.target.value)
+                    }
+                    rows={3}
+                    ref={notesRef}
+                    required={STATUSES_REQUIRING_REASON.has(
+                      replacementUpdate.status,
+                    )}
+                    className={`w-full rounded-xl border px-3 py-2 text-sm focus:border-primary focus:outline-none ${
+                      STATUSES_REQUIRING_REASON.has(replacementUpdate.status)
+                        ? "border-rose-200"
+                        : "border-primary/30"
+                    }`}
+                    placeholder={
+                      STATUSES_REQUIRING_REASON.has(replacementUpdate.status)
+                        ? "Explain why you are rejecting this request."
+                        : "Share updates or next actions (optional)."
+                    }
+                  />
+                  {STATUSES_REQUIRING_REASON.has(replacementUpdate.status) ? (
+                    <p className="text-xs text-rose-500">
+                      A reason is required when rejecting.
+                    </p>
                   ) : (
-                    <>
-                      <ClipboardCheck className="h-4 w-4" /> Update request
-                    </>
+                    <p className="text-xs text-slate-500">
+                      Optional message shared with the customer.
+                    </p>
                   )}
-                </button>
-              </div>
-            </form>
+                </div>
+
+                <div className="flex flex-wrap items-center justify-end gap-3 md:col-span-2">
+                  <button
+                    type="submit"
+                    disabled={
+                      savingReplacement ||
+                      (STATUSES_REQUIRING_REASON.has(
+                        replacementUpdate.status,
+                      ) &&
+                        !(
+                          replacementUpdate.notes &&
+                          replacementUpdate.notes.trim()
+                        ))
+                    }
+                    className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-primary-dark disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {savingReplacement ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" /> Saving...
+                      </>
+                    ) : (
+                      <>
+                        <ClipboardCheck className="h-4 w-4" /> Update request
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <p className="mt-6 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                Replacement workflow is read-only in coordinator view.
+              </p>
+            )}
           </section>
         )}
 

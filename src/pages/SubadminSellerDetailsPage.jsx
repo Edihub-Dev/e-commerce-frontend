@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
+import ExcelJS from "exceljs";
+import jsPDF from "jspdf";
+import { toast } from "react-hot-toast";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   Eye,
@@ -10,6 +13,12 @@ import {
   X,
   ImageOff,
   Loader2,
+  Tag,
+  ShieldCheck,
+  Layers,
+  CalendarDays,
+  AlertTriangle,
+  Gift,
 } from "lucide-react";
 import SubadminSidebar from "../components/subadmin/SubadminSidebar";
 import Navbar from "../components/admin/Navbar";
@@ -34,6 +43,45 @@ const ORDER_STATUS_OPTIONS = [
   "rejected",
 ];
 
+const ORDER_STATUS_CARD_CONFIG = [
+  {
+    key: "processing",
+    label: "Processing",
+    accent: "text-amber-600",
+    badge: "bg-amber-100 text-amber-700",
+  },
+  {
+    key: "confirmed",
+    label: "Confirmed",
+    accent: "text-blue-600",
+    badge: "bg-blue-100 text-blue-700",
+  },
+  {
+    key: "shipped",
+    label: "Shipped",
+    accent: "text-sky-600",
+    badge: "bg-sky-100 text-sky-700",
+  },
+  {
+    key: "out_for_delivery",
+    label: "Out for Delivery",
+    accent: "text-indigo-600",
+    badge: "bg-indigo-100 text-indigo-700",
+  },
+  {
+    key: "delivered",
+    label: "Delivered",
+    accent: "text-emerald-600",
+    badge: "bg-emerald-100 text-emerald-700",
+  },
+  {
+    key: "returned",
+    label: "Return / Replace",
+    accent: "text-rose-600",
+    badge: "bg-rose-100 text-rose-700",
+  },
+];
+
 const PRODUCT_AVAILABILITY_OPTIONS = [
   { value: "all", label: "All availability" },
   { value: "in_stock", label: "In stock" },
@@ -48,12 +96,43 @@ const PRODUCT_DATE_FILTER_OPTIONS = [
   { value: "last_90_days", label: "Last 90 days" },
 ];
 
+const COUPON_STATUS_OPTIONS = [
+  { value: "all", label: "All coupons" },
+  { value: "active", label: "Active" },
+  { value: "inactive", label: "Inactive" },
+  { value: "redeemed", label: "Redeemed" },
+  { value: "not_redeemed", label: "Not redeemed" },
+  { value: "expired", label: "Expired" },
+];
+
 const SubadminSellerDetailsPage = () => {
   const { sellerId } = useParams();
+  const location = useLocation();
+  const navigate = useNavigate();
   const { user, logout } = useAuth();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const initialTab = location.state?.initialTab;
 
-  const [activeTab, setActiveTab] = useState("products");
+  const [activeTab, setActiveTab] = useState(() => initialTab || "products");
+
+  const handleChangeTab = (tab) => {
+    setActiveTab(tab);
+    if (location.state?.initialTab) {
+      navigate(location.pathname, {
+        replace: true,
+        state: {
+          ...location.state,
+          initialTab: tab,
+        },
+      });
+    }
+  };
+
+  useEffect(() => {
+    if (location.state?.initialTab) {
+      setActiveTab(location.state.initialTab);
+    }
+  }, [location.state?.initialTab]);
 
   const [products, setProducts] = useState([]);
   const [productsLoading, setProductsLoading] = useState(true);
@@ -70,6 +149,7 @@ const SubadminSellerDetailsPage = () => {
   const [ordersError, setOrdersError] = useState("");
   const [ordersStatusFilter, setOrdersStatusFilter] = useState("");
   const [ordersSearch, setOrdersSearch] = useState("");
+  const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
   const [editingOrder, setEditingOrder] = useState(null);
   const [editForm, setEditForm] = useState({
     courier: "Triupati",
@@ -81,6 +161,170 @@ const SubadminSellerDetailsPage = () => {
   const [coupons, setCoupons] = useState([]);
   const [couponsLoading, setCouponsLoading] = useState(true);
   const [couponsError, setCouponsError] = useState("");
+  const [couponSearch, setCouponSearch] = useState("");
+  const [couponStatusFilter, setCouponStatusFilter] = useState("all");
+
+  const filteredCoupons = useMemo(() => {
+    const query = couponSearch.trim().toLowerCase();
+    const now = new Date();
+
+    return coupons.filter((coupon) => {
+      const isActive = coupon.isActive !== false;
+      const maxRedemptions = Number(coupon.maxRedemptions) || 0;
+      const usageCount = Number(coupon.usageCount) || 0;
+      const isRedeemed = usageCount > 0;
+      const endDate = coupon.endDate ? new Date(coupon.endDate) : null;
+      const isExpired =
+        endDate && !Number.isNaN(endDate.getTime()) && endDate < now;
+
+      const matchesStatus = (() => {
+        switch (couponStatusFilter) {
+          case "active":
+            return isActive && !isExpired;
+          case "inactive":
+            return !isActive;
+          case "redeemed":
+            return isRedeemed;
+          case "not_redeemed":
+            return !isRedeemed;
+          case "expired":
+            return isExpired;
+          default:
+            return true;
+        }
+      })();
+
+      if (!matchesStatus) return false;
+
+      if (!query) return true;
+
+      const values = [
+        coupon.code,
+        coupon.description,
+        coupon.discountType,
+        coupon.discountValue,
+      ]
+        .filter(Boolean)
+        .map((value) => String(value).toLowerCase());
+
+      return values.some((value) => value.includes(query));
+    });
+  }, [coupons, couponSearch, couponStatusFilter]);
+
+  const couponSummary = useMemo(() => {
+    const summary = {
+      total: filteredCoupons.length,
+      active: 0,
+      singleUse: 0,
+      multiUse: 0,
+      expiredSingle: 0,
+      expiredMulti: 0,
+      redeemed: 0,
+      notRedeemed: 0,
+    };
+
+    const now = new Date();
+
+    filteredCoupons.forEach((coupon) => {
+      const isActive = coupon.isActive !== false;
+      if (isActive) summary.active += 1;
+
+      const maxRedemptions = Number(coupon.maxRedemptions) || 0;
+      const totalUsage = Number(coupon.usageCount) || 0;
+      const isSingleUse = maxRedemptions <= 1;
+
+      if (isSingleUse) {
+        summary.singleUse += 1;
+      } else {
+        summary.multiUse += 1;
+      }
+
+      const endDate = coupon.endDate ? new Date(coupon.endDate) : null;
+      const isExpired =
+        endDate && !Number.isNaN(endDate.getTime()) && endDate < now;
+      if (isExpired) {
+        if (isSingleUse) {
+          summary.expiredSingle += 1;
+        } else {
+          summary.expiredMulti += 1;
+        }
+      }
+
+      if (totalUsage > 0) {
+        summary.redeemed += 1;
+      } else {
+        summary.notRedeemed += 1;
+      }
+    });
+
+    return summary;
+  }, [filteredCoupons]);
+
+  const couponCards = useMemo(
+    () => [
+      {
+        key: "total",
+        label: "Total Coupons",
+        value: couponSummary.total,
+        icon: Tag,
+        iconBg: "bg-blue-100 text-blue-600",
+        helper:
+          coupons.length !== couponSummary.total
+            ? `of ${coupons.length}`
+            : null,
+      },
+      {
+        key: "active",
+        label: "Active",
+        value: couponSummary.active,
+        icon: ShieldCheck,
+        iconBg: "bg-emerald-100 text-emerald-600",
+      },
+      {
+        key: "single",
+        label: "Single Use",
+        value: couponSummary.singleUse,
+        icon: Layers,
+        iconBg: "bg-purple-100 text-purple-600",
+      },
+      {
+        key: "multi",
+        label: "Multi Use",
+        value: couponSummary.multiUse,
+        icon: CalendarDays,
+        iconBg: "bg-amber-100 text-amber-600",
+      },
+      {
+        key: "expiredSingle",
+        label: "Expired Single Use",
+        value: couponSummary.expiredSingle,
+        icon: AlertTriangle,
+        iconBg: "bg-slate-100 text-slate-500",
+      },
+      {
+        key: "expiredMulti",
+        label: "Expired Multi Use",
+        value: couponSummary.expiredMulti,
+        icon: AlertTriangle,
+        iconBg: "bg-orange-100 text-orange-600",
+      },
+      {
+        key: "redeemed",
+        label: "Redeemed Coupons",
+        value: couponSummary.redeemed,
+        icon: Gift,
+        iconBg: "bg-emerald-100 text-emerald-600",
+      },
+      {
+        key: "notRedeemed",
+        label: "Not Redeemed",
+        value: couponSummary.notRedeemed,
+        icon: Gift,
+        iconBg: "bg-indigo-100 text-indigo-600",
+      },
+    ],
+    [couponSummary, coupons.length],
+  );
 
   const loadProducts = useCallback(async () => {
     try {
@@ -284,6 +528,622 @@ const SubadminSellerDetailsPage = () => {
     });
   }, [orders, ordersSearch]);
 
+  const buildExportRows = useCallback(() => {
+    if (!Array.isArray(filteredOrders) || !filteredOrders.length) {
+      return [];
+    }
+
+    const formatShippingAddress = (address = {}) => {
+      const contactLine = [address.fullName, address.mobile]
+        .filter(Boolean)
+        .join(" • ");
+      const addressParts = [
+        address.addressLine1,
+        address.addressLine2,
+        address.landmark,
+        address.city,
+        address.state,
+        address.pincode,
+      ]
+        .filter(Boolean)
+        .join(", ");
+      return [contactLine, addressParts].filter(Boolean).join(" | ");
+    };
+
+    const toAbsoluteUrl = (value) => {
+      const source = typeof value === "string" ? value.trim() : "";
+      if (!source) {
+        return "";
+      }
+
+      if (/^https?:\/\//i.test(source)) {
+        return source;
+      }
+
+      if (source.startsWith("//")) {
+        if (typeof window !== "undefined" && window.location?.protocol) {
+          return `${window.location.protocol}${source}`;
+        }
+        return `https:${source}`;
+      }
+
+      try {
+        const base =
+          typeof window !== "undefined" && window.location?.origin
+            ? window.location.origin
+            : undefined;
+        return base ? new URL(source, base).href : source;
+      } catch (_error) {
+        return source;
+      }
+    };
+
+    return filteredOrders.map((order) => {
+      const items = Array.isArray(order.items) ? order.items : [];
+      const primaryItem = items[0] || {};
+      const address = order.shippingAddress || order.shipping || {};
+      const qrfolio = order.qrfolio || {};
+      const resolveQrfolioFallback = () => {
+        if (qrfolio.imageKey) {
+          return qrfolio.imageKey;
+        }
+
+        const source = qrfolio.imageUrl || "";
+        if (!source) {
+          return "";
+        }
+
+        try {
+          const url = new URL(source, window.location.origin);
+          const pathname = url.pathname || "";
+          const trimmed = pathname.endsWith("/")
+            ? pathname.slice(0, -1)
+            : pathname;
+          const segments = trimmed.split("/").filter(Boolean);
+          return segments.length ? segments[segments.length - 1] : "";
+        } catch (_error) {
+          const sanitized = source.split("?")[0];
+          const fallbackSegments = sanitized.split("/").filter(Boolean);
+          return fallbackSegments.length
+            ? fallbackSegments[fallbackSegments.length - 1]
+            : sanitized;
+        }
+      };
+      const qrfolioUrl =
+        typeof qrfolio.imageUrl === "string" ? qrfolio.imageUrl.trim() : "";
+      const invoice = order.invoice || {};
+      const invoiceUrl = toAbsoluteUrl(invoice.url || order.invoiceUrl || "");
+      const row = {};
+
+      row["Order ID"] = order.orderId || order.id || order._id;
+      row.Status = order.orderStatus || order.status || "processing";
+      row["Payment Status"] =
+        order.paymentStatus || order.payment?.status || "pending";
+      row["Payment Method"] =
+        order.paymentMethod || order.payment?.method || "";
+      row["Total Amount"] =
+        order.total ?? order.totalAmount ?? order.pricing?.total ?? 0;
+      row["Item Count"] = items.length;
+      row["Primary Item"] = primaryItem.name || primaryItem.productName || "";
+      row["Primary SKU"] = primaryItem.sku || "";
+      row["Primary Size"] = primaryItem.size || primaryItem.selectedSize || "";
+      row["Buyer Name"] =
+        order.buyerName || order.customerName || address.fullName || "";
+      row["Buyer Email"] =
+        order.buyerEmail || order.customerEmail || address.email || "";
+      row["Buyer Phone"] = order.buyerPhone || address.mobile || "";
+      row["Created At"] = order.createdAt
+        ? new Date(order.createdAt).toLocaleString("en-IN", {
+            year: "numeric",
+            month: "short",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+          })
+        : "-";
+      row["Estimated Delivery"] = order.estimatedDeliveryDate
+        ? new Date(order.estimatedDeliveryDate).toLocaleString("en-IN", {
+            year: "numeric",
+            month: "short",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+          })
+        : "--";
+      row["Shipping Address"] = formatShippingAddress(address);
+      row["QR Folio Image"] = qrfolioUrl || resolveQrfolioFallback();
+      row["Invoice Number"] = invoice.number || order.invoiceNumber || "";
+      row["Invoice Date"] = invoice.generatedAt
+        ? new Date(invoice.generatedAt).toLocaleString("en-IN", {
+            year: "numeric",
+            month: "short",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+          })
+        : order.invoiceDate
+          ? new Date(order.invoiceDate).toLocaleString("en-IN", {
+              year: "numeric",
+              month: "short",
+              day: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+            })
+          : "--";
+      row["Invoice"] = invoiceUrl;
+
+      Object.defineProperty(row, "__qrfolioLink", {
+        value: qrfolioUrl,
+        enumerable: false,
+      });
+      Object.defineProperty(row, "__invoiceLink", {
+        value: invoiceUrl,
+        enumerable: false,
+      });
+
+      return row;
+    });
+  }, [filteredOrders]);
+
+  const handleExportCsv = useCallback(() => {
+    const rows = buildExportRows();
+    if (!rows.length) {
+      toast.error("No orders to export");
+      return;
+    }
+
+    const header = Object.keys(rows[0]);
+    const csvContent = [
+      header.join(","),
+      ...rows.map((row) =>
+        header
+          .map((key) => `"${String(row[key] ?? "").replace(/"/g, '""')}"`)
+          .join(","),
+      ),
+    ].join("\n");
+
+    const blob = new Blob(["\uFEFF" + csvContent], {
+      type: "text/csv;charset=utf-8;",
+    });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `seller-orders-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+    toast.success("CSV exported");
+  }, [buildExportRows]);
+
+  const handleExportXlsx = useCallback(async () => {
+    const rows = buildExportRows();
+    if (!rows.length) {
+      toast.error("No orders to export");
+      return;
+    }
+
+    const header = Object.keys(rows[0]);
+    const qrColumnIndex = header.indexOf("QR Folio Image");
+    const invoiceColumnIndex = header.indexOf("Invoice");
+
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("Orders");
+
+    worksheet.addRow(header);
+
+    if (qrColumnIndex !== -1) {
+      worksheet.getColumn(qrColumnIndex + 1).width = 16;
+    }
+    if (invoiceColumnIndex !== -1) {
+      worksheet.getColumn(invoiceColumnIndex + 1).width = 24;
+    }
+
+    const normalizeUrl = (value) => {
+      if (!value || typeof value !== "string") {
+        return null;
+      }
+
+      const trimmed = value.trim();
+      if (!trimmed) {
+        return null;
+      }
+
+      try {
+        return new URL(trimmed).toString();
+      } catch (_error) {
+        try {
+          const base = window.location?.origin || "";
+          if (!base) return trimmed;
+          return new URL(trimmed.replace(/^\/+/, ""), base).toString();
+        } catch (_nestedError) {
+          return trimmed;
+        }
+      }
+    };
+
+    const imageCache = new Map();
+
+    const loadQrImage = async (rawUrl) => {
+      const normalizedUrl = normalizeUrl(rawUrl);
+      if (!normalizedUrl) {
+        return null;
+      }
+
+      if (imageCache.has(normalizedUrl)) {
+        return imageCache.get(normalizedUrl);
+      }
+
+      try {
+        const response = await fetch(normalizedUrl, { credentials: "include" });
+        if (!response.ok) {
+          throw new Error(`Unexpected status ${response.status}`);
+        }
+
+        const blob = await response.blob();
+        if (!blob.type || !blob.type.startsWith("image/")) {
+          imageCache.set(normalizedUrl, null);
+          return null;
+        }
+
+        const dataUrl = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+
+        const extension = blob.type.includes("png")
+          ? "png"
+          : blob.type.includes("jpeg") || blob.type.includes("jpg")
+            ? "jpeg"
+            : blob.type.includes("webp")
+              ? "webp"
+              : "png";
+
+        const payload = { dataUrl, extension };
+        imageCache.set(normalizedUrl, payload);
+        return payload;
+      } catch (error) {
+        console.error(
+          "Failed to load QR image for XLSX export",
+          normalizedUrl,
+          error,
+        );
+        imageCache.set(normalizedUrl, null);
+        return null;
+      }
+    };
+
+    for (let index = 0; index < rows.length; index += 1) {
+      const row = rows[index];
+      const excelRowIndex = index + 2; // account for header row
+
+      const qrLink = row.__qrfolioLink || row["QR Folio Image"];
+      const qrImage =
+        qrColumnIndex !== -1 && qrLink ? await loadQrImage(qrLink) : null;
+
+      const rowValues = header.map((key) => {
+        if (key === "QR Folio Image") {
+          return qrImage ? "" : row[key] || "";
+        }
+        return row[key];
+      });
+
+      const addedRow = worksheet.addRow(rowValues);
+
+      if (qrImage && qrImage.dataUrl && qrColumnIndex !== -1) {
+        const base64 =
+          typeof qrImage.dataUrl === "string"
+            ? qrImage.dataUrl.split(",")[1] || qrImage.dataUrl
+            : qrImage.dataUrl;
+
+        const imageId = workbook.addImage({
+          base64,
+          extension: qrImage.extension || "png",
+        });
+
+        addedRow.height = 70;
+
+        worksheet.addImage(imageId, {
+          tl: { col: qrColumnIndex, row: excelRowIndex - 1 },
+          ext: { width: 72, height: 72 },
+        });
+      }
+
+      if (invoiceColumnIndex !== -1) {
+        const invoiceLink = row.__invoiceLink;
+        if (invoiceLink) {
+          const cell = addedRow.getCell(invoiceColumnIndex + 1);
+          const text = row["Invoice"] || invoiceLink;
+          cell.value = { text, hyperlink: invoiceLink };
+        }
+      }
+    }
+
+    try {
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `seller-orders-${new Date()
+        .toISOString()
+        .slice(0, 10)}.xlsx`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      toast.success("XLSX exported");
+    } catch (error) {
+      console.error("Failed to export XLSX with QR images", error);
+      toast.error("Failed to export XLSX. Please try again.");
+    }
+  }, [buildExportRows]);
+
+  const handleExportPdf = useCallback(async () => {
+    const rows = buildExportRows();
+    if (!rows.length) {
+      toast.error("No orders to export");
+      return;
+    }
+
+    const doc = new jsPDF({
+      orientation: "landscape",
+      unit: "pt",
+      format: "a4",
+    });
+
+    const columns = [
+      { key: "orderId", label: "Order ID", width: 65 },
+      { key: "status", label: "Status", width: 45 },
+      { key: "payment", label: "Payment", width: 72 },
+      { key: "total", label: "Total (INR)", width: 65, align: "right" },
+      { key: "item", label: "Primary Item", width: 112 },
+      { key: "size", label: "Size", width: 36, align: "center" },
+      { key: "buyer", label: "Buyer", width: 80 },
+      { key: "qty", label: "Qty", width: 30, align: "center" },
+      { key: "ship", label: "Ship To", width: 102 },
+      {
+        key: "qr",
+        label: "QR Code",
+        width: 70,
+        type: "image",
+        imageWidth: 52,
+        imageHeight: 52,
+      },
+      {
+        key: "invoice",
+        label: "Invoice",
+        width: 88,
+        type: "image",
+        imageWidth: 68,
+        imageHeight: 52,
+      },
+    ];
+
+    const tableStartX = 32;
+    const marginY = 72;
+    const bottomMargin = 48;
+    const headerHeight = 26;
+    const tableWidth = columns.reduce((sum, column) => sum + column.width, 0);
+    const bodyFontSize = 9;
+    const bodyLineHeight = 12;
+
+    let currentY = marginY;
+    let pageWidth = doc.internal.pageSize.getWidth();
+    let pageHeight = doc.internal.pageSize.getHeight();
+
+    const drawHeader = () => {
+      doc.setFontSize(14);
+      doc.setTextColor(30, 41, 59);
+      doc.text("Seller Orders", tableStartX, currentY - 32);
+
+      doc.setFontSize(9);
+      doc.setTextColor(100, 116, 139);
+      doc.text(
+        `Exported on ${new Date().toLocaleString("en-IN", {
+          year: "numeric",
+          month: "short",
+          day: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+        })}`,
+        tableStartX,
+        currentY - 16,
+      );
+
+      doc.setDrawColor(226, 232, 240);
+      doc.setFillColor(248, 250, 252);
+      doc.roundedRect(
+        tableStartX - 8,
+        currentY - headerHeight,
+        tableWidth + 16,
+        headerHeight,
+        6,
+        6,
+        "DF",
+      );
+
+      let x = tableStartX;
+      doc.setFontSize(9);
+      doc.setTextColor(100, 116, 139);
+      columns.forEach((column) => {
+        const textX =
+          column.align === "right"
+            ? x + column.width - 4
+            : column.align === "center"
+              ? x + column.width / 2
+              : x + 4;
+        const align = column.align || "left";
+        doc.text(column.label, textX, currentY - 8, { align });
+        x += column.width;
+      });
+    };
+
+    const drawRow = async (row, rowIndex) => {
+      const qrLink = row.__qrfolioLink || row["QR Folio Image"];
+      const invoiceLink = row.__invoiceLink || row.Invoice;
+
+      const qrImageUrl = qrLink || null;
+      const invoiceImageUrl = invoiceLink || null;
+
+      const fetchImageDataUrl = async (url) => {
+        if (!url) return null;
+        try {
+          const response = await fetch(url, { credentials: "include" });
+          if (!response.ok) return null;
+          const blob = await response.blob();
+          if (!blob.type.startsWith("image/")) return null;
+
+          return await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+          });
+        } catch (_error) {
+          return null;
+        }
+      };
+
+      const qrDataUrl = qrImageUrl ? await fetchImageDataUrl(qrImageUrl) : null;
+      const invoiceDataUrl = invoiceImageUrl
+        ? await fetchImageDataUrl(invoiceImageUrl)
+        : null;
+
+      const baseRow = {
+        orderId: row["Order ID"],
+        status: row.Status,
+        payment: row["Payment Status"],
+        total:
+          row["Total Amount"] !== undefined
+            ? Number(row["Total Amount"]).toLocaleString("en-IN", {
+                style: "currency",
+                currency: "INR",
+                maximumFractionDigits: 0,
+              })
+            : "-",
+        item: row["Primary Item"],
+        size: row["Primary Size"] || "-",
+        buyer: row["Buyer Name"],
+        qty: row["Item Count"],
+        ship: row["Shipping Address"],
+      };
+
+      const rowHeight = Math.max(
+        bodyLineHeight * 2,
+        columns.some((column) => column.type === "image") ? 72 : 0,
+      );
+
+      if (currentY + rowHeight > pageHeight - bottomMargin) {
+        doc.addPage();
+        pageWidth = doc.internal.pageSize.getWidth();
+        pageHeight = doc.internal.pageSize.getHeight();
+        currentY = marginY;
+        drawHeader();
+        currentY += 8;
+      }
+
+      doc.setDrawColor(241, 245, 249);
+      doc.setFillColor(rowIndex % 2 === 0 ? 255 : 250, 250, 250);
+      doc.roundedRect(
+        tableStartX - 6,
+        currentY - 4,
+        tableWidth + 12,
+        rowHeight,
+        4,
+        4,
+        "DF",
+      );
+
+      let x = tableStartX;
+      doc.setFontSize(bodyFontSize);
+      doc.setTextColor(30, 41, 59);
+
+      const drawTextCell = (text, column, alignOverride) => {
+        const columnAlign = alignOverride || column.align || "left";
+        const textX =
+          columnAlign === "right"
+            ? x + column.width - 4
+            : columnAlign === "center"
+              ? x + column.width / 2
+              : x + 4;
+        const maxWidth = column.width - 8;
+        const lines = doc.splitTextToSize(String(text ?? ""), maxWidth);
+        doc.text(lines, textX, currentY + bodyLineHeight, {
+          align: columnAlign,
+        });
+      };
+
+      columns.forEach((column) => {
+        if (column.type === "image") {
+          const centerX = x + column.width / 2;
+          const imageY = currentY + 8;
+          const sourceDataUrl =
+            column.key === "qr" ? qrDataUrl : invoiceDataUrl;
+          if (sourceDataUrl) {
+            try {
+              doc.addImage(
+                sourceDataUrl,
+                "PNG",
+                centerX - column.imageWidth / 2,
+                imageY,
+                column.imageWidth,
+                column.imageHeight,
+              );
+            } catch (_error) {
+              drawTextCell("Image", column, "center");
+            }
+          } else {
+            drawTextCell("--", column, "center");
+          }
+        } else {
+          const value = baseRow[column.key];
+          drawTextCell(value, column);
+        }
+        x += column.width;
+      });
+
+      currentY += rowHeight + 4;
+    };
+
+    drawHeader();
+    currentY += 8;
+
+    // eslint-disable-next-line no-restricted-syntax
+    for (const [index, row] of rows.entries()) {
+      // eslint-disable-next-line no-await-in-loop
+      await drawRow(row, index);
+    }
+
+    doc.save(`seller-orders-${new Date().toISOString().slice(0, 10)}.pdf`);
+    toast.success("PDF exported");
+  }, [buildExportRows]);
+
+  const orderSummaryCards = useMemo(() => {
+    const counts = ORDER_STATUS_CARD_CONFIG.reduce((accumulator, config) => {
+      accumulator[config.key] = 0;
+      return accumulator;
+    }, {});
+
+    filteredOrders.forEach((order) => {
+      const statusKey = String(order.orderStatus || order.status || "")
+        .toLowerCase()
+        .trim();
+      if (statusKey && counts[statusKey] !== undefined) {
+        counts[statusKey] += 1;
+      }
+    });
+
+    return ORDER_STATUS_CARD_CONFIG.map((config) => ({
+      ...config,
+      value: counts[config.key] ?? 0,
+    }));
+  }, [filteredOrders]);
+
   const handleOpenEditShipping = (order) => {
     const defaultCourier =
       (order.shipping && order.shipping.courier) || "Triupati";
@@ -473,7 +1333,7 @@ const SubadminSellerDetailsPage = () => {
             <div className="flex flex-wrap items-center gap-3">
               <button
                 type="button"
-                onClick={() => setActiveTab("products")}
+                onClick={() => handleChangeTab("products")}
                 className={`rounded-full px-4 py-1.5 text-sm font-medium border transition-colors ${
                   activeTab === "products"
                     ? "border-slate-900 bg-slate-900 text-white"
@@ -484,7 +1344,7 @@ const SubadminSellerDetailsPage = () => {
               </button>
               <button
                 type="button"
-                onClick={() => setActiveTab("orders")}
+                onClick={() => handleChangeTab("orders")}
                 className={`rounded-full px-4 py-1.5 text-sm font-medium border transition-colors ${
                   activeTab === "orders"
                     ? "border-slate-900 bg-slate-900 text-white"
@@ -495,7 +1355,7 @@ const SubadminSellerDetailsPage = () => {
               </button>
               <button
                 type="button"
-                onClick={() => setActiveTab("coupons")}
+                onClick={() => handleChangeTab("coupons")}
                 className={`rounded-full px-4 py-1.5 text-sm font-medium border transition-colors ${
                   activeTab === "coupons"
                     ? "border-slate-900 bg-slate-900 text-white"
@@ -696,10 +1556,47 @@ const SubadminSellerDetailsPage = () => {
 
             {activeTab === "orders" && (
               <section className="space-y-4">
+                {!ordersLoading && orders.length > 0 && (
+                  <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                    {orderSummaryCards.map(
+                      ({ key, label, value, accent, badge }) => (
+                        <div
+                          key={key}
+                          className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
+                        >
+                          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
+                            {label}
+                          </p>
+                          <div className="mt-3 flex items-baseline gap-3">
+                            <span
+                              className={`text-3xl font-semibold ${accent}`}
+                            >
+                              {value}
+                            </span>
+                            <span
+                              className={`inline-flex items-center rounded-full px-3 py-1 text-[11px] font-semibold ${badge}`}
+                            >
+                              {key.replace(/_/g, " ")}
+                            </span>
+                          </div>
+                        </div>
+                      ),
+                    )}
+                  </div>
+                )}
+
                 <header className="flex flex-wrap items-center justify-between gap-3">
-                  <h2 className="text-lg font-semibold text-slate-900">
-                    Orders
-                  </h2>
+                  <div className="space-y-1">
+                    <h2 className="text-lg font-semibold text-slate-900">
+                      Orders
+                    </h2>
+                    {!ordersLoading && (
+                      <p className="text-xs text-slate-500">
+                        Showing {filteredOrders.length} of {orders.length}{" "}
+                        orders
+                      </p>
+                    )}
+                  </div>
                   <div className="flex flex-wrap items-center gap-3">
                     <div className="flex items-center gap-2">
                       <Filter size={16} className="text-slate-400" />
@@ -728,6 +1625,57 @@ const SubadminSellerDetailsPage = () => {
                         placeholder="Search by order id, buyer or tracking"
                         className="w-64 rounded-full border border-slate-200 bg-white py-1.5 pl-8 pr-3 text-xs text-slate-700 placeholder:text-slate-400 focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-100"
                       />
+                    </div>
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={() => setIsExportMenuOpen((prev) => !prev)}
+                        className="inline-flex items-center gap-2 rounded-full border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:border-blue-200 hover:text-blue-600"
+                      >
+                        <Download size={14} /> Export
+                      </button>
+                      <AnimatePresence>
+                        {isExportMenuOpen && (
+                          <motion.div
+                            initial={{ opacity: 0, y: -6 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -6 }}
+                            transition={{ duration: 0.18 }}
+                            className="absolute right-0 top-full z-20 mt-2 w-44 rounded-xl border border-slate-200 bg-white text-left shadow-xl"
+                          >
+                            <button
+                              type="button"
+                              onClick={() => {
+                                handleExportCsv();
+                                setIsExportMenuOpen(false);
+                              }}
+                              className="block w-full px-4 py-2 text-xs text-slate-600 hover:bg-slate-50"
+                            >
+                              Export as CSV
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                handleExportXlsx();
+                                setIsExportMenuOpen(false);
+                              }}
+                              className="block w-full px-4 py-2 text-xs text-slate-600 hover:bg-slate-50"
+                            >
+                              Export as XLSX
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                handleExportPdf();
+                                setIsExportMenuOpen(false);
+                              }}
+                              className="block w-full px-4 py-2 text-xs text-slate-600 hover:bg-slate-50"
+                            >
+                              Export as PDF
+                            </button>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
                     </div>
                   </div>
                 </header>
@@ -860,8 +1808,19 @@ const SubadminSellerDetailsPage = () => {
                                   <button
                                     type="button"
                                     onClick={() =>
-                                      window.alert(
-                                        `Order details view is read-only for subadmin. Order: ${orderKey}`,
+                                      navigate(
+                                        `/subadmin/sellers/${sellerId}/orders/${orderKey}`,
+                                        {
+                                          state: {
+                                            returnTo: `/subadmin/sellers/${sellerId}`,
+                                            returnState: {
+                                              initialTab: "orders",
+                                            },
+                                            returnLabel:
+                                              "Back to seller orders",
+                                            allowReplacementActions: false,
+                                          },
+                                        },
                                       )
                                     }
                                     className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 text-slate-600 hover:border-blue-200 hover:text-blue-600"
@@ -894,13 +1853,79 @@ const SubadminSellerDetailsPage = () => {
             {activeTab === "coupons" && (
               <section className="space-y-4">
                 <header className="flex items-center justify-between gap-3">
-                  <h2 className="text-lg font-semibold text-slate-900">
-                    Coupons
-                  </h2>
-                  {couponsLoading && (
-                    <p className="text-xs text-slate-500">Loading coupons...</p>
-                  )}
+                  <div className="space-y-1">
+                    <h2 className="text-lg font-semibold text-slate-900">
+                      Coupons
+                    </h2>
+                    {!couponsLoading && (
+                      <p className="text-xs text-slate-500">
+                        Showing {filteredCoupons.length} of {coupons.length}{" "}
+                        coupons
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <div className="flex items-center gap-2">
+                      <Filter size={16} className="text-slate-400" />
+                      <select
+                        value={couponStatusFilter}
+                        onChange={(event) =>
+                          setCouponStatusFilter(event.target.value)
+                        }
+                        className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-700 focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                      >
+                        {COUPON_STATUS_OPTIONS.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                      <input
+                        type="text"
+                        value={couponSearch}
+                        onChange={(event) =>
+                          setCouponSearch(event.target.value)
+                        }
+                        placeholder="Search by code, description or discount"
+                        className="w-64 rounded-full border border-slate-200 bg-white py-1.5 pl-8 pr-3 text-xs text-slate-700 placeholder:text-slate-400 focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                      />
+                    </div>
+                  </div>
                 </header>
+                {!couponsLoading && filteredCoupons.length > 0 && (
+                  <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                    {couponCards.map(
+                      ({ key, label, value, icon: Icon, iconBg, helper }) => (
+                        <div
+                          key={key}
+                          className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
+                        >
+                          <div className="flex items-center justify-between">
+                            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
+                              {label}
+                            </p>
+                            <span
+                              className={`inline-flex h-8 w-8 items-center justify-center rounded-full ${iconBg}`}
+                            >
+                              <Icon size={16} />
+                            </span>
+                          </div>
+                          <p className="mt-3 text-2xl font-semibold text-slate-900">
+                            {value}
+                          </p>
+                          {helper && (
+                            <p className="text-[11px] font-medium text-slate-500">
+                              {helper}
+                            </p>
+                          )}
+                        </div>
+                      ),
+                    )}
+                  </div>
+                )}
                 {couponsError && (
                   <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-600">
                     {couponsError}
@@ -910,6 +1935,9 @@ const SubadminSellerDetailsPage = () => {
                   <table className="min-w-full divide-y divide-slate-200 text-sm">
                     <thead className="bg-slate-50">
                       <tr>
+                        <th className="px-3 py-2 text-left font-semibold text-slate-600 w-16">
+                          S/N
+                        </th>
                         <th className="px-3 py-2 text-left font-semibold text-slate-600">
                           Code
                         </th>
@@ -920,6 +1948,18 @@ const SubadminSellerDetailsPage = () => {
                           Discount
                         </th>
                         <th className="px-3 py-2 text-left font-semibold text-slate-600">
+                          Type
+                        </th>
+                        <th className="px-3 py-2 text-left font-semibold text-slate-600">
+                          Usage
+                        </th>
+                        <th className="px-3 py-2 text-left font-semibold text-slate-600">
+                          Validity
+                        </th>
+                        <th className="px-3 py-2 text-left font-semibold text-slate-600">
+                          Status
+                        </th>
+                        <th className="px-3 py-2 text-left font-semibold text-slate-600">
                           Active
                         </th>
                       </tr>
@@ -928,40 +1968,106 @@ const SubadminSellerDetailsPage = () => {
                       {couponsLoading ? (
                         <tr>
                           <td
-                            colSpan={4}
+                            colSpan={9}
                             className="px-3 py-6 text-center text-slate-500"
                           >
                             Loading coupons...
                           </td>
                         </tr>
-                      ) : coupons.length === 0 ? (
+                      ) : filteredCoupons.length === 0 ? (
                         <tr>
                           <td
-                            colSpan={4}
+                            colSpan={9}
                             className="px-3 py-6 text-center text-slate-500"
                           >
                             No coupons found for this seller.
                           </td>
                         </tr>
                       ) : (
-                        coupons.map((coupon) => (
-                          <tr key={coupon._id} className="hover:bg-slate-50">
-                            <td className="px-3 py-2 align-middle font-mono text-xs text-slate-800">
-                              {coupon.code}
-                            </td>
-                            <td className="px-3 py-2 align-middle text-slate-700">
-                              {coupon.description || "--"}
-                            </td>
-                            <td className="px-3 py-2 align-middle text-slate-700">
-                              {coupon.discountType === "flat"
-                                ? `₹${coupon.discountValue}`
-                                : `${coupon.discountValue}%`}
-                            </td>
-                            <td className="px-3 py-2 align-middle text-slate-700">
-                              {coupon.isActive !== false ? "Yes" : "No"}
-                            </td>
-                          </tr>
-                        ))
+                        filteredCoupons
+                          .slice()
+                          .sort((a, b) => {
+                            const aDate = a?.createdAt
+                              ? new Date(a.createdAt).getTime()
+                              : 0;
+                            const bDate = b?.createdAt
+                              ? new Date(b.createdAt).getTime()
+                              : 0;
+                            return bDate - aDate;
+                          })
+                          .map((coupon, index) => {
+                            const maxRedemptions =
+                              Number(coupon.maxRedemptions) || 0;
+                            const usageCount = Number(coupon.usageCount) || 0;
+                            const isSingleUse = maxRedemptions <= 1;
+                            const startDate = coupon.startDate
+                              ? new Date(coupon.startDate)
+                              : null;
+                            const endDate = coupon.endDate
+                              ? new Date(coupon.endDate)
+                              : null;
+                            const formatDate = (date) =>
+                              date && !Number.isNaN(date.getTime())
+                                ? date.toLocaleDateString("en-IN", {
+                                    year: "numeric",
+                                    month: "short",
+                                    day: "numeric",
+                                  })
+                                : "--";
+                            const now = new Date();
+                            const isExpired = endDate && endDate < now;
+                            const statusLabel =
+                              usageCount > 0 ? "Redeemed" : "Not redeemed";
+
+                            return (
+                              <tr
+                                key={coupon._id}
+                                className="hover:bg-slate-50"
+                              >
+                                <td className="px-3 py-2 align-middle text-xs font-semibold text-slate-500">
+                                  {index + 1}
+                                </td>
+                                <td className="px-3 py-2 align-middle font-mono text-xs text-slate-800">
+                                  {coupon.code}
+                                </td>
+                                <td className="px-3 py-2 align-middle text-slate-700">
+                                  {coupon.description || "--"}
+                                </td>
+                                <td className="px-3 py-2 align-middle text-slate-700">
+                                  {coupon.discountType === "flat"
+                                    ? `₹${coupon.discountValue}`
+                                    : `${coupon.discountValue}%`}
+                                </td>
+                                <td className="px-3 py-2 align-middle text-slate-700">
+                                  {isSingleUse ? "Single" : "Multi"}
+                                </td>
+                                <td className="px-3 py-2 align-middle text-slate-700">
+                                  {`${usageCount} / ${
+                                    maxRedemptions > 0 ? maxRedemptions : "∞"
+                                  }`}
+                                </td>
+                                <td className="px-3 py-2 align-middle text-slate-700">
+                                  {`${formatDate(startDate)} - ${formatDate(endDate)}`}
+                                </td>
+                                <td className="px-3 py-2 align-middle text-slate-700">
+                                  <span
+                                    className={`inline-flex items-center rounded-full px-3 py-1 text-[11px] font-semibold ${
+                                      statusLabel === "Redeemed"
+                                        ? "bg-emerald-100 text-emerald-700"
+                                        : isExpired
+                                          ? "bg-slate-100 text-slate-500"
+                                          : "bg-blue-100 text-blue-700"
+                                    }`}
+                                  >
+                                    {statusLabel}
+                                  </span>
+                                </td>
+                                <td className="px-3 py-2 align-middle text-slate-700">
+                                  {coupon.isActive !== false ? "Yes" : "No"}
+                                </td>
+                              </tr>
+                            );
+                          })
                       )}
                     </tbody>
                   </table>

@@ -229,10 +229,18 @@ const buildTrackingUrl = (courier, trackingId) => {
   const normalizedCourier = String(courier || "")
     .trim()
     .toLowerCase();
+  const encodedId = encodeURIComponent(trackingId.trim());
 
   if (normalizedCourier === "triupati" || normalizedCourier === "tirupati") {
-    const encodedId = encodeURIComponent(trackingId.trim());
     return `https://trackcourier.io/track-and-trace/tirupati-courier/${encodedId}`;
+  }
+
+  if (normalizedCourier.includes("xpressbees")) {
+    return `https://trackcourier.io/track-and-trace/xpressbees-logistics/${encodedId}`;
+  }
+
+  if (normalizedCourier.includes("delhivery")) {
+    return `https://trackcourier.io/track-and-trace/delhivery-courier/${encodedId}`;
   }
 
   return null;

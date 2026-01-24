@@ -110,6 +110,12 @@ const getOrderKey = (order) => {
   return order.orderId || order.id || order._id || "";
 };
 
+const COURIER_OPTIONS = [
+  { value: "Triupati", label: "Triupati" },
+  { value: "Xpressbees Logistics", label: "Xpressbees Logistics" },
+  { value: "Delhivery Courier", label: "Delhivery Courier" },
+];
+
 const SubadminSellerDetailsPage = () => {
   const { sellerId } = useParams();
   const location = useLocation();
@@ -2795,8 +2801,7 @@ const SubadminSellerDetailsPage = () => {
                   <label className="block text-xs font-medium text-slate-600">
                     Courier
                   </label>
-                  <input
-                    type="text"
+                  <select
                     value={editForm.courier}
                     onChange={(event) =>
                       setEditForm((prev) => ({
@@ -2805,7 +2810,14 @@ const SubadminSellerDetailsPage = () => {
                       }))
                     }
                     className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-800 focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-100"
-                  />
+                    required
+                  >
+                    {COURIER_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-600">

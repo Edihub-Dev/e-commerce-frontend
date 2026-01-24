@@ -55,9 +55,8 @@ const SORT_OPTIONS = [
 
 const COURIER_OPTIONS = [
   { value: "Triupati", label: "Triupati" },
-  { value: "Ekart Logistics", label: "Ekart Logistics" },
-  { value: "Delhivery", label: "Delhivery" },
-  { value: "Bluedart", label: "Bluedart" },
+  { value: "Xpressbees Logistics", label: "Xpressbees Logistics" },
+  { value: "Delhivery Courier", label: "Delhivery Courier" },
 ];
 
 const SUMMARY_CONFIG = [

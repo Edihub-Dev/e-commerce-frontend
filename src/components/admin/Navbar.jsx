@@ -47,7 +47,7 @@ const Navbar = ({
           <button
             type="button"
             onClick={onToggleSidebar}
-            className="md:hidden inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 text-slate-600 hover:text-blue-600 hover:border-blue-200 transition"
+            className="lg:hidden inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 text-slate-600 hover:text-blue-600 hover:border-blue-200 transition"
             aria-label="Toggle navigation"
           >
             <Menu size={20} />

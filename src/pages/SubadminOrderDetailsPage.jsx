@@ -16,7 +16,7 @@ const SubadminOrderDetailsPage = () => {
       <div className="flex md:h-screen">
         <SubadminSidebar
           active="Dashboard"
-          className="hidden md:flex md:w-64 md:flex-none"
+          className="hidden lg:flex lg:w-64 lg:flex-none"
           onNavigate={() => setIsSidebarOpen(false)}
         />
 
@@ -26,7 +26,7 @@ const SubadminOrderDetailsPage = () => {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 z-40 flex md:hidden"
+              className="fixed inset-0 z-40 flex lg:hidden"
             >
               <motion.div
                 initial={{ x: "-100%" }}

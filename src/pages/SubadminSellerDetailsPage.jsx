@@ -27,9 +27,12 @@ import {
   fetchSubadminSellerProducts,
   fetchSubadminSellerOrders,
   fetchSubadminSellerCoupons,
-  updateSubadminOrderShipping,
 } from "../services/subadminApi";
-import { downloadOrderInvoice } from "../utils/api";
+import {
+  downloadOrderInvoice,
+  fetchOrderById,
+  updateOrder,
+} from "../utils/api";
 
 const ORDER_STATUS_OPTIONS = [
   "",
@@ -105,6 +108,15 @@ const COUPON_STATUS_OPTIONS = [
   { value: "expired", label: "Expired" },
 ];
 
+const toDateInputValue = (value) => {
+  if (!value) return "";
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return "";
+  const tzOffsetMs = parsed.getTimezoneOffset() * 60 * 1000;
+  const adjusted = new Date(parsed.getTime() - tzOffsetMs);
+  return adjusted.toISOString().slice(0, 10);
+};
+
 const getOrderKey = (order) => {
   if (!order) return "";
   return order.orderId || order.id || order._id || "";
@@ -163,10 +175,17 @@ const SubadminSellerDetailsPage = () => {
   const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
   const [editingOrder, setEditingOrder] = useState(null);
   const [editForm, setEditForm] = useState({
+    status: "",
+    paymentStatus: "",
+    paymentMethod: "",
+    estimatedDeliveryDate: "",
+    rejectionPermanent: false,
     courier: "Triupati",
     trackingId: "",
   });
-  const [savingShipping, setSavingShipping] = useState(false);
+  const todayInputValue = useMemo(() => toDateInputValue(new Date()), []);
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+  const lastNonDeliveredEstimateRef = useRef("");
   const [downloadingInvoiceId, setDownloadingInvoiceId] = useState(null);
   const [selectedOrderIds, setSelectedOrderIds] = useState([]);
   const selectAllCheckboxRef = useRef(null);
@@ -1553,48 +1572,202 @@ const SubadminSellerDetailsPage = () => {
     }));
   }, [filteredOrders]);
 
-  const handleOpenEditShipping = (order) => {
-    const defaultCourier =
-      (order.shipping && order.shipping.courier) || "Triupati";
-    const defaultTracking = order.shipping?.trackingId || "";
+  const handleOpenEditShipping = async (order) => {
+    const orderKey = getOrderKey(order);
+    if (!orderKey) {
+      toast.error("Order reference unavailable");
+      return;
+    }
 
-    setEditingOrder(order);
-    setEditForm({ courier: defaultCourier, trackingId: defaultTracking });
+    try {
+      const response = await fetchOrderById(orderKey);
+      const fullOrder = response?.data;
+
+      if (!fullOrder) {
+        throw new Error("Order details not found");
+      }
+
+      const defaultCourier =
+        (fullOrder.shipping && fullOrder.shipping.courier) || "Triupati";
+
+      const nextForm = {
+        status: fullOrder.status || "processing",
+        paymentStatus: fullOrder.payment?.status || "",
+        paymentMethod: fullOrder.payment?.method || "",
+        estimatedDeliveryDate:
+          toDateInputValue(fullOrder.estimatedDeliveryDate) || "",
+        rejectionPermanent: Boolean(fullOrder.rejectionPermanent),
+        courier: defaultCourier,
+        trackingId: fullOrder.shipping?.trackingId || "",
+      };
+
+      setEditingOrder(fullOrder);
+      setEditForm(nextForm);
+
+      const initialEstimate =
+        String(nextForm.status || "").toLowerCase() === "delivered"
+          ? ""
+          : nextForm.estimatedDeliveryDate;
+      lastNonDeliveredEstimateRef.current = initialEstimate || "";
+    } catch (err) {
+      const message =
+        err?.response?.data?.message ||
+        err?.message ||
+        "Failed to load order for editing";
+      toast.error(message);
+    }
+  };
+
+  const handleCloseEdit = () => {
+    if (isSavingEdit) return;
+    setEditingOrder(null);
+  };
+
+  const handleEditFieldChange = (field, value) => {
+    setEditForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleStatusFieldChange = (event) => {
+    const nextStatus = event.target.value;
+    setEditForm((prev) => {
+      const prevStatus = String(prev.status || "").toLowerCase();
+      const nextStatusLower = String(nextStatus || "").toLowerCase();
+      const willBeDelivered = nextStatusLower === "delivered";
+      const wasDelivered = prevStatus === "delivered";
+
+      let nextEstimated = prev.estimatedDeliveryDate;
+
+      if (willBeDelivered && !wasDelivered) {
+        if (
+          !prev.estimatedDeliveryDate &&
+          lastNonDeliveredEstimateRef.current
+        ) {
+        } else {
+          lastNonDeliveredEstimateRef.current =
+            prev.estimatedDeliveryDate ||
+            lastNonDeliveredEstimateRef.current ||
+            "";
+        }
+        nextEstimated = todayInputValue;
+      } else if (!willBeDelivered && wasDelivered) {
+        nextEstimated = lastNonDeliveredEstimateRef.current || "";
+      }
+
+      if (!willBeDelivered) {
+        lastNonDeliveredEstimateRef.current =
+          nextEstimated || lastNonDeliveredEstimateRef.current || "";
+      }
+
+      return {
+        ...prev,
+        status: nextStatus,
+        estimatedDeliveryDate: nextEstimated,
+        rejectionPermanent:
+          nextStatusLower === "rejected" ? prev.rejectionPermanent : false,
+      };
+    });
+  };
+
+  const normalizedOrderPaymentStatus = (editingOrder?.payment?.status || "")
+    .toString()
+    .toLowerCase();
+  const normalizedFormPaymentStatus = (editForm.paymentStatus || "")
+    .toString()
+    .toLowerCase();
+  const effectivePaymentStatus =
+    normalizedFormPaymentStatus || normalizedOrderPaymentStatus;
+  const normalizedFormStatus = (editForm.status || "").toString().toLowerCase();
+
+  const isDeliveryDateLocked = editingOrder
+    ? ["delivered", "returned"].includes(
+        (editingOrder.status || "").toString().toLowerCase(),
+      )
+    : false;
+
+  const isPaymentStatusLocked =
+    normalizedOrderPaymentStatus === "paid" ||
+    normalizedFormPaymentStatus === "paid";
+
+  const isPaymentSuccessful = [
+    "paid",
+    "success",
+    "successful",
+    "completed",
+  ].includes(effectivePaymentStatus);
+  const requiresPaymentSuccess = normalizedFormStatus === "delivered";
+  const canSaveEdit = !requiresPaymentSuccess || isPaymentSuccessful;
+  const isRejectionLockActive =
+    normalizedFormStatus === "rejected" && Boolean(editForm.rejectionPermanent);
+
+  const handleEstimatedDeliveryChange = (event) => {
+    const { value } = event.target;
+    if (isDeliveryDateLocked) {
+      toast.error("Estimated delivery date cannot be changed after delivery.");
+      return;
+    }
+    setEditForm((prev) => {
+      const isDelivered =
+        String(prev.status || "").toLowerCase() === "delivered";
+      if (!isDelivered) {
+        lastNonDeliveredEstimateRef.current = value;
+      }
+      return { ...prev, estimatedDeliveryDate: value };
+    });
   };
 
   const handleSaveShipping = async (event) => {
     event.preventDefault();
     if (!editingOrder) return;
 
-    const orderKey =
-      editingOrder.orderId || editingOrder.id || editingOrder._id;
-    if (!orderKey) return;
-
-    try {
-      setSavingShipping(true);
-      const payload = {
-        courier: editForm.courier,
-        trackingId: editForm.trackingId,
-      };
-      const updated = await updateSubadminOrderShipping(orderKey, payload);
-
-      setOrders((prev) =>
-        prev.map((order) => {
-          const key = order.orderId || order.id || order._id;
-          if (String(key) === String(orderKey)) {
-            const nextShipping = updated.shipping || payload;
-            return { ...order, shipping: nextShipping };
-          }
-          return order;
-        }),
+    if (requiresPaymentSuccess && !isPaymentSuccessful) {
+      toast.error(
+        "Payment must be successful before marking an order as delivered.",
       );
+      return;
+    }
+
+    setIsSavingEdit(true);
+    try {
+      const payload = {
+        status: editForm.status || undefined,
+        paymentStatus: editForm.paymentStatus || undefined,
+        paymentMethod: editForm.paymentMethod || undefined,
+        estimatedDeliveryDate: editForm.estimatedDeliveryDate || null,
+      };
+
+      if (editForm.courier) {
+        payload.courier = editForm.courier;
+      }
+
+      if (editForm.trackingId) {
+        payload.trackingId = editForm.trackingId;
+      }
+
+      const nextStatusLower = (editForm.status || "").toString().toLowerCase();
+
+      if (nextStatusLower === "rejected") {
+        payload.rejectionPermanent = Boolean(editForm.rejectionPermanent);
+      } else if (
+        editingOrder?.rejectionPermanent &&
+        String(editingOrder.status || "").toLowerCase() === "rejected"
+      ) {
+        payload.rejectionPermanent = false;
+      }
+
+      const targetId = editingOrder.orderId || editingOrder._id;
+      await updateOrder(targetId, payload);
+
+      toast.success("Order updated successfully");
+      await loadOrders();
       setEditingOrder(null);
     } catch (err) {
-      console.error("Failed to update order shipping for subadmin", err);
-      // surface minimal error
-      window.alert(err.message || "Failed to update shipping details.");
+      const message =
+        err?.message ||
+        err?.response?.data?.message ||
+        "Failed to update order";
+      toast.error(message);
     } finally {
-      setSavingShipping(false);
+      setIsSavingEdit(false);
     }
   };
 
@@ -2771,84 +2944,200 @@ const SubadminSellerDetailsPage = () => {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+            onClick={handleCloseEdit}
           >
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
               transition={{ duration: 0.2 }}
-              className="relative w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl"
+              className="relative w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl"
+              onClick={(event) => event.stopPropagation()}
             >
               <button
                 type="button"
-                onClick={() => setEditingOrder(null)}
+                onClick={handleCloseEdit}
                 className="absolute right-4 top-4 inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 text-slate-500 hover:border-slate-300 hover:text-slate-700"
                 aria-label="Close"
+                disabled={isSavingEdit}
               >
                 <X size={16} />
               </button>
               <h2 className="text-lg font-semibold text-slate-900">
-                Edit Courier & Tracking
+                Edit Order
               </h2>
               <p className="mt-1 text-xs text-slate-500">
-                Only courier name and tracking ID can be updated by subadmin.
+                Update order status, payment details and courier information.
               </p>
               <form
                 onSubmit={handleSaveShipping}
                 className="mt-4 space-y-4 text-sm"
               >
                 <div>
-                  <label className="block text-xs font-medium text-slate-600">
-                    Courier
+                  <label className="block text-xs font-medium text-slate-700">
+                    Order Status
+                    <select
+                      value={editForm.status}
+                      onChange={handleStatusFieldChange}
+                      className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      disabled={isRejectionLockActive}
+                    >
+                      <option value="confirmed">Order Confirmed</option>
+                      <option value="processing">Processing</option>
+                      <option value="picked_up">Picked Up</option>
+                      <option value="shipped">Shipped</option>
+                      <option value="out_for_delivery">Out for Delivery</option>
+                      <option value="delivered">Delivered</option>
+                      <option value="returned">Returned</option>
+                      <option value="rejected">Rejected</option>
+                    </select>
                   </label>
-                  <select
-                    value={editForm.courier}
-                    onChange={(event) =>
-                      setEditForm((prev) => ({
-                        ...prev,
-                        courier: event.target.value,
-                      }))
-                    }
-                    className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-800 focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-100"
-                    required
-                  >
-                    {COURIER_OPTIONS.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
+
+                  {String(editForm.status || "").toLowerCase() ===
+                    "rejected" && (
+                    <label className="mt-2 flex items-center gap-2 text-xs font-medium text-rose-600">
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 rounded border-slate-300 text-rose-600 focus:ring-rose-500"
+                        checked={Boolean(editForm.rejectionPermanent)}
+                        onChange={(event) =>
+                          handleEditFieldChange(
+                            "rejectionPermanent",
+                            event.target.checked,
+                          )
+                        }
+                      />
+                      <span>
+                        Lock status after rejection (prevent further status
+                        changes)
+                      </span>
+                    </label>
+                  )}
+
+                  {isRejectionLockActive ? (
+                    <p className="mt-1 text-xs text-rose-500">
+                      Unlock the toggle above to change the order status.
+                    </p>
+                  ) : null}
                 </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-600">
-                    Tracking ID
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <label className="block text-xs font-medium text-slate-700">
+                    Payment Status
+                    <select
+                      value={editForm.paymentStatus}
+                      disabled={isPaymentStatusLocked}
+                      onChange={(event) =>
+                        handleEditFieldChange(
+                          "paymentStatus",
+                          event.target.value,
+                        )
+                      }
+                      className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    >
+                      <option value="">Keep unchanged</option>
+                      <option value="pending">Pending</option>
+                      <option value="paid">Successful</option>
+                      <option value="failed">Failed</option>
+                    </select>
+                    {isPaymentStatusLocked ? (
+                      <p className="mt-1 text-[11px] text-slate-500">
+                        Payment is already marked successful and cannot be
+                        changed.
+                      </p>
+                    ) : null}
                   </label>
+                  <label className="block text-xs font-medium text-slate-700">
+                    Payment Method
+                    <select
+                      value={editForm.paymentMethod}
+                      onChange={(event) =>
+                        handleEditFieldChange(
+                          "paymentMethod",
+                          event.target.value,
+                        )
+                      }
+                      className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    >
+                      <option value="">Keep unchanged</option>
+                      <option value="cod">Cash on Delivery</option>
+                      <option value="upi">UPI</option>
+                      <option value="qr">QR Code</option>
+                      <option value="card">Card</option>
+                      <option value="netbanking">Net Banking</option>
+                    </select>
+                  </label>
+                </div>
+
+                <label className="block text-xs font-medium text-slate-700">
+                  Estimated Delivery Date
                   <input
-                    type="text"
-                    value={editForm.trackingId}
-                    onChange={(event) =>
-                      setEditForm((prev) => ({
-                        ...prev,
-                        trackingId: event.target.value,
-                      }))
-                    }
-                    className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-800 focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                    type="date"
+                    value={editForm.estimatedDeliveryDate}
+                    disabled={isDeliveryDateLocked}
+                    onChange={handleEstimatedDeliveryChange}
+                    className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   />
+                  {isDeliveryDateLocked ? (
+                    <p className="mt-1 text-xs text-slate-500">
+                      Delivery date is locked because the order has already been
+                      delivered or returned.
+                    </p>
+                  ) : null}
+                </label>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <label className="block text-xs font-medium text-slate-700">
+                    Courier
+                    <select
+                      value={editForm.courier}
+                      onChange={(event) =>
+                        handleEditFieldChange("courier", event.target.value)
+                      }
+                      className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    >
+                      {COURIER_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="block text-xs font-medium text-slate-700">
+                    Tracking ID
+                    <input
+                      type="text"
+                      value={editForm.trackingId}
+                      onChange={(event) =>
+                        handleEditFieldChange("trackingId", event.target.value)
+                      }
+                      className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      placeholder="To be assigned"
+                    />
+                  </label>
                 </div>
-                <div className="flex justify-end pb-2">
+
+                <div className="mt-2 flex flex-wrap items-center justify-end gap-3">
+                  {requiresPaymentSuccess && !isPaymentSuccessful ? (
+                    <p className="mr-auto text-xs text-rose-500">
+                      Mark payment as successful before setting the order to
+                      Delivered.
+                    </p>
+                  ) : null}
                   <button
                     type="button"
-                    onClick={() => setEditingOrder(null)}
+                    onClick={handleCloseEdit}
                     className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-50"
+                    disabled={isSavingEdit}
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    disabled={savingShipping}
+                    disabled={isSavingEdit || !canSaveEdit}
                     className="rounded-xl bg-slate-900 px-4 py-2 text-xs font-medium text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-70"
                   >
-                    {savingShipping ? "Saving..." : "Save"}
+                    {isSavingEdit ? "Saving..." : "Save Changes"}
                   </button>
                 </div>
               </form>

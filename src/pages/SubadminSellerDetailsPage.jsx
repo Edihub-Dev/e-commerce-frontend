@@ -564,6 +564,18 @@ const SubadminSellerDetailsPage = () => {
     );
   };
 
+  const resolveCustomerEmail = (order) => {
+    if (!order) return "--";
+    const address = order.shippingAddress || order.shipping || {};
+    return (
+      order.buyerEmail ||
+      order.customerEmail ||
+      address.email ||
+      order.buyer?.email ||
+      "--"
+    );
+  };
+
   const filteredOrders = useMemo(() => {
     const query = ordersSearch.trim().toLowerCase();
     const sorted = [...orders].sort((a, b) => {
@@ -580,6 +592,11 @@ const SubadminSellerDetailsPage = () => {
             order.buyer?.name,
             order.shippingAddress?.fullName,
             order.shipping?.trackingId,
+            order.buyerEmail,
+            order.customerEmail,
+            order.shippingAddress?.email,
+            order.shipping?.email,
+            order.buyer?.email,
           ]
             .filter(Boolean)
             .map((value) => String(value).toLowerCase())
@@ -2204,7 +2221,7 @@ const SubadminSellerDetailsPage = () => {
                         onChange={(event) =>
                           setOrdersSearch(event.target.value)
                         }
-                        placeholder="Search by order id, buyer or tracking"
+                        placeholder="Search by order id, buyer, email or tracking"
                         className="w-64 rounded-full border border-slate-200 bg-white py-1.5 pl-8 pr-3 text-xs text-slate-700 placeholder:text-slate-400 focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-100"
                       />
                     </div>
@@ -2351,6 +2368,7 @@ const SubadminSellerDetailsPage = () => {
                           const trackingId = order.shipping?.trackingId || "";
                           const customerName = resolveCustomerName(order);
                           const customerPhone = resolveCustomerPhone(order);
+                          const customerEmail = resolveCustomerEmail(order);
                           const orderKeyString = String(orderKey || "");
                           const isSelected = Boolean(
                             orderKeyString &&
@@ -2372,14 +2390,21 @@ const SubadminSellerDetailsPage = () => {
                                   aria-label={`Select order ${orderKeyString}`}
                                 />
                               </td>
-                              <td className="px-3 py-2 align-middle text-center text-[11px] font-semibold text-slate-500">
+                              <td className="px-3 py-2 align-middle text-[11px] font-semibold text-slate-500">
                                 {index + 1}
                               </td>
                               <td className="px-3 py-2 align-middle font-mono text-[11px] text-slate-800">
                                 {orderKey}
                               </td>
                               <td className="px-3 py-2 align-middle text-slate-700">
-                                {customerName}
+                                <div className="flex flex-col">
+                                  <span>{customerName}</span>
+                                  {customerEmail && customerEmail !== "--" && (
+                                    <span className="text-[11px] text-slate-500">
+                                      {customerEmail}
+                                    </span>
+                                  )}
+                                </div>
                               </td>
                               <td className="px-3 py-2 align-middle text-slate-700">
                                 {customerPhone || "--"}

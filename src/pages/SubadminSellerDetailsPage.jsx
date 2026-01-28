@@ -126,6 +126,7 @@ const COURIER_OPTIONS = [
   { value: "Triupati", label: "Triupati" },
   { value: "Xpressbees Logistics", label: "Xpressbees Logistics" },
   { value: "Delhivery Courier", label: "Delhivery Courier" },
+  { value: "India Post", label: "India Post" },
 ];
 
 const SubadminSellerDetailsPage = () => {

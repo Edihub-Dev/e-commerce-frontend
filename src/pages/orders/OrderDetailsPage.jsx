@@ -243,6 +243,10 @@ const buildTrackingUrl = (courier, trackingId) => {
     return `https://trackcourier.io/track-and-trace/delhivery-courier/${encodedId}`;
   }
 
+  if (normalizedCourier.includes("india post")) {
+    return `https://trackcourier.io/track-and-trace/india-post-domestic/${encodedId}`;
+  }
+
   return null;
 };
 

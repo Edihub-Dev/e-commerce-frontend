@@ -30,7 +30,9 @@ import {
   X,
   CheckCircle2,
   Circle,
+  QrCode,
 } from "lucide-react";
+import { downloadQrAsPdf } from "../utils/downloadQr";
 
 const STATUS_OPTIONS = [
   { value: "", label: "All statuses" },
@@ -152,6 +154,7 @@ const SellerOrders = () => {
   const [viewingOrderError, setViewingOrderError] = useState("");
   const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
   const [portalTarget, setPortalTarget] = useState(null);
+  const [downloadingQrId, setDownloadingQrId] = useState(null);
 
   const isViewingOverlayOpen = Boolean(
     viewingOrderLoading || viewingOrderError || viewingOrder,
@@ -420,6 +423,10 @@ const SellerOrders = () => {
         value: invoiceUrl,
         enumerable: false,
       });
+      Object.defineProperty(row, "__qrPdfLink", {
+        value: order.qrfolio?.pdfUrl || "",
+        enumerable: false,
+      });
 
       return row;
     });
@@ -655,6 +662,12 @@ const SellerOrders = () => {
         type: "image",
         imageWidth: 52,
         imageHeight: 52,
+      },
+      {
+        key: "qrPdf",
+        label: "QR PDF",
+        width: 70,
+        align: "center",
       },
       {
         key: "invoice",
@@ -1101,11 +1114,26 @@ const SellerOrders = () => {
       const invoiceAssetUrl = normalizedInvoiceUrl || invoiceLink;
       const shouldAttemptInvoiceImage = isLikelyImageLink(invoiceAssetUrl);
 
-      const [qrImage, invoiceImageRaw] = await Promise.all([
+      const qrPdfLink = row.__qrPdfLink;
+
+      const [qrImage, invoiceImageRaw, qrPdfUri] = await Promise.all([
         loadImageData(qrLink),
         shouldAttemptInvoiceImage
           ? loadImageData(invoiceLink)
           : Promise.resolve(null),
+        qrPdfLink
+          ? Promise.resolve(qrPdfLink)
+          : normalizedQrUrl
+            ? downloadQrAsPdf({
+                qrUrl: normalizedQrUrl,
+                orderId: row["Order ID"],
+                filePrefix: "order-qr",
+                returnDataUri: true,
+              }).catch((error) => {
+                console.error("Failed to build QR PDF for export", error);
+                return null;
+              })
+            : Promise.resolve(null),
       ]);
 
       const invoiceImage = shouldAttemptInvoiceImage ? invoiceImageRaw : null;
@@ -1130,6 +1158,11 @@ const SellerOrders = () => {
               fallback: "QR image unavailable",
               url: normalizedQrUrl,
             },
+        qrPdf: qrPdfUri
+          ? { text: "Download", link: qrPdfUri }
+          : normalizedQrUrl
+            ? { text: "Open QR", link: normalizedQrUrl }
+            : "--",
         invoice: invoiceImage
           ? { image: invoiceImage, url: normalizedInvoiceUrl }
           : {
@@ -1808,8 +1841,10 @@ const SellerOrders = () => {
                 </th>
                 <th className="px-4 py-3">Order ID</th>
                 <th className="px-4 py-3">Product</th>
+                <th className="px-4 py-3">Size</th>
                 <th className="px-4 py-3">Date</th>
                 <th className="px-4 py-3">Customer</th>
+                <th className="px-4 py-3 text-center">QR</th>
                 <th className="px-4 py-3">Total</th>
                 <th className="px-4 py-3">Status</th>
                 <th className="px-4 py-3 text-right">Action</th>
@@ -1819,7 +1854,7 @@ const SellerOrders = () => {
               {loading && (
                 <tr>
                   <td
-                    colSpan={8}
+                    colSpan={10}
                     className="px-4 py-8 text-center text-slate-400"
                   >
                     Loading orders...
@@ -1829,7 +1864,7 @@ const SellerOrders = () => {
               {error && !loading && (
                 <tr>
                   <td
-                    colSpan={8}
+                    colSpan={10}
                     className="px-4 py-8 text-center text-rose-500"
                   >
                     {error}
@@ -1839,7 +1874,7 @@ const SellerOrders = () => {
               {!loading && !error && orders.length === 0 && (
                 <tr>
                   <td
-                    colSpan={8}
+                    colSpan={10}
                     className="px-4 py-8 text-center text-slate-400"
                   >
                     No orders found for the selected filters.
@@ -1854,6 +1889,10 @@ const SellerOrders = () => {
                   const firstItem = order.items?.[0] || {};
                   const productImage = firstItem.image || null;
                   const remaining = Math.max((order.items?.length || 0) - 1, 0);
+                  const sizeLabel =
+                    firstItem.size || firstItem.selectedSize || "--";
+                  const qrfolioImage =
+                    order.qrfolio?.imageUrl || order.qrfolio?.image || "";
                   const customerName = order.buyerName || "Customer";
                   const customerEmail = order.buyerEmail || "";
                   const isSelected = selectedOrderIds.includes(orderKey);
@@ -1910,6 +1949,9 @@ const SellerOrders = () => {
                                 firstItem.itemName ||
                                 "Product"}
                             </p>
+                            <p className="text-xs text-slate-400">
+                              Size: {sizeLabel}
+                            </p>
                             {remaining > 0 && (
                               <p className="text-xs text-slate-400">
                                 + {remaining} other items
@@ -1918,6 +1960,7 @@ const SellerOrders = () => {
                           </div>
                         </div>
                       </td>
+                      <td className="px-4 py-3 text-slate-500">{sizeLabel}</td>
                       <td className="px-4 py-3 text-slate-500">
                         {formatDate(order.createdAt)}
                       </td>
@@ -1932,6 +1975,51 @@ const SellerOrders = () => {
                             </p>
                           ) : null}
                         </div>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            if (!orderKey) {
+                              toast.error("Order reference unavailable");
+                              return;
+                            }
+                            if (!qrfolioImage) {
+                              toast.error(
+                                "QR code not available for this order yet.",
+                              );
+                              return;
+                            }
+                            try {
+                              setDownloadingQrId(orderKey);
+                              await downloadQrAsPdf({
+                                qrUrl: qrfolioImage,
+                                orderId: order.orderId || orderKey,
+                                filePrefix: "order-qr",
+                                title: customerName,
+                              });
+                              toast.success("QR code saved as PDF");
+                            } catch (qrError) {
+                              toast.error(
+                                qrError?.message ||
+                                  "Failed to download QR code",
+                              );
+                            } finally {
+                              setDownloadingQrId(null);
+                            }
+                          }}
+                          disabled={
+                            !qrfolioImage || downloadingQrId === orderKey
+                          }
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:border-blue-200 hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-60"
+                          aria-label={`Download QR for order ${order.orderId}`}
+                        >
+                          {downloadingQrId === orderKey ? (
+                            <Loader2 size={16} className="animate-spin" />
+                          ) : (
+                            <QrCode size={16} />
+                          )}
+                        </button>
                       </td>
                       <td className="px-4 py-3 font-semibold text-slate-700">
                         {formatCurrency(order.total)}
@@ -2044,7 +2132,10 @@ const SellerOrders = () => {
                 firstItem.itemName ||
                 firstItem.name ||
                 "Product";
+              const sizeLabel = firstItem.size || firstItem.selectedSize;
               const customerName = order.buyerName || "Customer";
+              const qrfolioImage =
+                order.qrfolio?.imageUrl || order.qrfolio?.image || "";
               const paymentStatusValue = String(
                 order.paymentStatus || "pending",
               ).toLowerCase();
@@ -2116,6 +2207,11 @@ const SellerOrders = () => {
                         {productLabel}
                       </p>
                       <p className="text-xs text-slate-500">{customerName}</p>
+                      {sizeLabel && (
+                        <p className="text-xs text-slate-400">
+                          Size: {sizeLabel}
+                        </p>
+                      )}
                     </div>
                   </div>
 
@@ -2163,6 +2259,48 @@ const SellerOrders = () => {
                   </div>
 
                   <div className="mt-4 flex flex-wrap items-center gap-2 text-xs font-semibold">
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (!order.orderId && !orderKey) {
+                          toast.error("Order reference unavailable");
+                          return;
+                        }
+                        if (!qrfolioImage) {
+                          toast.error(
+                            "QR code not available for this order yet.",
+                          );
+                          return;
+                        }
+                        try {
+                          setDownloadingQrId(orderKey);
+                          await downloadQrAsPdf({
+                            qrUrl: qrfolioImage,
+                            orderId: order.orderId || orderKey,
+                            filePrefix: "order-qr",
+                            title: customerName,
+                          });
+                          toast.success("QR code saved as PDF");
+                        } catch (qrError) {
+                          toast.error(
+                            qrError?.message || "Failed to download QR code",
+                          );
+                        } finally {
+                          setDownloadingQrId(null);
+                        }
+                      }}
+                      disabled={
+                        !qrfolioImage || downloadingQrId === order.orderId
+                      }
+                      className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:border-blue-200 hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-60"
+                      aria-label={`Download QR for order ${order.orderId}`}
+                    >
+                      {downloadingQrId === order.orderId ? (
+                        <Loader2 size={16} className="animate-spin" />
+                      ) : (
+                        <QrCode size={16} />
+                      )}
+                    </button>
                     <button
                       type="button"
                       onClick={() => handleViewOrder(order)}

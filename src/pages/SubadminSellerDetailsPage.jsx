@@ -19,6 +19,7 @@ import {
   CalendarDays,
   AlertTriangle,
   Gift,
+  QrCode,
 } from "lucide-react";
 import SubadminSidebar from "../components/subadmin/SubadminSidebar";
 import Navbar from "../components/admin/Navbar";
@@ -33,6 +34,7 @@ import {
   fetchOrderById,
   updateOrder,
 } from "../utils/api";
+import { downloadQrAsPdf } from "../utils/downloadQr";
 
 const ORDER_STATUS_OPTIONS = [
   "",
@@ -188,6 +190,7 @@ const SubadminSellerDetailsPage = () => {
   const [isSavingEdit, setIsSavingEdit] = useState(false);
   const lastNonDeliveredEstimateRef = useRef("");
   const [downloadingInvoiceId, setDownloadingInvoiceId] = useState(null);
+  const [downloadingQrId, setDownloadingQrId] = useState(null);
   const [selectedOrderIds, setSelectedOrderIds] = useState([]);
   const selectAllCheckboxRef = useRef(null);
 
@@ -696,23 +699,6 @@ const SubadminSellerDetailsPage = () => {
       return [];
     }
 
-    const formatShippingAddress = (address = {}) => {
-      const contactLine = [address.fullName, address.mobile]
-        .filter(Boolean)
-        .join(" • ");
-      const addressParts = [
-        address.addressLine1,
-        address.addressLine2,
-        address.landmark,
-        address.city,
-        address.state,
-        address.pincode,
-      ]
-        .filter(Boolean)
-        .join(", ");
-      return [contactLine, addressParts].filter(Boolean).join(" | ");
-    };
-
     const toAbsoluteUrl = (value) => {
       const source = typeof value === "string" ? value.trim() : "";
       if (!source) {
@@ -789,7 +775,11 @@ const SubadminSellerDetailsPage = () => {
       row["Item Count"] = items.length;
       row["Primary Item"] = primaryItem.name || primaryItem.productName || "";
       row["Primary SKU"] = primaryItem.sku || "";
-      row["Primary Size"] = primaryItem.size || primaryItem.selectedSize || "";
+      row["Primary Size"] =
+        primaryItem.size ||
+        primaryItem.selectedSize ||
+        primaryItem.options?.size ||
+        "";
       row["Buyer Name"] =
         order.buyerName || order.customerName || address.fullName || "";
       row["Buyer Email"] =
@@ -813,7 +803,7 @@ const SubadminSellerDetailsPage = () => {
             minute: "2-digit",
           })
         : "--";
-      row["Shipping Address"] = formatShippingAddress(address);
+      row["Shipping Address"] = formatSubadminShippingAddress(address);
       row["QR Folio Image"] = qrfolioUrl || resolveQrfolioFallback();
       row["Invoice Number"] = invoice.number || order.invoiceNumber || "";
       row["Invoice Date"] = invoice.generatedAt
@@ -841,6 +831,22 @@ const SubadminSellerDetailsPage = () => {
       });
       Object.defineProperty(row, "__invoiceLink", {
         value: invoiceUrl,
+        enumerable: false,
+      });
+      Object.defineProperty(row, "__shippingAddress", {
+        value: address,
+        enumerable: false,
+      });
+      Object.defineProperty(row, "__itemCount", {
+        value: items.length,
+        enumerable: false,
+      });
+      Object.defineProperty(row, "__primaryItem", {
+        value: primaryItem,
+        enumerable: false,
+      });
+      Object.defineProperty(row, "__qrPdfLink", {
+        value: order.qrfolio?.pdfUrl || "",
         enumerable: false,
       });
 
@@ -1060,27 +1066,33 @@ const SubadminSellerDetailsPage = () => {
     });
 
     const columns = [
-      { key: "orderId", label: "Order ID", width: 65 },
-      { key: "status", label: "Status", width: 45 },
-      { key: "payment", label: "Payment", width: 72 },
-      { key: "total", label: "Total (INR)", width: 65, align: "right" },
-      { key: "item", label: "Primary Item", width: 112 },
-      { key: "size", label: "Size", width: 36, align: "center" },
-      { key: "buyer", label: "Buyer", width: 80 },
-      { key: "qty", label: "Qty", width: 30, align: "center" },
-      { key: "ship", label: "Ship To", width: 102 },
+      { key: "orderId", label: "Order ID", width: 60 },
+      { key: "status", label: "Status", width: 40 },
+      { key: "payment", label: "Payment", width: 62 },
+      { key: "total", label: "Total (INR)", width: 60, align: "right" },
+      { key: "item", label: "Primary Item", width: 100 },
+      { key: "size", label: "Size", width: 34, align: "center" },
+      { key: "buyer", label: "Buyer", width: 74 },
+      { key: "qty", label: "Qty", width: 28, align: "center" },
+      { key: "ship", label: "Ship To", width: 96 },
       {
         key: "qr",
         label: "QR Code",
-        width: 70,
+        width: 66,
         type: "image",
         imageWidth: 52,
         imageHeight: 52,
       },
       {
+        key: "qrPdf",
+        label: "QR PDF",
+        width: 62,
+        align: "center",
+      },
+      {
         key: "invoice",
         label: "Invoice",
-        width: 88,
+        width: 80,
         type: "image",
         imageWidth: 68,
         imageHeight: 52,
@@ -1498,9 +1510,12 @@ const SubadminSellerDetailsPage = () => {
 
     for (let index = 0; index < rows.length; index += 1) {
       const row = rows[index];
-      const paymentLabel =
-        `${row["Payment Status"] || ""}` +
-        `${row["Payment Method"] ? ` (${row["Payment Method"]})` : ""}`;
+      const rawPaymentStatus = row["Payment Status"] || "";
+      const rawPaymentMethod = row["Payment Method"] || "";
+      const paymentLabel = `${rawPaymentStatus || ""}`;
+      const paymentWithMethod = rawPaymentMethod
+        ? `${paymentLabel}${paymentLabel ? " " : ""}(${rawPaymentMethod})`
+        : paymentLabel;
       const buyerLabel = [
         row["Buyer Name"],
         row["Buyer Email"],
@@ -1508,11 +1523,13 @@ const SubadminSellerDetailsPage = () => {
       ]
         .filter(Boolean)
         .join(" • ");
-      const shippingAddress = (row["Shipping Address"] || "")
+      const shippingAddress = formatSubadminShippingAddress(
+        row.__shippingAddress,
+      )
         .split("\n")
         .map((entry) => entry.trim())
         .filter(Boolean)
-        .join(", ");
+        .join("\n");
 
       const qrLink = row.__qrfolioLink || row["QR Folio Image"];
       const invoiceLink = row.__invoiceLink || row["Invoice"];
@@ -1522,35 +1539,70 @@ const SubadminSellerDetailsPage = () => {
       const invoiceAssetUrl = normalizedInvoiceUrl || invoiceLink;
       const shouldAttemptInvoiceImage = isLikelyImageLink(invoiceAssetUrl);
 
-      const [qrImage, invoiceImageRaw] = await Promise.all([
+      const qrPdfLink = row.__qrPdfLink;
+
+      const [qrImage, invoiceImage, qrPdfUri] = await Promise.all([
         loadImageData(qrLink),
         shouldAttemptInvoiceImage
           ? loadImageData(invoiceLink)
           : Promise.resolve(null),
+        qrPdfLink
+          ? Promise.resolve(qrPdfLink)
+          : normalizedQrUrl
+            ? downloadQrAsPdf({
+                qrUrl: normalizedQrUrl,
+                orderId: row.orderId,
+                filePrefix: "order-qr",
+                returnDataUri: true,
+              }).catch((error) => {
+                console.error("Failed to build QR PDF for export", error);
+                return null;
+              })
+            : Promise.resolve(null),
       ]);
 
-      const invoiceImage = shouldAttemptInvoiceImage ? invoiceImageRaw : null;
+      const formattedPayment = normalizeDisplayText(paymentWithMethod);
+
+      const sourceItem = row.__primaryItem || {};
+      const itemLabelRaw =
+        row["Primary Item"] ||
+        sourceItem.productName ||
+        sourceItem.name ||
+        "--";
+      const skuSuffix = row["Primary SKU"]
+        ? ` (SKU: ${row["Primary SKU"]})`
+        : "";
+      const sizeRaw =
+        row["Primary Size"] ||
+        sourceItem.size ||
+        sourceItem.selectedSize ||
+        sourceItem.options?.size ||
+        "";
+      const itemCount = Number.isFinite(Number(row.__itemCount))
+        ? Number(row.__itemCount)
+        : Number(row["Item Count"] || 0);
 
       const rowData = {
         orderId: normalizeDisplayText(row["Order ID"]),
         status: normalizeDisplayText(row.Status),
-        payment: normalizeDisplayText(paymentLabel),
+        payment: formattedPayment,
         total: formatAmount(row["Total Amount"]),
-        item: normalizeDisplayText(
-          `${row["Primary Item"] || "--"}$${
-            row["Primary SKU"] ? ` (SKU: ${row["Primary SKU"]})` : ""
-          }`,
-        ),
-        size: normalizeDisplayText(row["Primary Size"] || "--"),
+        item: normalizeDisplayText(`${itemLabelRaw}${skuSuffix}`),
+        size: normalizeDisplayText(sizeRaw || "--"),
         buyer: normalizeDisplayText(buyerLabel),
-        qty: normalizeDisplayText(row["Item Count"] ?? 0),
-        ship: normalizeDisplayText(shippingAddress),
+        qty: normalizeDisplayText(itemCount),
+        ship: shippingAddress ? normalizeDisplayText(shippingAddress) : "--",
         qr: qrImage
           ? { image: qrImage, url: normalizedQrUrl }
           : {
               fallback: "QR image unavailable",
               url: normalizedQrUrl,
             },
+        qrPdf: qrPdfUri
+          ? { text: "Download", link: qrPdfUri }
+          : normalizedQrUrl
+            ? { text: "Open QR", link: normalizedQrUrl }
+            : "--",
         invoice: invoiceImage
           ? { image: invoiceImage, url: normalizedInvoiceUrl }
           : {
@@ -1856,6 +1908,28 @@ const SubadminSellerDetailsPage = () => {
       currency: "INR",
       maximumFractionDigits: 0,
     }).format(Number(value) || 0);
+
+  const formatSubadminShippingAddress = (address = {}) => {
+    if (!address || typeof address !== "object") {
+      return "--";
+    }
+
+    const contact = [address.fullName, address.mobile]
+      .filter(Boolean)
+      .join(" • ");
+    const emailLine = address.email ? `Email: ${address.email}` : "";
+    const street = [address.addressLine, address.landmark]
+      .filter(Boolean)
+      .join(", ");
+    const city = [address.city, address.district].filter(Boolean).join(", ");
+    const state = [address.state, address.pincode].filter(Boolean).join(" - ");
+
+    const lines = [contact, emailLine, street, city, state]
+      .filter((entry) => entry && entry.trim().length)
+      .join("\n");
+
+    return lines || "--";
+  };
 
   const primaryImage = resolveProductImage(viewProduct);
   const secondaryImages = collectAdditionalImages(viewProduct, primaryImage);
@@ -2287,7 +2361,7 @@ const SubadminSellerDetailsPage = () => {
                 )}
 
                 <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
-                  <table className="min-w-full divide-y divide-slate-200 text-xs">
+                  <table className="min-w-full divide-y divide-slate-200 text-[11px]">
                     <thead className="bg-slate-50">
                       <tr>
                         <th className="px-3 py-2 text-center font-semibold text-slate-600 w-12">
@@ -2310,25 +2384,25 @@ const SubadminSellerDetailsPage = () => {
                           Order ID
                         </th>
                         <th className="px-3 py-2 text-left font-semibold text-slate-600">
+                          Size
+                        </th>
+                        <th className="px-3 py-2 text-left font-semibold text-slate-600">
                           Customer
                         </th>
                         <th className="px-3 py-2 text-left font-semibold text-slate-600">
                           Mobile
                         </th>
-                        <th className="px-3 py-2 text-left font-semibold text-slate-600">
-                          Status
-                        </th>
-                        <th className="px-3 py-2 text-left font-semibold text-slate-600">
-                          Payment
+                        <th className="px-3 py-2 text-center font-semibold text-slate-600">
+                          QR
                         </th>
                         <th className="px-3 py-2 text-left font-semibold text-slate-600">
                           Total
                         </th>
                         <th className="px-3 py-2 text-left font-semibold text-slate-600">
-                          Courier
+                          Fulfilment
                         </th>
                         <th className="px-3 py-2 text-left font-semibold text-slate-600">
-                          Tracking
+                          Shipping
                         </th>
                         <th className="px-3 py-2 text-center font-semibold text-slate-600">
                           Invoice
@@ -2364,9 +2438,19 @@ const SubadminSellerDetailsPage = () => {
                             order.paymentStatus ||
                             order.payment?.status ||
                             "pending";
+                          const firstItem =
+                            Array.isArray(order.items) && order.items.length
+                              ? order.items[0]
+                              : null;
+                          const sizeLabel =
+                            firstItem?.size || firstItem?.selectedSize || "--";
                           const totalAmount = resolveOrderTotal(order);
                           const courier = order.shipping?.courier || "Triupati";
                           const trackingId = order.shipping?.trackingId || "";
+                          const qrfolioImage =
+                            order.qrfolio?.imageUrl ||
+                            order.qrfolio?.image ||
+                            "";
                           const customerName = resolveCustomerName(order);
                           const customerPhone = resolveCustomerPhone(order);
                           const customerEmail = resolveCustomerEmail(order);
@@ -2398,6 +2482,9 @@ const SubadminSellerDetailsPage = () => {
                                 {orderKey}
                               </td>
                               <td className="px-3 py-2 align-middle text-slate-700">
+                                {sizeLabel}
+                              </td>
+                              <td className="px-3 py-2 align-middle text-slate-700">
                                 <div className="flex flex-col">
                                   <span>{customerName}</span>
                                   {customerEmail && customerEmail !== "--" && (
@@ -2410,22 +2497,79 @@ const SubadminSellerDetailsPage = () => {
                               <td className="px-3 py-2 align-middle text-slate-700">
                                 {customerPhone || "--"}
                               </td>
-                              <td className="px-3 py-2 align-middle text-slate-700">
-                                {order.orderStatus ||
-                                  order.status ||
-                                  "processing"}
-                              </td>
-                              <td className="px-3 py-2 align-middle text-slate-700">
-                                {paymentStatus}
+                              <td className="px-3 py-2 align-middle text-center">
+                                <button
+                                  type="button"
+                                  onClick={async () => {
+                                    if (!orderKeyString) {
+                                      toast.error(
+                                        "Order reference unavailable",
+                                      );
+                                      return;
+                                    }
+                                    if (!qrfolioImage) {
+                                      toast.error(
+                                        "QR code not available for this order yet.",
+                                      );
+                                      return;
+                                    }
+                                    try {
+                                      setDownloadingQrId(orderKeyString);
+                                      await downloadQrAsPdf({
+                                        qrUrl: qrfolioImage,
+                                        orderId: orderKey || orderKeyString,
+                                        filePrefix: "order-qr",
+                                        title: customerName || "Customer",
+                                      });
+                                      toast.success("QR code saved as PDF");
+                                    } catch (qrError) {
+                                      toast.error(
+                                        qrError?.message ||
+                                          "Failed to download QR code",
+                                      );
+                                    } finally {
+                                      setDownloadingQrId(null);
+                                    }
+                                  }}
+                                  disabled={
+                                    !qrfolioImage ||
+                                    downloadingQrId === orderKeyString
+                                  }
+                                  className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:border-blue-200 hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-60"
+                                  aria-label={`Download QR for order ${orderKey}`}
+                                >
+                                  {downloadingQrId === orderKeyString ? (
+                                    <Loader2
+                                      size={14}
+                                      className="animate-spin"
+                                    />
+                                  ) : (
+                                    <QrCode size={14} />
+                                  )}
+                                </button>
                               </td>
                               <td className="px-3 py-2 align-middle text-slate-800">
                                 {formatCurrency(totalAmount)}
                               </td>
                               <td className="px-3 py-2 align-middle text-slate-700">
-                                {courier}
+                                <div className="space-y-1">
+                                  <span className="font-medium text-slate-800">
+                                    {order.orderStatus ||
+                                      order.status ||
+                                      "processing"}
+                                  </span>
+                                  <span className="block text-[11px] text-slate-500">
+                                    Payment: {paymentStatus}
+                                  </span>
+                                </div>
                               </td>
                               <td className="px-3 py-2 align-middle text-slate-700">
-                                {trackingId || "--"}
+                                <div className="space-y-1">
+                                  <span>{courier}</span>
+                                  <span className="block text-[11px] text-slate-500 break-all">
+                                    {trackingId || "--"}
+                                  </span>
+                                </div>
                               </td>
                               <td className="px-3 py-2 align-middle text-center">
                                 <button

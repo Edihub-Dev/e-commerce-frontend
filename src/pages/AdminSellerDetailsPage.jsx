@@ -1,22 +1,32 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
-  RefreshCw,
-  Eye,
-  PencilLine,
-  Trash2,
-  UserPlus,
-  Package,
-  ShoppingBag,
-  TicketPercent,
-  Filter,
-  Search,
-  ShieldCheck,
-  ShieldAlert,
-  Loader2,
-  UploadCloud,
-  X,
   Download,
+  Eye,
+  Filter,
+  Layers,
+  Loader2,
+  MapPin,
+  MoreHorizontal,
+  Package,
+  PencilLine,
+  Plus,
+  RefreshCw,
+  Search,
+  Settings,
+  ShieldAlert,
+  ShieldCheck,
+  ShoppingBag,
+  Store,
+  Tag,
+  Trash2,
+  TrendingUp,
+  Truck,
+  Users,
+  X,
+  QrCode,
+  UserPlus,
+  TicketPercent,
 } from "lucide-react";
 import Sidebar from "../components/admin/Sidebar";
 import Navbar from "../components/admin/Navbar";
@@ -30,10 +40,11 @@ import {
   updateAdminSellerProduct,
   updateAdminSellerOrder,
   updateAdminSellerCoupon,
-  deleteAdminSellerProduct,
   deleteAdminSellerOrder,
+  deleteAdminSellerProduct,
   deleteAdminSellerCoupon,
 } from "../services/adminSellersApi";
+import { downloadQrAsPdf } from "../utils/downloadQr";
 import { updateAdminUser, deleteAdminUser } from "../services/adminUsersApi";
 import api from "../utils/api";
 import toast from "react-hot-toast";
@@ -516,6 +527,7 @@ const AdminSellerDetailsPage = () => {
   const [orderSelection, setOrderSelection] = useState(() => new Set());
   const [ordersPage, setOrdersPage] = useState(1);
   const [ordersRowsPerPage, setOrdersRowsPerPage] = useState(10);
+  const [downloadingQrId, setDownloadingQrId] = useState(null);
   const [downloadingInvoiceId, setDownloadingInvoiceId] = useState(null);
   const [orderEdit, setOrderEdit] = useState(null);
   const [orderView, setOrderView] = useState(null);
@@ -1088,6 +1100,44 @@ const AdminSellerDetailsPage = () => {
       )
     );
   }, []);
+
+  const handleDownloadQr = useCallback(
+    async (order) => {
+      const rawOrderId = order?.orderId || order?._id || order?.id;
+      const orderKey = rawOrderId ? String(rawOrderId) : "";
+      const qrfolioImage =
+        order?.qrfolio?.imageUrl || order?.qrfolio?.image || "";
+      const customerName =
+        order?.customerName ||
+        order?.buyerName ||
+        order?.shippingAddress?.fullName ||
+        "Customer";
+
+      if (!orderKey) {
+        toast.error("Order reference unavailable");
+        return;
+      }
+      if (!qrfolioImage) {
+        toast.error("QR code not available for this order yet.");
+        return;
+      }
+      try {
+        setDownloadingQrId(orderKey);
+        await downloadQrAsPdf({
+          qrUrl: qrfolioImage,
+          orderId: orderKey,
+          filePrefix: "order-qr",
+          title: customerName,
+        });
+        toast.success("QR code saved as PDF");
+      } catch (qrError) {
+        toast.error(qrError?.message || "Failed to download QR code");
+      } finally {
+        setDownloadingQrId(null);
+      }
+    },
+    [downloadQrAsPdf],
+  );
 
   useEffect(() => {
     loadSellers();
@@ -2353,7 +2403,7 @@ const AdminSellerDetailsPage = () => {
                               {seller.isVerified ? "Verified" : "Pending"}
                             </div>
                           </td>
-                          <td className="px-4 py-3 align-top">
+                          <td className="px-4 py-3 align-top text-xs text-slate-500">
                             <div className="text-xs text-slate-500 grid gap-1">
                               <span>
                                 Products: {seller.metrics?.products || 0}
@@ -2763,10 +2813,16 @@ const AdminSellerDetailsPage = () => {
                             Order
                           </th>
                           <th className="px-4 py-3 text-left font-semibold text-slate-500">
+                            Size
+                          </th>
+                          <th className="px-4 py-3 text-left font-semibold text-slate-500">
                             Seller
                           </th>
                           <th className="px-4 py-3 text-left font-semibold text-slate-500">
                             Customer
+                          </th>
+                          <th className="px-4 py-3 text-center font-semibold text-slate-500">
+                            QR
                           </th>
                           <th className="px-4 py-3 text-left font-semibold text-slate-500">
                             Totals
@@ -2782,8 +2838,29 @@ const AdminSellerDetailsPage = () => {
                       <tbody className="divide-y divide-slate-100">
                         {paginatedOrders.map((order) => {
                           const orderId = String(order._id);
+                          const orderKey = order.orderId
+                            ? String(order.orderId)
+                            : orderId;
                           const invoiceReady = isOrderInvoiceAvailable(order);
                           const isSelected = orderSelection.has(orderId);
+                          const primaryItem =
+                            Array.isArray(order.items) && order.items.length
+                              ? order.items[0]
+                              : null;
+                          const sizeLabel =
+                            primaryItem?.size ||
+                            primaryItem?.selectedSize ||
+                            primaryItem?.options?.size ||
+                            "--";
+                          const qrfolioImage =
+                            order.qrfolio?.imageUrl ||
+                            order.qrfolio?.image ||
+                            "";
+                          const customerName =
+                            order.customerName ||
+                            order.buyerName ||
+                            order.shippingAddress?.fullName ||
+                            "Customer";
                           return (
                             <tr key={orderId} className="hover:bg-slate-50/50">
                               <td className="px-4 py-3 align-top">
@@ -2807,6 +2884,9 @@ const AdminSellerDetailsPage = () => {
                                 </div>
                               </td>
                               <td className="px-4 py-3 align-top text-xs text-slate-500">
+                                {sizeLabel}
+                              </td>
+                              <td className="px-4 py-3 align-top text-xs text-slate-500">
                                 {order.sellerId?.name ||
                                   order.sellerId?.companyName ||
                                   order.sellerId?.username ||
@@ -2815,10 +2895,7 @@ const AdminSellerDetailsPage = () => {
                               <td className="px-4 py-3 align-top text-xs text-slate-500">
                                 <div className="grid gap-1">
                                   <span className="text-sm font-medium text-slate-700">
-                                    {order.customerName ||
-                                      order.buyerName ||
-                                      order.shippingAddress?.fullName ||
-                                      "Customer"}
+                                    {customerName}
                                   </span>
                                   {order.customerEmail ||
                                   order.buyerEmail ||
@@ -2830,6 +2907,27 @@ const AdminSellerDetailsPage = () => {
                                     </span>
                                   ) : null}
                                 </div>
+                              </td>
+                              <td className="px-4 py-3 align-top text-center">
+                                <button
+                                  type="button"
+                                  onClick={() => handleDownloadQr(order)}
+                                  disabled={
+                                    !qrfolioImage ||
+                                    downloadingQrId === orderKey
+                                  }
+                                  className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-500 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-600 disabled:cursor-not-allowed disabled:border-slate-200 disabled:text-slate-300"
+                                  aria-label={`Download QR for order ${orderKey}`}
+                                >
+                                  {downloadingQrId === orderKey ? (
+                                    <Loader2
+                                      size={16}
+                                      className="animate-spin"
+                                    />
+                                  ) : (
+                                    <QrCode size={16} />
+                                  )}
+                                </button>
                               </td>
                               <td className="px-4 py-3 align-top text-xs text-slate-500">
                                 <div className="grid gap-1">

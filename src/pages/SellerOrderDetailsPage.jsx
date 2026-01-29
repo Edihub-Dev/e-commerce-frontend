@@ -17,6 +17,7 @@ import {
   Receipt,
   ClipboardCheck,
   RotateCcw,
+  ExternalLink,
 } from "lucide-react";
 
 const STATUS_LABELS = {
@@ -349,6 +350,10 @@ const SellerOrderDetailsPage = ({
   const total = order?.pricing?.total ?? 0;
   const coupon = order?.coupon;
   const couponCode = typeof coupon?.code === "string" ? coupon.code.trim() : "";
+  const trackingUrl = buildTrackingUrl(
+    order?.shipping?.courier,
+    order?.shipping?.trackingId,
+  );
 
   const items = Array.isArray(order?.items) ? order.items : [];
   if (loading) {
@@ -475,32 +480,47 @@ const SellerOrderDetailsPage = ({
       </motion.div>
 
       <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h2 className="text-lg font-semibold text-slate-900">
-          Tracking Updates
-        </h2>
-        <p className="mt-2 text-sm text-slate-600">
-          Tracking ID:{" "}
-          {order?.shipping?.trackingId ? (
-            <a
-              href={
-                buildTrackingUrl(
-                  order?.shipping?.courier,
-                  order.shipping.trackingId,
-                ) || undefined
-              }
-              target="_blank"
-              rel="noopener noreferrer"
-              className="font-semibold text-blue-600 underline-offset-4 hover:underline"
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-slate-900">
+              Tracking Updates
+            </h2>
+            <p className="mt-2 text-sm text-slate-600">
+              Tracking ID:{" "}
+              {order?.shipping?.trackingId ? (
+                trackingUrl ? (
+                  <a
+                    href={trackingUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-semibold text-blue-600 underline-offset-4 hover:underline"
+                  >
+                    {order.shipping.trackingId}
+                  </a>
+                ) : (
+                  <span className="font-semibold text-slate-800">
+                    {order.shipping.trackingId}
+                  </span>
+                )
+              ) : (
+                "To be assigned"
+              )}
+            </p>
+            <p className="mt-1 text-xs text-slate-400">
+              Courier: {order?.shipping?.courier || "Triupati"}
+            </p>
+          </div>
+          {trackingUrl && (
+            <button
+              type="button"
+              onClick={() => window.open(trackingUrl, "_blank", "noopener")}
+              className="inline-flex items-center gap-2 self-start rounded-xl border border-blue-200 px-4 py-2 text-sm font-semibold text-blue-600 transition hover:border-blue-300 hover:bg-blue-50"
             >
-              {order.shipping.trackingId}
-            </a>
-          ) : (
-            "To be assigned"
+              Track My order
+              <ExternalLink size={16} />
+            </button>
           )}
-        </p>
-        <p className="mt-1 text-xs text-slate-400">
-          Courier: {order?.shipping?.courier || "Triupati"}
-        </p>
+        </div>
       </section>
 
       <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">

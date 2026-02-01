@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import { toast } from "react-hot-toast";
+import clsx from "clsx";
 import api, {
   adminUpdateReplacementRequest,
   fetchOrderById,
@@ -324,7 +325,7 @@ const SellerOrderDetailsPage = ({
     const config = STATUS_LABELS[key];
     if (!config) {
       return (
-        <span className="inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-600">
+        <span className={clsx('inline-flex', 'rounded-full', 'bg-slate-100', 'px-3', 'py-1', 'text-xs', 'text-slate-600')}>
           Unknown
         </span>
       );
@@ -358,29 +359,29 @@ const SellerOrderDetailsPage = ({
   const items = Array.isArray(order?.items) ? order.items : [];
   if (loading) {
     return (
-      <div className="flex h-full items-center justify-center text-slate-500">
-        <Loader2 className="h-6 w-6 animate-spin" />
-        <span className="ml-3 text-sm">Loading order details...</span>
+      <div className={clsx('flex', 'h-full', 'items-center', 'justify-center', 'text-slate-500')}>
+        <Loader2 className={clsx('h-6', 'w-6', 'animate-spin')} />
+        <span className={clsx('ml-3', 'text-sm')}>Loading order details...</span>
       </div>
     );
   }
 
   if (error || !order) {
     return (
-      <div className="flex h-full flex-col items-center justify-center text-center text-slate-600">
-        <div className="rounded-3xl bg-white px-8 py-10 shadow-sm">
-          <h2 className="text-xl font-semibold text-slate-900">
+      <div className={clsx('flex', 'h-full', 'flex-col', 'items-center', 'justify-center', 'text-center', 'text-slate-600')}>
+        <div className={clsx('rounded-3xl', 'bg-white', 'px-8', 'py-10', 'shadow-sm')}>
+          <h2 className={clsx('text-xl', 'font-semibold', 'text-slate-900')}>
             Order not available
           </h2>
-          <p className="mt-2 text-sm text-slate-500">
+          <p className={clsx('mt-2', 'text-sm', 'text-slate-500')}>
             {error || "The requested order could not be found."}
           </p>
           <button
             type="button"
             onClick={handleBack}
-            className="mt-6 inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700"
+            className={clsx('mt-6', 'inline-flex', 'items-center', 'gap-2', 'rounded-xl', 'bg-blue-600', 'px-4', 'py-2', 'text-sm', 'font-semibold', 'text-white', 'shadow-sm', 'hover:bg-blue-700')}
           >
-            <ArrowLeft className="h-4 w-4" />
+            <ArrowLeft className={clsx('h-4', 'w-4')} />
             Back to orders
           </button>
         </div>
@@ -392,21 +393,21 @@ const SellerOrderDetailsPage = ({
     <motion.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      className="mx-auto max-w-5xl space-y-6"
+      className={clsx('mx-auto', 'max-w-5xl', 'space-y-6')}
     >
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className={clsx('flex', 'flex-wrap', 'items-center', 'justify-between', 'gap-3')}>
         <button
           type="button"
           onClick={handleBack}
-          className="inline-flex items-center gap-2 text-sm text-slate-500 transition hover:text-slate-700"
+          className={clsx('inline-flex', 'items-center', 'gap-2', 'text-sm', 'text-slate-500', 'transition', 'hover:text-slate-700')}
         >
-          <ArrowLeft className="h-4 w-4" /> {returnLabel}
+          <ArrowLeft className={clsx('h-4', 'w-4')} /> {returnLabel}
         </button>
         <button
           type="button"
           onClick={handleDownloadInvoice}
           disabled={downloadingInvoice || !canDownloadInvoice}
-          className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+          className={clsx('inline-flex', 'items-center', 'gap-2', 'rounded-xl', 'bg-blue-600', 'px-4', 'py-2', 'text-sm', 'font-semibold', 'text-white', 'shadow-sm', 'transition', 'hover:bg-blue-700', 'disabled:cursor-not-allowed', 'disabled:opacity-60')}
           title={
             canDownloadInvoice
               ? undefined
@@ -414,9 +415,9 @@ const SellerOrderDetailsPage = ({
           }
         >
           {downloadingInvoice ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
+            <Loader2 className={clsx('h-4', 'w-4', 'animate-spin')} />
           ) : (
-            <Download className="h-4 w-4" />
+            <Download className={clsx('h-4', 'w-4')} />
           )}
           {canDownloadInvoice ? "Download invoice" : "Invoice locked"}
         </button>
@@ -425,67 +426,67 @@ const SellerOrderDetailsPage = ({
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
-        className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm"
+        className={clsx('rounded-3xl', 'border', 'border-slate-200', 'bg-white', 'p-6', 'shadow-sm')}
       >
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className={clsx('flex', 'flex-col', 'gap-4', 'lg:flex-row', 'lg:items-start', 'lg:justify-between')}>
           <div className="space-y-2">
-            <p className="text-sm text-slate-500">Order #{order._id}</p>
-            <h1 className="text-2xl font-semibold text-slate-900">
+            <p className={clsx('text-sm', 'text-slate-500')}>Order #{order._id}</p>
+            <h1 className={clsx('text-2xl', 'font-semibold', 'text-slate-900')}>
               {order.shippingAddress?.fullName || "Customer"}
             </h1>
-            <div className="text-sm text-slate-500">
+            <div className={clsx('text-sm', 'text-slate-500')}>
               Placed on {formatDateTime(order.createdAt)}
             </div>
           </div>
           {statusBadge}
         </div>
 
-        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="rounded-2xl bg-slate-50 p-4">
-            <div className="flex items-center gap-3 text-sm text-slate-500">
-              <PackageCheck className="h-5 w-5" /> Items
+        <div className={clsx('mt-6', 'grid', 'gap-4', 'sm:grid-cols-2', 'lg:grid-cols-4')}>
+          <div className={clsx('rounded-2xl', 'bg-slate-50', 'p-4')}>
+            <div className={clsx('flex', 'items-center', 'gap-3', 'text-sm', 'text-slate-500')}>
+              <PackageCheck className={clsx('h-5', 'w-5')} /> Items
             </div>
-            <p className="mt-2 text-xl font-semibold text-slate-900">
+            <p className={clsx('mt-2', 'text-xl', 'font-semibold', 'text-slate-900')}>
               {items.length || 0}
             </p>
           </div>
-          <div className="rounded-2xl bg-slate-50 p-4">
-            <div className="flex items-center gap-3 text-sm text-slate-500">
-              <CreditCard className="h-5 w-5" /> Payment
+          <div className={clsx('rounded-2xl', 'bg-slate-50', 'p-4')}>
+            <div className={clsx('flex', 'items-center', 'gap-3', 'text-sm', 'text-slate-500')}>
+              <CreditCard className={clsx('h-5', 'w-5')} /> Payment
             </div>
-            <p className="mt-2 text-xl font-semibold text-slate-900">
+            <p className={clsx('mt-2', 'text-xl', 'font-semibold', 'text-slate-900')}>
               {order.payment?.method?.toUpperCase?.() || "--"}
             </p>
-            <p className="text-xs text-slate-500">
+            <p className={clsx('text-xs', 'text-slate-500')}>
               Status: {order.payment?.status || "--"}
             </p>
           </div>
-          <div className="rounded-2xl bg-slate-50 p-4">
-            <div className="flex items-center gap-3 text-sm text-slate-500">
-              <Truck className="h-5 w-5" /> Delivery
+          <div className={clsx('rounded-2xl', 'bg-slate-50', 'p-4')}>
+            <div className={clsx('flex', 'items-center', 'gap-3', 'text-sm', 'text-slate-500')}>
+              <Truck className={clsx('h-5', 'w-5')} /> Delivery
             </div>
-            <p className="mt-2 text-base font-semibold text-slate-900">
+            <p className={clsx('mt-2', 'text-base', 'font-semibold', 'text-slate-900')}>
               {deliveryDate}
             </p>
           </div>
-          <div className="rounded-2xl bg-slate-50 p-4">
-            <div className="flex items-center gap-3 text-sm text-slate-500">
-              <Receipt className="h-5 w-5" /> Total
+          <div className={clsx('rounded-2xl', 'bg-slate-50', 'p-4')}>
+            <div className={clsx('flex', 'items-center', 'gap-3', 'text-sm', 'text-slate-500')}>
+              <Receipt className={clsx('h-5', 'w-5')} /> Total
             </div>
-            <p className="mt-2 text-xl font-semibold text-slate-900">
+            <p className={clsx('mt-2', 'text-xl', 'font-semibold', 'text-slate-900')}>
               {formatCurrency(total)}
             </p>
           </div>
         </div>
       </motion.div>
 
-      <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+      <section className={clsx('rounded-3xl', 'border', 'border-slate-200', 'bg-white', 'p-6', 'shadow-sm')}>
+        <div className={clsx('flex', 'flex-col', 'gap-4', 'sm:flex-row', 'sm:items-start', 'sm:justify-between')}>
           <div>
-            <h2 className="text-lg font-semibold text-slate-900">
+            <h2 className={clsx('text-lg', 'font-semibold', 'text-slate-900')}>
               Tracking Updates
             </h2>
-            <p className="mt-2 text-sm text-slate-600">
+            <p className={clsx('mt-2', 'text-sm', 'text-slate-600')}>
               Tracking ID:{" "}
               {order?.shipping?.trackingId ? (
                 trackingUrl ? (
@@ -493,12 +494,12 @@ const SellerOrderDetailsPage = ({
                     href={trackingUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="font-semibold text-blue-600 underline-offset-4 hover:underline"
+                    className={clsx('font-semibold', 'text-blue-600', 'underline-offset-4', 'hover:underline')}
                   >
                     {order.shipping.trackingId}
                   </a>
                 ) : (
-                  <span className="font-semibold text-slate-800">
+                  <span className={clsx('font-semibold', 'text-slate-800')}>
                     {order.shipping.trackingId}
                   </span>
                 )
@@ -506,7 +507,7 @@ const SellerOrderDetailsPage = ({
                 "To be assigned"
               )}
             </p>
-            <p className="mt-1 text-xs text-slate-400">
+            <p className={clsx('mt-1', 'text-xs', 'text-slate-400')}>
               Courier: {order?.shipping?.courier || "Triupati"}
             </p>
           </div>
@@ -514,7 +515,7 @@ const SellerOrderDetailsPage = ({
             <button
               type="button"
               onClick={() => window.open(trackingUrl, "_blank", "noopener")}
-              className="inline-flex items-center gap-2 self-start rounded-xl border border-blue-200 px-4 py-2 text-sm font-semibold text-blue-600 transition hover:border-blue-300 hover:bg-blue-50"
+              className={clsx('inline-flex', 'items-center', 'gap-2', 'self-start', 'rounded-xl', 'border', 'border-blue-200', 'px-4', 'py-2', 'text-sm', 'font-semibold', 'text-blue-600', 'transition', 'hover:border-blue-300', 'hover:bg-blue-50')}
             >
               Track My order
               <ExternalLink size={16} />
@@ -523,43 +524,43 @@ const SellerOrderDetailsPage = ({
         </div>
       </section>
 
-      <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h2 className="text-lg font-semibold text-slate-900">Order items</h2>
-        <div className="mt-4 divide-y divide-slate-200">
+      <section className={clsx('rounded-3xl', 'border', 'border-slate-200', 'bg-white', 'p-6', 'shadow-sm')}>
+        <h2 className={clsx('text-lg', 'font-semibold', 'text-slate-900')}>Order items</h2>
+        <div className={clsx('mt-4', 'divide-y', 'divide-slate-200')}>
           {items.map((item, index) => (
             <div
               key={`${item.product || item.name}-${index}`}
-              className="flex flex-col gap-4 py-4 sm:flex-row"
+              className={clsx('flex', 'flex-col', 'gap-4', 'py-4', 'sm:flex-row')}
             >
-              <div className="flex items-center gap-4 sm:w-1/2">
-                <div className="h-16 w-16 overflow-hidden rounded-xl bg-slate-100">
+              <div className={clsx('flex', 'items-center', 'gap-4', 'sm:w-1/2')}>
+                <div className={clsx('h-16', 'w-16', 'overflow-hidden', 'rounded-xl', 'bg-slate-100')}>
                   {item.image ? (
                     <img
                       src={item.image}
                       alt={item.name}
-                      className="h-full w-full object-cover"
+                      className={clsx('h-full', 'w-full', 'object-cover')}
                     />
                   ) : (
-                    <div className="flex h-full w-full items-center justify-center text-xs text-slate-400">
+                    <div className={clsx('flex', 'h-full', 'w-full', 'items-center', 'justify-center', 'text-xs', 'text-slate-400')}>
                       No image
                     </div>
                   )}
                 </div>
                 <div className="space-y-1">
-                  <p className="text-sm font-semibold text-slate-900">
+                  <p className={clsx('text-sm', 'font-semibold', 'text-slate-900')}>
                     {item.name}
                   </p>
                   {item.size && (
-                    <p className="text-xs text-slate-500">Size: {item.size}</p>
+                    <p className={clsx('text-xs', 'text-slate-500')}>Size: {item.size}</p>
                   )}
                 </div>
               </div>
-              <div className="flex flex-1 flex-wrap items-center gap-3 text-sm text-slate-600">
+              <div className={clsx('flex', 'flex-1', 'flex-wrap', 'items-center', 'gap-3', 'text-sm', 'text-slate-600')}>
                 <span>Qty: {item.quantity}</span>
                 <span>Price: {formatCurrency(item.price)}</span>
                 <span>Total: {formatCurrency(item.price * item.quantity)}</span>
                 {item.ratedAt && (
-                  <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs text-emerald-700">
+                  <span className={clsx('rounded-full', 'bg-emerald-100', 'px-3', 'py-1', 'text-xs', 'text-emerald-700')}>
                     Rated {item.rating ?? 0}/5
                   </span>
                 )}
@@ -567,24 +568,24 @@ const SellerOrderDetailsPage = ({
             </div>
           ))}
           {items.length === 0 && (
-            <p className="py-8 text-center text-sm text-slate-500">
+            <p className={clsx('py-8', 'text-center', 'text-sm', 'text-slate-500')}>
               No items available for this order.
             </p>
           )}
         </div>
       </section>
 
-      <section className="grid gap-6 lg:grid-cols-2">
+      <section className={clsx('grid', 'gap-6', 'lg:grid-cols-2')}>
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm"
+          className={clsx('rounded-3xl', 'border', 'border-slate-200', 'bg-white', 'p-6', 'shadow-sm')}
         >
-          <div className="flex items-center gap-3 text-sm text-slate-500">
-            <MapPin className="h-4 w-4" /> Shipping information
+          <div className={clsx('flex', 'items-center', 'gap-3', 'text-sm', 'text-slate-500')}>
+            <MapPin className={clsx('h-4', 'w-4')} /> Shipping information
           </div>
-          <div className="mt-4 space-y-2 text-sm text-slate-600">
-            <p className="text-sm font-semibold text-slate-900">
+          <div className={clsx('mt-4', 'space-y-2', 'text-sm', 'text-slate-600')}>
+            <p className={clsx('text-sm', 'font-semibold', 'text-slate-900')}>
               {order.shippingAddress?.fullName || "--"}
             </p>
             <p>{order.shippingAddress?.addressLine || "--"}</p>
@@ -604,36 +605,36 @@ const SellerOrderDetailsPage = ({
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm"
+          className={clsx('rounded-3xl', 'border', 'border-slate-200', 'bg-white', 'p-6', 'shadow-sm')}
         >
-          <div className="mb-3 flex items-center justify-between gap-3">
-            <h3 className="text-lg font-semibold text-slate-900">
+          <div className={clsx('mb-3', 'flex', 'items-center', 'justify-between', 'gap-3')}>
+            <h3 className={clsx('text-lg', 'font-semibold', 'text-slate-900')}>
               Payment summary
             </h3>
             {couponCode && (
-              <span className="inline-flex items-center rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-emerald-600">
+              <span className={clsx('inline-flex', 'items-center', 'rounded-full', 'bg-emerald-50', 'px-3', 'py-1', 'text-xs', 'font-semibold', 'uppercase', 'tracking-wide', 'text-emerald-600')}>
                 Coupon: {couponCode}
               </span>
             )}
           </div>
-          <div className="mt-4 space-y-3 text-sm text-slate-600">
-            <div className="flex items-center justify-between">
+          <div className={clsx('mt-4', 'space-y-3', 'text-sm', 'text-slate-600')}>
+            <div className={clsx('flex', 'items-center', 'justify-between')}>
               <span>Subtotal</span>
               <span>{formatCurrency(subtotal)}</span>
             </div>
-            <div className="flex items-center justify-between">
+            <div className={clsx('flex', 'items-center', 'justify-between')}>
               <span>Shipping</span>
               <span>{formatCurrency(shippingFee)}</span>
             </div>
-            <div className="flex items-center justify-between">
+            <div className={clsx('flex', 'items-center', 'justify-between')}>
               <span>Tax</span>
               <span>{formatCurrency(taxAmount)}</span>
             </div>
-            <div className="flex items-center justify-between text-emerald-600">
+            <div className={clsx('flex', 'items-center', 'justify-between', 'text-emerald-600')}>
               <span>Discount</span>
               <span>-{formatCurrency(discount)}</span>
             </div>
-            <div className="flex items-center justify-between border-t border-slate-200 pt-3 text-base font-semibold text-slate-900">
+            <div className={clsx('flex', 'items-center', 'justify-between', 'border-t', 'border-slate-200', 'pt-3', 'text-base', 'font-semibold', 'text-slate-900')}>
               <span>Total</span>
               <span>{formatCurrency(total)}</span>
             </div>
@@ -644,51 +645,51 @@ const SellerOrderDetailsPage = ({
       {order.replacementRequest &&
         order.replacementRequest.status &&
         order.replacementRequest.status !== "none" && (
-          <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-              <h3 className="text-lg font-semibold text-slate-900">
+          <section className={clsx('rounded-3xl', 'border', 'border-slate-200', 'bg-white', 'p-6', 'shadow-sm')}>
+            <div className={clsx('mb-4', 'flex', 'flex-wrap', 'items-center', 'justify-between', 'gap-3')}>
+              <h3 className={clsx('text-lg', 'font-semibold', 'text-slate-900')}>
                 Return & Replace request
               </h3>
               {allowReplacementActions ? (
-                <div className="flex flex-wrap items-center gap-2">
+                <div className={clsx('flex', 'flex-wrap', 'items-center', 'gap-2')}>
                   <button
                     type="button"
                     onClick={() => handleQuickDecision("approved")}
-                    className="inline-flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-100"
+                    className={clsx('inline-flex', 'items-center', 'gap-2', 'rounded-xl', 'border', 'border-emerald-200', 'bg-emerald-50', 'px-3', 'py-2', 'text-xs', 'font-semibold', 'text-emerald-700', 'hover:bg-emerald-100')}
                   >
-                    <ClipboardCheck className="h-4 w-4" /> Approve request
+                    <ClipboardCheck className={clsx('h-4', 'w-4')} /> Approve request
                   </button>
                   <button
                     type="button"
                     onClick={() => handleQuickDecision("rejected")}
-                    className="inline-flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700 hover:bg-rose-100"
+                    className={clsx('inline-flex', 'items-center', 'gap-2', 'rounded-xl', 'border', 'border-rose-200', 'bg-rose-50', 'px-3', 'py-2', 'text-xs', 'font-semibold', 'text-rose-700', 'hover:bg-rose-100')}
                   >
-                    <RotateCcw className="h-4 w-4" /> Reject request
+                    <RotateCcw className={clsx('h-4', 'w-4')} /> Reject request
                   </button>
                 </div>
               ) : null}
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2 text-sm text-slate-600">
-                <h4 className="text-sm font-semibold text-primary">
+            <div className={clsx('grid', 'gap-4', 'md:grid-cols-2')}>
+              <div className={clsx('space-y-2', 'text-sm', 'text-slate-600')}>
+                <h4 className={clsx('text-sm', 'font-semibold', 'text-primary')}>
                   Item details
                 </h4>
-                <p className="font-medium text-slate-900">
+                <p className={clsx('font-medium', 'text-slate-900')}>
                   {order.replacementRequest.itemName}
                   {order.replacementRequest.itemSize &&
                     ` • Size ${order.replacementRequest.itemSize}`}
                 </p>
                 <p>Quantity: {order.replacementRequest.quantity || 1}</p>
                 {order.replacementRequest.issueDescription && (
-                  <p className="rounded-xl border border-primary/20 bg-white p-3 text-sm text-slate-700">
+                  <p className={clsx('rounded-xl', 'border', 'border-primary/20', 'bg-white', 'p-3', 'text-sm', 'text-slate-700')}>
                     {order.replacementRequest.issueDescription}
                   </p>
                 )}
               </div>
 
-              <div className="space-y-2 text-sm text-slate-600">
-                <h4 className="text-sm font-semibold text-primary">
+              <div className={clsx('space-y-2', 'text-sm', 'text-slate-600')}>
+                <h4 className={clsx('text-sm', 'font-semibold', 'text-primary')}>
                   Replacement preferences
                 </h4>
                 <p>
@@ -707,7 +708,7 @@ const SellerOrderDetailsPage = ({
                     "--"}
                 </p>
                 {order.replacementRequest.adminNotes && (
-                  <p className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">
+                  <p className={clsx('rounded-xl', 'border', 'border-emerald-200', 'bg-emerald-50', 'p-3', 'text-sm', 'text-emerald-700')}>
                     Seller notes: {order.replacementRequest.adminNotes}
                   </p>
                 )}
@@ -716,11 +717,11 @@ const SellerOrderDetailsPage = ({
 
             {allowReplacementActions ? (
               <form
-                className="mt-6 grid gap-4 md:grid-cols-[1fr_1fr]"
+                className={clsx('mt-6', 'grid', 'gap-4', 'md:grid-cols-[1fr_1fr]')}
                 onSubmit={handleSubmitReplacementUpdate}
               >
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-primary">
+                  <label className={clsx('text-sm', 'font-medium', 'text-primary')}>
                     Update status
                   </label>
                   <select
@@ -728,7 +729,7 @@ const SellerOrderDetailsPage = ({
                     onChange={(event) =>
                       handleReplacementFieldChange("status", event.target.value)
                     }
-                    className="w-full rounded-xl border border-primary/30 px-3 py-2 text-sm focus:border-primary focus:outline-none"
+                    className={clsx('w-full', 'rounded-xl', 'border', 'border-primary/30', 'px-3', 'py-2', 'text-sm', 'focus:border-primary', 'focus:outline-none')}
                     required
                   >
                     {REPLACEMENT_STATUS_OPTIONS.map((option) => (
@@ -740,7 +741,7 @@ const SellerOrderDetailsPage = ({
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-primary">
+                  <label className={clsx('text-sm', 'font-medium', 'text-primary')}>
                     Courier (optional)
                   </label>
                   <input
@@ -751,13 +752,13 @@ const SellerOrderDetailsPage = ({
                         event.target.value,
                       )
                     }
-                    className="w-full rounded-xl border border-primary/30 px-3 py-2 text-sm focus:border-primary focus:outline-none"
+                    className={clsx('w-full', 'rounded-xl', 'border', 'border-primary/30', 'px-3', 'py-2', 'text-sm', 'focus:border-primary', 'focus:outline-none')}
                     placeholder="e.g. Delhivery"
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-primary">
+                  <label className={clsx('text-sm', 'font-medium', 'text-primary')}>
                     Tracking ID (optional)
                   </label>
                   <input
@@ -768,13 +769,13 @@ const SellerOrderDetailsPage = ({
                         event.target.value,
                       )
                     }
-                    className="w-full rounded-xl border border-primary/30 px-3 py-2 text-sm focus:border-primary focus:outline-none"
+                    className={clsx('w-full', 'rounded-xl', 'border', 'border-primary/30', 'px-3', 'py-2', 'text-sm', 'focus:border-primary', 'focus:outline-none')}
                     placeholder="e.g. AWB123456"
                   />
                 </div>
 
-                <div className="space-y-2 md:col-span-2">
-                  <label className="text-sm font-medium text-primary">
+                <div className={clsx('space-y-2', 'md:col-span-2')}>
+                  <label className={clsx('text-sm', 'font-medium', 'text-primary')}>
                     Notes for customer
                   </label>
                   <textarea
@@ -799,17 +800,17 @@ const SellerOrderDetailsPage = ({
                     }
                   />
                   {STATUSES_REQUIRING_REASON.has(replacementUpdate.status) ? (
-                    <p className="text-xs text-rose-500">
+                    <p className={clsx('text-xs', 'text-rose-500')}>
                       A reason is required when rejecting.
                     </p>
                   ) : (
-                    <p className="text-xs text-slate-500">
+                    <p className={clsx('text-xs', 'text-slate-500')}>
                       Optional message shared with the customer.
                     </p>
                   )}
                 </div>
 
-                <div className="flex flex-wrap items-center justify-end gap-3 md:col-span-2">
+                <div className={clsx('flex', 'flex-wrap', 'items-center', 'justify-end', 'gap-3', 'md:col-span-2')}>
                   <button
                     type="submit"
                     disabled={
@@ -822,22 +823,22 @@ const SellerOrderDetailsPage = ({
                           replacementUpdate.notes.trim()
                         ))
                     }
-                    className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-primary-dark disabled:cursor-not-allowed disabled:opacity-60"
+                    className={clsx('inline-flex', 'items-center', 'gap-2', 'rounded-xl', 'bg-primary', 'px-4', 'py-2', 'text-sm', 'font-semibold', 'text-white', 'shadow-sm', 'transition', 'hover:bg-primary-dark', 'disabled:cursor-not-allowed', 'disabled:opacity-60')}
                   >
                     {savingReplacement ? (
                       <>
-                        <Loader2 className="h-4 w-4 animate-spin" /> Saving...
+                        <Loader2 className={clsx('h-4', 'w-4', 'animate-spin')} /> Saving...
                       </>
                     ) : (
                       <>
-                        <ClipboardCheck className="h-4 w-4" /> Update request
+                        <ClipboardCheck className={clsx('h-4', 'w-4')} /> Update request
                       </>
                     )}
                   </button>
                 </div>
               </form>
             ) : (
-              <p className="mt-6 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+              <p className={clsx('mt-6', 'rounded-xl', 'border', 'border-slate-200', 'bg-slate-50', 'px-4', 'py-3', 'text-sm', 'text-slate-600')}>
                 Replacement workflow is read-only in coordinator view.
               </p>
             )}
@@ -846,36 +847,36 @@ const SellerOrderDetailsPage = ({
 
       {Array.isArray(order.replacementRequest?.history) &&
         order.replacementRequest.history.length > 0 && (
-          <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-4">
-            <h3 className="mb-3 text-sm font-semibold text-slate-800">
+          <div className={clsx('mt-6', 'rounded-2xl', 'border', 'border-slate-200', 'bg-white', 'p-4')}>
+            <h3 className={clsx('mb-3', 'text-sm', 'font-semibold', 'text-slate-800')}>
               Activity log
             </h3>
-            <ul className="space-y-2 text-xs text-slate-600">
+            <ul className={clsx('space-y-2', 'text-xs', 'text-slate-600')}>
               {order.replacementRequest.history
                 .slice()
                 .reverse()
                 .map((entry, index) => (
                   <li
                     key={`${entry.at || index}-${entry.status}`}
-                    className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-2"
+                    className={clsx('rounded-xl', 'border', 'border-slate-100', 'bg-slate-50', 'px-3', 'py-2')}
                   >
-                    <div className="flex justify-between gap-3">
-                      <span className="font-semibold capitalize">
+                    <div className={clsx('flex', 'justify-between', 'gap-3')}>
+                      <span className={clsx('font-semibold', 'capitalize')}>
                         {entry.status.replace(/_/g, " ")}
                       </span>
-                      <span className="text-[11px] text-slate-400">
+                      <span className={clsx('text-[11px]', 'text-slate-400')}>
                         {entry.at
                           ? new Date(entry.at).toLocaleString("en-IN")
                           : "--"}
                       </span>
                     </div>
                     {entry.note ? (
-                      <p className="mt-1 text-[12px] text-slate-600">
+                      <p className={clsx('mt-1', 'text-[12px]', 'text-slate-600')}>
                         {entry.note}
                       </p>
                     ) : null}
                     {entry.actor ? (
-                      <p className="mt-1 text-[11px] uppercase tracking-wide text-slate-400">
+                      <p className={clsx('mt-1', 'text-[11px]', 'uppercase', 'tracking-wide', 'text-slate-400')}>
                         Actor: {entry.actor}
                       </p>
                     ) : null}

@@ -16,7 +16,9 @@ const Login = () => {
   const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const from = location.state?.from?.pathname || "/";
+  const from = location.state?.from
+    ? `${location.state.from.pathname || ""}${location.state.from.search || ""}`
+    : "/";
 
   const handleChange = (e) => {
     const { name, value } = e.target;

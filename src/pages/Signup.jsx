@@ -1,5 +1,5 @@
 import React, { useRef, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Eye, EyeOff } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
@@ -20,6 +20,7 @@ const Signup = () => {
   const [errors, setErrors] = useState({});
   const { signup } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const usernameInputRef = useRef(null);
   const emailInputRef = useRef(null);
   const mobileInputRef = useRef(null);
@@ -58,7 +59,9 @@ const Signup = () => {
         mobile: formData.mobile,
         password: formData.password,
       });
-      navigate("/verify-email", { state: { email: formData.email } });
+      navigate("/verify-email", {
+        state: { email: formData.email, from: location.state?.from || null },
+      });
     } catch (apiError) {
       const message = apiError.message || "Failed to create account.";
       toast.error(message, { autoClose: 1000 });

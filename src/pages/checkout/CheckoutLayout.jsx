@@ -37,10 +37,19 @@ const CheckoutLayout = () => {
       getStepFromPath(location.pathname) === "confirmation";
     const hasActiveOrder = Boolean(checkout.orderId);
 
-    if (!checkout.items.length && !isConfirmationStep && !hasActiveOrder) {
+    const searchParams = new URLSearchParams(location.search || "");
+    const hasDeepLinkProduct = Boolean(searchParams.get("productId"));
+    const isOrderStep = getStepFromPath(location.pathname) === "order";
+
+    if (
+      !checkout.items.length &&
+      !isConfirmationStep &&
+      !hasActiveOrder &&
+      !(isOrderStep && hasDeepLinkProduct)
+    ) {
       navigate("/cart", { replace: true });
     }
-  }, [checkout.items.length, checkout.orderId, location.pathname, navigate]);
+  }, [checkout.items.length, checkout.orderId, location.pathname, location.search, navigate]);
 
   return (
     <div className="min-h-screen bg-light-bg">

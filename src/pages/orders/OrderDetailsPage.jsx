@@ -594,7 +594,7 @@ const OrderDetailsPage = () => {
 
   if (loading) {
     return (
-      <div className="max-w-5xl mx-auto px-4 lg:px-6 py-10 text-center text-medium-text">
+      <div className={clsx('max-w-5xl', 'mx-auto', 'px-4', 'lg:px-6', 'py-10', 'text-center', 'text-medium-text')}>
         Fetching order details...
       </div>
     );
@@ -602,14 +602,14 @@ const OrderDetailsPage = () => {
 
   if (error || !order) {
     return (
-      <div className="max-w-5xl mx-auto px-4 lg:px-6 py-10 text-center space-y-4">
-        <p className="text-lg font-semibold text-secondary">
+      <div className={clsx('max-w-5xl', 'mx-auto', 'px-4', 'lg:px-6', 'py-10', 'text-center', 'space-y-4')}>
+        <p className={clsx('text-lg', 'font-semibold', 'text-secondary')}>
           Unable to load order
         </p>
         <p className="text-medium-text">{error || "Order not found"}</p>
         <button
           onClick={handleBackNavigation}
-          className="px-4 py-2 rounded-lg bg-primary text-white hover:bg-primary-dark"
+          className={clsx('px-4', 'py-2', 'rounded-lg', 'bg-primary', 'text-white', 'hover:bg-primary-dark')}
         >
           Back to Orders
         </button>
@@ -760,43 +760,43 @@ const OrderDetailsPage = () => {
     : discount;
 
   return (
-    <div className="max-w-5xl mx-auto px-4 lg:px-6 py-8 lg:py-10 space-y-6">
+    <div className={clsx('max-w-5xl', 'mx-auto', 'px-4', 'lg:px-6', 'py-8', 'lg:py-10', 'space-y-6')}>
       <button
         onClick={handleBackNavigation}
-        className="inline-flex items-center gap-2 text-sm text-medium-text hover:text-secondary"
+        className={clsx('inline-flex', 'items-center', 'gap-2', 'text-sm', 'text-medium-text', 'hover:text-secondary')}
       >
-        <ArrowLeft className="h-4 w-4" /> Back
+        <ArrowLeft className={clsx('h-4', 'w-4')} /> Back
       </button>
 
       <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
-        className="rounded-3xl border border-slate-200 bg-white p-6 space-y-4"
+        className={clsx('rounded-3xl', 'border', 'border-slate-200', 'bg-white', 'p-6', 'space-y-4')}
       >
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h1 className="text-2xl font-semibold text-secondary break-all">
+        <div className={clsx('flex', 'flex-wrap', 'items-center', 'justify-between', 'gap-3')}>
+          <h1 className={clsx('text-2xl', 'font-semibold', 'text-secondary', 'break-all')}>
             Order #{order._id}
           </h1>
-          <p className="text-sm text-medium-text break-words">
+          <p className={clsx('text-sm', 'text-medium-text', 'break-words')}>
             Placed on {new Date(order.createdAt).toLocaleDateString()}
           </p>
         </div>
 
-        <div className="grid gap-4 text-sm text-medium-text md:grid-cols-2 md:items-end">
-          <div className="flex items-center gap-2">
-            <PackageCheck className="h-4 w-4 text-secondary" />
-            <span className="whitespace-nowrap text-secondary">
+        <div className={clsx('grid', 'gap-4', 'text-sm', 'text-medium-text', 'md:grid-cols-2', 'md:items-end')}>
+          <div className={clsx('flex', 'items-center', 'gap-2')}>
+            <PackageCheck className={clsx('h-4', 'w-4', 'text-secondary')} />
+            <span className={clsx('whitespace-nowrap', 'text-secondary')}>
               <span className="font-medium">Items:</span>{" "}
               <span className="text-medium-text">
                 {order.items?.length || 0}
               </span>
             </span>
           </div>
-          <div className="flex items-center gap-2 md:justify-end md:text-right">
-            <MapPin className="h-4 w-4 text-secondary" />
-            <span className="text-secondary md:text-right">
+          <div className={clsx('flex', 'items-center', 'gap-2', 'md:justify-end', 'md:text-right')}>
+            <MapPin className={clsx('h-4', 'w-4', 'text-secondary')} />
+            <span className={clsx('text-secondary', 'md:text-right')}>
               <span className="font-medium">Estimated delivery:</span>{" "}
-              <span className="text-medium-text whitespace-nowrap">
+              <span className={clsx('text-medium-text', 'whitespace-nowrap')}>
                 {deliveryDate}
               </span>
             </span>
@@ -804,12 +804,12 @@ const OrderDetailsPage = () => {
         </div>
       </motion.div>
 
-      <section className="rounded-3xl border border-slate-200 bg-white p-6 space-y-6">
+      <section className={clsx('rounded-3xl', 'border', 'border-slate-200', 'bg-white', 'p-6', 'space-y-6')}>
         <header className="space-y-1">
-          <h2 className="text-lg font-semibold text-secondary">
+          <h2 className={clsx('text-lg', 'font-semibold', 'text-secondary')}>
             Tracking Updates
           </h2>
-          <p className="text-sm text-medium-text">
+          <p className={clsx('text-sm', 'text-medium-text')}>
             Tracking ID:{" "}
             {order?.shipping?.trackingId ? (
               <a
@@ -821,7 +821,7 @@ const OrderDetailsPage = () => {
                 }
                 target="_blank"
                 rel="noopener noreferrer"
-                className="font-semibold text-primary underline-offset-4 hover:underline"
+                className={clsx('font-semibold', 'text-primary', 'underline-offset-4', 'hover:underline')}
               >
                 {order.shipping.trackingId}
               </a>
@@ -829,7 +829,7 @@ const OrderDetailsPage = () => {
               "To be assigned"
             )}
           </p>
-          <p className="text-xs text-slate-400">
+          <p className={clsx('text-xs', 'text-slate-400')}>
             Courier: {order?.shipping?.courier || "Ekart Logistics"}
           </p>
         </header>
@@ -854,10 +854,10 @@ const OrderDetailsPage = () => {
               return (
                 <li
                   key={step.key}
-                  className="relative grid grid-cols-[auto,1fr] gap-4 py-6 first:pt-0 last:pb-0"
+                  className={clsx('relative', 'grid', 'grid-cols-[auto,1fr]', 'gap-4', 'py-6', 'first:pt-0', 'last:pb-0')}
                   style={markerVars}
                 >
-                  <div className="relative flex w-6 justify-center">
+                  <div className={clsx('relative', 'flex', 'w-6', 'justify-center')}>
                     {showTopConnector && (
                       <span
                         aria-hidden="true"
@@ -879,7 +879,7 @@ const OrderDetailsPage = () => {
                             : "border-slate-300 bg-white text-slate-300"
                       }`}
                     >
-                      <Icon className="h-3.5 w-3.5" />
+                      <Icon className={clsx('h-3.5', 'w-3.5')} />
                     </span>
                     {showConnector && (
                       <span
@@ -895,26 +895,26 @@ const OrderDetailsPage = () => {
                     )}
                   </div>
                   <div className="space-y-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="text-sm font-semibold text-secondary">
+                    <div className={clsx('flex', 'flex-wrap', 'items-center', 'gap-2')}>
+                      <p className={clsx('text-sm', 'font-semibold', 'text-secondary')}>
                         {step.label}
                       </p>
                       {step.at && (
-                        <span className="text-xs text-slate-400">
+                        <span className={clsx('text-xs', 'text-slate-400')}>
                           {formatTimelineDate(step.at)}
                         </span>
                       )}
                     </div>
-                    <p className="text-sm text-medium-text whitespace-pre-line">
+                    <p className={clsx('text-sm', 'text-medium-text', 'whitespace-pre-line')}>
                       {step.description}
                     </p>
                     {step.key === "shipped" && order?.shipping?.trackingId && (
-                      <div className="rounded-xl bg-slate-50 px-3 py-2 text-xs text-medium-text">
+                      <div className={clsx('rounded-xl', 'bg-slate-50', 'px-3', 'py-2', 'text-xs', 'text-medium-text')}>
                         <p>
                           {order.shipping.courier || "Ekart Logistics"} •{" "}
                           {order.shipping.trackingId}
                         </p>
-                        <p className="mt-1 text-slate-400">
+                        <p className={clsx('mt-1', 'text-slate-400')}>
                           Last updated{" "}
                           {formatTimelineDate(order.shipping.updatedAt)}
                         </p>
@@ -929,43 +929,43 @@ const OrderDetailsPage = () => {
       </section>
 
       {replacementStatusActive ? (
-        <section className="rounded-3xl border border-slate-200 bg-white p-6 space-y-4">
-          <header className="flex flex-wrap items-center justify-between gap-3">
+        <section className={clsx('rounded-3xl', 'border', 'border-slate-200', 'bg-white', 'p-6', 'space-y-4')}>
+          <header className={clsx('flex', 'flex-wrap', 'items-center', 'justify-between', 'gap-3')}>
             <div>
-              <h2 className="text-lg font-semibold text-secondary">
+              <h2 className={clsx('text-lg', 'font-semibold', 'text-secondary')}>
                 Return & Replace status
               </h2>
-              <p className="text-xs text-medium-text">
+              <p className={clsx('text-xs', 'text-medium-text')}>
                 Requested on{" "}
                 {replacementRequest.requestedAt
                   ? new Date(replacementRequest.requestedAt).toLocaleString()
                   : "--"}
               </p>
             </div>
-            <span className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
-              <span className="h-2 w-2 rounded-full bg-primary" />
+            <span className={clsx('inline-flex', 'items-center', 'gap-2', 'rounded-full', 'bg-primary/10', 'px-3', 'py-1', 'text-xs', 'font-medium', 'text-primary')}>
+              <span className={clsx('h-2', 'w-2', 'rounded-full', 'bg-primary')} />
               {replacementRequest.status.replace(/_/g, " ")}
             </span>
           </header>
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-2 text-sm text-medium-text">
-              <h3 className="text-sm font-semibold text-secondary">
+          <div className={clsx('grid', 'gap-4', 'md:grid-cols-2')}>
+            <div className={clsx('space-y-2', 'text-sm', 'text-medium-text')}>
+              <h3 className={clsx('text-sm', 'font-semibold', 'text-secondary')}>
                 Item details
               </h3>
-              <p className="font-medium text-secondary">
+              <p className={clsx('font-medium', 'text-secondary')}>
                 {replacementRequest.itemName}
                 {replacementRequest.itemSize &&
                   ` • Size ${replacementRequest.itemSize}`}
               </p>
               <p>Quantity: {replacementRequest.quantity || 1}</p>
               {replacementRequest.issueDescription && (
-                <p className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600">
+                <p className={clsx('rounded-xl', 'border', 'border-slate-200', 'bg-slate-50', 'p-3', 'text-sm', 'text-slate-600')}>
                   {replacementRequest.issueDescription}
                 </p>
               )}
             </div>
-            <div className="space-y-2 text-sm text-medium-text">
-              <h3 className="text-sm font-semibold text-secondary">
+            <div className={clsx('space-y-2', 'text-sm', 'text-medium-text')}>
+              <h3 className={clsx('text-sm', 'font-semibold', 'text-secondary')}>
                 Replacement preference
               </h3>
               <p>
@@ -980,7 +980,7 @@ const OrderDetailsPage = () => {
                 {replacementRequest.replacementPreferences?.remarks || "--"}
               </p>
               {replacementRequest.adminNotes && (
-                <p className="rounded-xl border border-primary/20 bg-primary/5 p-3 text-sm text-primary">
+                <p className={clsx('rounded-xl', 'border', 'border-primary/20', 'bg-primary/5', 'p-3', 'text-sm', 'text-primary')}>
                   Admin notes: {replacementRequest.adminNotes}
                 </p>
               )}
@@ -988,28 +988,28 @@ const OrderDetailsPage = () => {
           </div>
           {Array.isArray(replacementRequest.history) &&
           replacementRequest.history.length ? (
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-              <h3 className="mb-3 text-sm font-semibold text-secondary">
+            <div className={clsx('rounded-2xl', 'border', 'border-slate-200', 'bg-slate-50', 'p-4')}>
+              <h3 className={clsx('mb-3', 'text-sm', 'font-semibold', 'text-secondary')}>
                 Activity
               </h3>
-              <ul className="space-y-2 text-xs text-medium-text">
+              <ul className={clsx('space-y-2', 'text-xs', 'text-medium-text')}>
                 {replacementRequest.history
                   .slice()
                   .reverse()
                   .map((entry, index) => (
                     <li
                       key={`${entry.at || index}-${entry.status}`}
-                      className="flex items-start gap-2"
+                      className={clsx('flex', 'items-start', 'gap-2')}
                     >
-                      <span className="mt-0.5 inline-flex h-2 w-2 rounded-full bg-primary" />
+                      <span className={clsx('mt-0.5', 'inline-flex', 'h-2', 'w-2', 'rounded-full', 'bg-primary')} />
                       <div>
-                        <p className="font-medium text-secondary">
+                        <p className={clsx('font-medium', 'text-secondary')}>
                           {entry.status?.replace(/_/g, " ") || "Update"}
                         </p>
                         <p className="text-medium-text">
                           {entry.note || "Status updated"}
                         </p>
-                        <p className="text-[10px] text-slate-400">
+                        <p className={clsx('text-[10px]', 'text-slate-400')}>
                           {entry.at
                             ? new Date(entry.at).toLocaleString()
                             : "--"}
@@ -1024,24 +1024,24 @@ const OrderDetailsPage = () => {
         </section>
       ) : null}
 
-      <section className="rounded-3xl border border-slate-200 bg-white p-6 space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-lg font-semibold text-secondary">
+      <section className={clsx('rounded-3xl', 'border', 'border-slate-200', 'bg-white', 'p-6', 'space-y-4')}>
+        <div className={clsx('flex', 'flex-wrap', 'items-center', 'justify-between', 'gap-3')}>
+          <h2 className={clsx('text-lg', 'font-semibold', 'text-secondary')}>
             Items in your order
           </h2>
           {canRequestReplacement && (
             <button
               type="button"
               onClick={handleOpenReplacementModal}
-              className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-primary-dark"
+              className={clsx('inline-flex', 'items-center', 'gap-2', 'rounded-xl', 'bg-primary', 'px-4', 'py-2', 'text-sm', 'font-medium', 'text-white', 'shadow-sm', 'transition', 'hover:bg-primary-dark')}
             >
-              <RotateCcw className="h-4 w-4" /> Request return & replace
+              <RotateCcw className={clsx('h-4', 'w-4')} /> Request return & replace
             </button>
           )}
         </div>
         {replacementAvailabilityMessage && (
-          <div className="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
-            <AlertCircle className="h-4 w-4" />
+          <div className={clsx('flex', 'items-center', 'gap-2', 'rounded-xl', 'border', 'border-amber-200', 'bg-amber-50', 'px-3', 'py-2', 'text-xs', 'text-amber-700')}>
+            <AlertCircle className={clsx('h-4', 'w-4')} />
             {replacementAvailabilityMessage}
           </div>
         )}
@@ -1055,37 +1055,37 @@ const OrderDetailsPage = () => {
             return (
               <div
                 key={`${item.name}-${index}`}
-                className="flex flex-col gap-4 rounded-2xl border border-slate-200 p-4"
+                className={clsx('flex', 'flex-col', 'gap-4', 'rounded-2xl', 'border', 'border-slate-200', 'p-4')}
               >
-                <div className="flex gap-4">
-                  <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-white">
+                <div className={clsx('flex', 'gap-4')}>
+                  <div className={clsx('flex', 'h-20', 'w-20', 'items-center', 'justify-center', 'overflow-hidden', 'rounded-xl', 'border', 'border-slate-200', 'bg-white')}>
                     <img
                       src={item.image}
                       alt={item.name}
-                      className="max-h-full max-w-full object-contain"
+                      className={clsx('max-h-full', 'max-w-full', 'object-contain')}
                     />
                   </div>
-                  <div className="flex-1 space-y-1">
-                    <p className="font-semibold text-secondary">{item.name}</p>
-                    <p className="text-sm text-medium-text">
+                  <div className={clsx('flex-1', 'space-y-1')}>
+                    <p className={clsx('font-semibold', 'text-secondary')}>{item.name}</p>
+                    <p className={clsx('text-sm', 'text-medium-text')}>
                       Qty: {item.quantity}
                       {item.size && (
                         <span className="ml-2">• Size: {item.size}</span>
                       )}
                     </p>
-                    <p className="text-sm text-medium-text">
+                    <p className={clsx('text-sm', 'text-medium-text')}>
                       Price: ₹{formattedPrice}
                     </p>
-                    <p className="text-sm text-medium-text">
+                    <p className={clsx('text-sm', 'text-medium-text')}>
                       Line Total: ₹{formattedLineTotal}
                     </p>
                   </div>
                 </div>
 
-                <div className="border-t border-slate-100 pt-3">
+                <div className={clsx('border-t', 'border-slate-100', 'pt-3')}>
                   {item.ratedAt ? (
                     <div className="space-y-2">
-                      <div className="flex items-center gap-2 text-sm text-secondary">
+                      <div className={clsx('flex', 'items-center', 'gap-2', 'text-sm', 'text-secondary')}>
                         {[...Array(5)].map((_, starIndex) => (
                           <Star
                             key={starIndex}
@@ -1097,14 +1097,14 @@ const OrderDetailsPage = () => {
                             }
                           />
                         ))}
-                        <span className="text-xs text-medium-text">
+                        <span className={clsx('text-xs', 'text-medium-text')}>
                           Rated on {new Date(item.ratedAt).toLocaleDateString()}
                         </span>
                       </div>
                       {item.review && (
-                        <div className="flex items-start gap-2 rounded-xl bg-slate-50 p-3 text-sm text-medium-text">
-                          <MessageCircle className="h-4 w-4 text-secondary mt-0.5" />
-                          <p className="whitespace-pre-line break-words">
+                        <div className={clsx('flex', 'items-start', 'gap-2', 'rounded-xl', 'bg-slate-50', 'p-3', 'text-sm', 'text-medium-text')}>
+                          <MessageCircle className={clsx('h-4', 'w-4', 'text-secondary', 'mt-0.5')} />
+                          <p className={clsx('whitespace-pre-line', 'break-words')}>
                             {item.review}
                           </p>
                         </div>
@@ -1112,7 +1112,7 @@ const OrderDetailsPage = () => {
                     </div>
                   ) : canReviewItems ? (
                     <div className="space-y-3">
-                      <div className="flex items-center gap-2">
+                      <div className={clsx('flex', 'items-center', 'gap-2')}>
                         {[...Array(5)].map((_, starIndex) => {
                           const ratingValue = starIndex + 1;
                           const currentDraft = ratingDrafts[index]?.rating || 0;
@@ -1151,19 +1151,19 @@ const OrderDetailsPage = () => {
                                 handleReviewChange(index, event.target.value)
                               }
                               placeholder="Share your experience with this product (optional)"
-                              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-medium-text focus:border-primary focus:outline-none"
+                              className={clsx('w-full', 'rounded-xl', 'border', 'border-slate-200', 'bg-white', 'px-3', 'py-2', 'text-sm', 'text-medium-text', 'focus:border-primary', 'focus:outline-none')}
                               rows={3}
                               maxLength={2000}
                               disabled={submittingIndex !== null}
                             />
-                            <div className="flex justify-end">
+                            <div className={clsx('flex', 'justify-end')}>
                               <button
                                 type="button"
                                 onClick={() => handleSubmitRating(index)}
                                 disabled={submittingIndex !== null}
-                                className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
+                                className={clsx('inline-flex', 'items-center', 'gap-2', 'rounded-xl', 'bg-primary', 'px-4', 'py-2', 'text-sm', 'font-medium', 'text-white', 'hover:bg-primary/90', 'disabled:cursor-not-allowed', 'disabled:opacity-60')}
                               >
-                                <Send className="h-4 w-4" />
+                                <Send className={clsx('h-4', 'w-4')} />
                                 {submittingIndex === index
                                   ? "Submitting..."
                                   : "Submit review"}
@@ -1180,12 +1180,12 @@ const OrderDetailsPage = () => {
         </div>
       </section>
 
-      <section className="rounded-3xl border border-slate-200 bg-white p-6 grid md:grid-cols-2 gap-6">
-        <div className="space-y-2 text-sm text-medium-text break-words">
-          <h3 className="text-lg font-semibold text-secondary mb-2">
+      <section className={clsx('rounded-3xl', 'border', 'border-slate-200', 'bg-white', 'p-6', 'grid', 'md:grid-cols-2', 'gap-6')}>
+        <div className={clsx('space-y-2', 'text-sm', 'text-medium-text', 'break-words')}>
+          <h3 className={clsx('text-lg', 'font-semibold', 'text-secondary', 'mb-2')}>
             Delivery Address
           </h3>
-          <p className="font-medium text-secondary">
+          <p className={clsx('font-medium', 'text-secondary')}>
             {order.shippingAddress?.fullName}
           </p>
           <p>{order.shippingAddress?.addressLine}</p>
@@ -1199,48 +1199,48 @@ const OrderDetailsPage = () => {
           )}
           <p>Email: {order.shippingAddress?.email}</p>
         </div>
-        <div className="space-y-2 text-sm text-medium-text">
-          <div className="mb-2 flex items-center justify-between gap-3">
-            <h3 className="text-lg font-semibold text-secondary">
+        <div className={clsx('space-y-2', 'text-sm', 'text-medium-text')}>
+          <div className={clsx('mb-2', 'flex', 'items-center', 'justify-between', 'gap-3')}>
+            <h3 className={clsx('text-lg', 'font-semibold', 'text-secondary')}>
               Payment Summary
             </h3>
             {coupon?.code && (
-              <span className="inline-flex items-center rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-emerald-600">
+              <span className={clsx('inline-flex', 'items-center', 'rounded-full', 'bg-emerald-50', 'px-3', 'py-1', 'text-xs', 'font-semibold', 'uppercase', 'tracking-wide', 'text-emerald-600')}>
                 Coupon applied
               </span>
             )}
           </div>
-          <p className="flex justify-between gap-3">
+          <p className={clsx('flex', 'justify-between', 'gap-3')}>
             <span>Subtotal</span>
             <span>{formatCurrency(subtotal)}</span>
           </p>
-          <p className="flex justify-between gap-3">
+          <p className={clsx('flex', 'justify-between', 'gap-3')}>
             <span>Shipping Fee</span>
             <span>{formatCurrency(shippingFee)}</span>
           </p>
-          <p className="flex justify-between gap-3">
+          <p className={clsx('flex', 'justify-between', 'gap-3')}>
             <span>Tax</span>
             <span>{formatCurrency(taxAmount)}</span>
           </p>
-          <p className="flex justify-between text-success font-medium gap-3">
+          <p className={clsx('flex', 'justify-between', 'text-success', 'font-medium', 'gap-3')}>
             <span>Discount</span>
             <span>-{formatCurrency(discount)}</span>
           </p>
-          <p className="flex justify-between text-base font-semibold text-slate-900 border-t border-slate-200 pt-3 gap-3">
+          <p className={clsx('flex', 'justify-between', 'text-base', 'font-semibold', 'text-slate-900', 'border-t', 'border-slate-200', 'pt-3', 'gap-3')}>
             <span>Total</span>
             <span>{formatCurrency(total)}</span>
           </p>
-          <p className="text-xs text-slate-400 pt-1 break-words">
+          <p className={clsx('text-xs', 'text-slate-400', 'pt-1', 'break-words')}>
             Method: {order.payment?.method?.toUpperCase?.()} • Status:{" "}
             {order.payment?.status}
           </p>
         </div>
       </section>
 
-      <div className="flex flex-wrap gap-3 justify-end">
+      <div className={clsx('flex', 'flex-wrap', 'gap-3', 'justify-end')}>
         <button
           onClick={handleBackNavigation}
-          className="px-5 py-3 rounded-xl border border-slate-200 text-secondary hover:bg-slate-50"
+          className={clsx('px-5', 'py-3', 'rounded-xl', 'border', 'border-slate-200', 'text-secondary', 'hover:bg-slate-50')}
         >
           Back to Orders
         </button>
@@ -1248,9 +1248,9 @@ const OrderDetailsPage = () => {
           type="button"
           onClick={handleDownloadInvoice}
           disabled={downloadingInvoice || !canDownloadInvoice}
-          className="px-5 py-3 rounded-xl bg-primary text-white hover:bg-primary-dark disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
+          className={clsx('px-5', 'py-3', 'rounded-xl', 'bg-primary', 'text-white', 'hover:bg-primary-dark', 'disabled:opacity-50', 'disabled:cursor-not-allowed', 'inline-flex', 'items-center', 'gap-2')}
         >
-          <Download className="h-4 w-4" />
+          <Download className={clsx('h-4', 'w-4')} />
           {downloadingInvoice
             ? "Preparing Invoice..."
             : canDownloadInvoice
@@ -1260,30 +1260,30 @@ const OrderDetailsPage = () => {
       </div>
 
       {isReplacementModalOpen && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/40 px-4">
-          <div className="w-full max-w-2xl rounded-3xl bg-white p-6 shadow-xl">
-            <div className="mb-4 flex items-start justify-between gap-4">
+        <div className={clsx('fixed', 'inset-0', 'z-40', 'flex', 'items-center', 'justify-center', 'bg-slate-900/40', 'px-4')}>
+          <div className={clsx('w-full', 'max-w-2xl', 'rounded-3xl', 'bg-white', 'p-6', 'shadow-xl')}>
+            <div className={clsx('mb-4', 'flex', 'items-start', 'justify-between', 'gap-4')}>
               <div>
-                <h2 className="text-lg font-semibold text-secondary">
+                <h2 className={clsx('text-lg', 'font-semibold', 'text-secondary')}>
                   Return & Replace request
                 </h2>
-                <p className="text-xs text-medium-text">
+                <p className={clsx('text-xs', 'text-medium-text')}>
                   Tell us what went wrong so we can arrange a replacement.
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setReplacementModalOpen(false)}
-                className="rounded-full border border-slate-200 bg-white p-1 text-slate-500 hover:bg-slate-100"
+                className={clsx('rounded-full', 'border', 'border-slate-200', 'bg-white', 'p-1', 'text-slate-500', 'hover:bg-slate-100')}
               >
-                <X className="h-4 w-4" />
+                <X className={clsx('h-4', 'w-4')} />
               </button>
             </div>
 
             <form className="space-y-4" onSubmit={handleSubmitReplacement}>
-              <div className="grid gap-4 md:grid-cols-[1.4fr_1fr]">
-                <label className="space-y-2 text-sm text-medium-text">
-                  <span className="font-medium text-secondary">
+              <div className={clsx('grid', 'gap-4', 'md:grid-cols-[1.4fr_1fr]')}>
+                <label className={clsx('space-y-2', 'text-sm', 'text-medium-text')}>
+                  <span className={clsx('font-medium', 'text-secondary')}>
                     Select product
                   </span>
                   <select
@@ -1294,7 +1294,7 @@ const OrderDetailsPage = () => {
                         Number(event.target.value),
                       )
                     }
-                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none"
+                    className={clsx('w-full', 'rounded-xl', 'border', 'border-slate-200', 'px-3', 'py-2', 'text-sm', 'focus:border-primary', 'focus:outline-none')}
                   >
                     {order?.items?.map((item, index) => (
                       <option key={`${item.name}-${index}`} value={index}>
@@ -1306,18 +1306,18 @@ const OrderDetailsPage = () => {
                 </label>
 
                 {selectedReplacementItem ? (
-                  <div className="flex items-center justify-center rounded-xl border border-slate-100 bg-slate-50 p-3">
+                  <div className={clsx('flex', 'items-center', 'justify-center', 'rounded-xl', 'border', 'border-slate-100', 'bg-slate-50', 'p-3')}>
                     <img
                       src={selectedReplacementItem.image}
                       alt={selectedReplacementItem.name}
-                      className="h-20 w-20 rounded-lg object-contain"
+                      className={clsx('h-20', 'w-20', 'rounded-lg', 'object-contain')}
                     />
                   </div>
                 ) : null}
               </div>
 
-              <label className="space-y-2 text-sm text-medium-text">
-                <span className="font-medium text-secondary">
+              <label className={clsx('space-y-2', 'text-sm', 'text-medium-text')}>
+                <span className={clsx('font-medium', 'text-secondary')}>
                   Describe the issue
                 </span>
                 <textarea
@@ -1331,14 +1331,14 @@ const OrderDetailsPage = () => {
                   required
                   minLength={10}
                   rows={4}
-                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none"
+                  className={clsx('w-full', 'rounded-xl', 'border', 'border-slate-200', 'px-3', 'py-2', 'text-sm', 'focus:border-primary', 'focus:outline-none')}
                   placeholder="Share what went wrong with the product."
                 />
               </label>
 
-              <div className="grid gap-4 md:grid-cols-2">
-                <label className="space-y-2 text-sm text-medium-text">
-                  <span className="font-medium text-secondary">
+              <div className={clsx('grid', 'gap-4', 'md:grid-cols-2')}>
+                <label className={clsx('space-y-2', 'text-sm', 'text-medium-text')}>
+                  <span className={clsx('font-medium', 'text-secondary')}>
                     Preferred size
                   </span>
                   <input
@@ -1346,12 +1346,12 @@ const OrderDetailsPage = () => {
                     onChange={(event) =>
                       handleReplacementInputChange("size", event.target.value)
                     }
-                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none"
+                    className={clsx('w-full', 'rounded-xl', 'border', 'border-slate-200', 'px-3', 'py-2', 'text-sm', 'focus:border-primary', 'focus:outline-none')}
                     placeholder="e.g. L"
                   />
                 </label>
-                <label className="space-y-2 text-sm text-medium-text">
-                  <span className="font-medium text-secondary">
+                <label className={clsx('space-y-2', 'text-sm', 'text-medium-text')}>
+                  <span className={clsx('font-medium', 'text-secondary')}>
                     Preferred color
                   </span>
                   <input
@@ -1359,14 +1359,14 @@ const OrderDetailsPage = () => {
                     onChange={(event) =>
                       handleReplacementInputChange("color", event.target.value)
                     }
-                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none"
+                    className={clsx('w-full', 'rounded-xl', 'border', 'border-slate-200', 'px-3', 'py-2', 'text-sm', 'focus:border-primary', 'focus:outline-none')}
                     placeholder="e.g. Blue"
                   />
                 </label>
               </div>
 
-              <label className="space-y-2 text-sm text-medium-text">
-                <span className="font-medium text-secondary">
+              <label className={clsx('space-y-2', 'text-sm', 'text-medium-text')}>
+                <span className={clsx('font-medium', 'text-secondary')}>
                   Additional notes (optional)
                 </span>
                 <input
@@ -1374,29 +1374,29 @@ const OrderDetailsPage = () => {
                   onChange={(event) =>
                     handleReplacementInputChange("remarks", event.target.value)
                   }
-                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none"
+                  className={clsx('w-full', 'rounded-xl', 'border', 'border-slate-200', 'px-3', 'py-2', 'text-sm', 'focus:border-primary', 'focus:outline-none')}
                   placeholder="Share anything else the team should know."
                 />
               </label>
 
-              <div className="flex flex-wrap justify-end gap-3 pt-2">
+              <div className={clsx('flex', 'flex-wrap', 'justify-end', 'gap-3', 'pt-2')}>
                 <button
                   type="button"
                   onClick={() => setReplacementModalOpen(false)}
-                  className="rounded-xl border border-slate-200 px-4 py-2 text-sm text-secondary hover:bg-slate-50"
+                  className={clsx('rounded-xl', 'border', 'border-slate-200', 'px-4', 'py-2', 'text-sm', 'text-secondary', 'hover:bg-slate-50')}
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={replacementSubmitting}
-                  className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-primary-dark disabled:cursor-not-allowed disabled:opacity-60"
+                  className={clsx('inline-flex', 'items-center', 'gap-2', 'rounded-xl', 'bg-primary', 'px-4', 'py-2', 'text-sm', 'font-medium', 'text-white', 'shadow-sm', 'transition', 'hover:bg-primary-dark', 'disabled:cursor-not-allowed', 'disabled:opacity-60')}
                 >
                   {replacementSubmitting ? (
                     <>Submitting...</>
                   ) : (
                     <>
-                      <RotateCcw className="h-4 w-4" /> Send request
+                      <RotateCcw className={clsx('h-4', 'w-4')} /> Send request
                     </>
                   )}
                 </button>

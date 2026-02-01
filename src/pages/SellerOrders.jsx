@@ -5,7 +5,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { toast } from "react-hot-toast";
 import ExcelJS from "exceljs";
 import jsPDF from "jspdf";
-import {
+import api, {
   downloadOrderInvoice,
   fetchSellerOrders,
   fetchOrderById,
@@ -83,6 +83,55 @@ const formatCurrency = (value) =>
     currency: "INR",
     maximumFractionDigits: 0,
   }).format(Number(value) || 0);
+
+const clsx = (...values) => values.filter(Boolean).join(" ");
+
+const buildSellerImageProxyUrl = (rawUrl) => {
+  if (!rawUrl || typeof rawUrl !== "string") {
+    return null;
+  }
+
+  const trimmed = rawUrl.trim();
+  if (!trimmed || trimmed.startsWith("data:") || trimmed.startsWith("blob:")) {
+    return null;
+  }
+
+  try {
+    const parsed = new URL(trimmed, window.location?.origin || undefined);
+    if (!/^https?:$/i.test(parsed.protocol)) {
+      return null;
+    }
+
+    const localHosts = new Set(["localhost", ""]);
+    if (localHosts.has(parsed.hostname.toLowerCase())) {
+      return null;
+    }
+
+    const baseUrl =
+      typeof api?.defaults?.baseURL === "string" ? api.defaults.baseURL : "";
+    const normalizedBase = baseUrl ? baseUrl.replace(/\/+$/, "") : "";
+    if (!normalizedBase) {
+      return null;
+    }
+
+    return `${normalizedBase}/sellers/image-proxy?url=${encodeURIComponent(
+      parsed.toString(),
+    )}`;
+  } catch (_error) {
+    return null;
+  }
+};
+
+const buildAuthHeaders = () => {
+  try {
+    const token = window.localStorage?.getItem("authToken");
+    if (token) {
+      return { Authorization: `Bearer ${token}` };
+    }
+  } catch (_error) {
+  }
+  return {};
+};
 
 const formatDate = (value) => {
   if (!value) return "-";
@@ -423,6 +472,7 @@ const SellerOrders = () => {
         value: invoiceUrl,
         enumerable: false,
       });
+
       Object.defineProperty(row, "__qrPdfLink", {
         value: order.qrfolio?.pdfUrl || "",
         enumerable: false,
@@ -519,11 +569,43 @@ const SellerOrders = () => {
         return null;
       }
 
-      if (imageCache.has(normalizedUrl)) {
-        return imageCache.get(normalizedUrl);
+      const proxyUrl = buildSellerImageProxyUrl(normalizedUrl);
+      const cacheKey = proxyUrl || normalizedUrl;
+
+      if (imageCache.has(cacheKey)) {
+        return imageCache.get(cacheKey);
       }
 
       try {
+        if (proxyUrl) {
+          const response = await fetch(proxyUrl, {
+            credentials: "include",
+            headers: buildAuthHeaders(),
+          });
+          if (!response.ok) {
+            throw new Error(`Unexpected status ${response.status}`);
+          }
+
+          const json = await response.json();
+          const dataUrl = json?.data?.dataUrl;
+          if (!dataUrl || typeof dataUrl !== "string") {
+            imageCache.set(cacheKey, null);
+            return null;
+          }
+
+          const extension = dataUrl.startsWith("data:image/jpeg")
+            ? "jpeg"
+            : dataUrl.startsWith("data:image/jpg")
+              ? "jpeg"
+              : dataUrl.startsWith("data:image/webp")
+                ? "webp"
+                : "png";
+
+          const payload = { dataUrl, extension };
+          imageCache.set(cacheKey, payload);
+          return payload;
+        }
+
         const response = await fetch(normalizedUrl, { credentials: "include" });
         if (!response.ok) {
           throw new Error(`Unexpected status ${response.status}`);
@@ -531,7 +613,7 @@ const SellerOrders = () => {
 
         const blob = await response.blob();
         if (!blob.type || !blob.type.startsWith("image/")) {
-          imageCache.set(normalizedUrl, null);
+          imageCache.set(cacheKey, null);
           return null;
         }
 
@@ -551,7 +633,7 @@ const SellerOrders = () => {
               : "png";
 
         const payload = { dataUrl, extension };
-        imageCache.set(normalizedUrl, payload);
+        imageCache.set(cacheKey, payload);
         return payload;
       } catch (error) {
         console.error(
@@ -559,7 +641,7 @@ const SellerOrders = () => {
           normalizedUrl,
           error,
         );
-        imageCache.set(normalizedUrl, null);
+        imageCache.set(cacheKey, null);
         return null;
       }
     };
@@ -658,10 +740,10 @@ const SellerOrders = () => {
       {
         key: "qr",
         label: "QR Code",
-        width: 70,
+        width: 120,
         type: "image",
-        imageWidth: 52,
-        imageHeight: 52,
+        imageWidth: 108,
+        imageHeight: 108,
       },
       {
         key: "qrPdf",
@@ -672,9 +754,9 @@ const SellerOrders = () => {
       {
         key: "invoice",
         label: "Invoice",
-        width: 88,
+        width: 70,
         type: "image",
-        imageWidth: 68,
+        imageWidth: 56,
         imageHeight: 52,
       },
     ];
@@ -796,16 +878,63 @@ const SellerOrders = () => {
     const imageCache = new Map();
 
     const loadImageData = async (rawUrl) => {
+      if (typeof rawUrl === "string" && rawUrl.trim().startsWith("data:")) {
+        const dataUrl = rawUrl.trim();
+        const format = dataUrl.startsWith("data:image/jpeg")
+          ? "JPEG"
+          : dataUrl.startsWith("data:image/jpg")
+            ? "JPEG"
+            : dataUrl.startsWith("data:image/webp")
+              ? "WEBP"
+              : "PNG";
+        return { dataUrl, format };
+      }
+
       const normalizedUrl = normalizeLink(rawUrl);
       if (!normalizedUrl) {
         return null;
       }
 
-      if (imageCache.has(normalizedUrl)) {
-        return imageCache.get(normalizedUrl);
+      const proxyUrl = buildSellerImageProxyUrl(normalizedUrl);
+      const cacheKey = proxyUrl || normalizedUrl;
+
+      if (imageCache.has(cacheKey)) {
+        return imageCache.get(cacheKey);
       }
 
       try {
+        if (proxyUrl) {
+          const response = await fetch(proxyUrl, {
+            credentials: "include",
+            headers: buildAuthHeaders(),
+          });
+          if (!response.ok) {
+            throw new Error(`Unexpected status ${response.status}`);
+          }
+
+          const json = await response.json();
+          const dataUrl = json?.data?.dataUrl;
+          if (!dataUrl || typeof dataUrl !== "string") {
+            imageCache.set(cacheKey, null);
+            return null;
+          }
+
+          const format = json?.data?.format;
+          const payload = {
+            dataUrl,
+            format:
+              typeof format === "string" && format.trim()
+                ? format.trim().toUpperCase()
+                : dataUrl.startsWith("data:image/jpeg")
+                  ? "JPEG"
+                  : dataUrl.startsWith("data:image/webp")
+                    ? "WEBP"
+                    : "PNG",
+          };
+          imageCache.set(cacheKey, payload);
+          return payload;
+        }
+
         const response = await fetch(normalizedUrl, {
           credentials: "include",
         });
@@ -815,7 +944,7 @@ const SellerOrders = () => {
 
         const blob = await response.blob();
         if (!blob.type || !blob.type.startsWith("image/")) {
-          imageCache.set(normalizedUrl, null);
+          imageCache.set(cacheKey, null);
           return null;
         }
 
@@ -835,7 +964,7 @@ const SellerOrders = () => {
               : undefined;
 
         const payload = { dataUrl, format };
-        imageCache.set(normalizedUrl, payload);
+        imageCache.set(cacheKey, payload);
         return payload;
       } catch (error) {
         console.error(
@@ -843,7 +972,7 @@ const SellerOrders = () => {
           normalizedUrl,
           error,
         );
-        imageCache.set(normalizedUrl, null);
+        imageCache.set(cacheKey, null);
         return null;
       }
     };
@@ -1090,9 +1219,10 @@ const SellerOrders = () => {
 
     for (let index = 0; index < rows.length; index += 1) {
       const row = rows[index];
-      const paymentLabel = `${row["Payment Status"] || ""}$${
-        row["Payment Method"] ? ` (${row["Payment Method"]})` : ""
-      }`;
+      const paymentMethodText = row["Payment Method"]
+        ? ` (${row["Payment Method"]})`
+        : "";
+      const paymentLabel = `${row["Payment Status"] || ""}${paymentMethodText}`;
       const buyerLabel = [
         row["Buyer Name"],
         row["Buyer Email"],
@@ -1574,38 +1704,38 @@ const SellerOrders = () => {
       transition={{ duration: 0.4 }}
       className="space-y-6"
     >
-      <header className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+      <header className={clsx('flex', 'flex-col', 'gap-2', 'sm:flex-row', 'sm:items-center', 'sm:justify-between')}>
         <div>
-          <p className="text-xs uppercase tracking-[0.32em] text-slate-400">
+          <p className={clsx('text-xs', 'uppercase', 'tracking-[0.32em]', 'text-slate-400')}>
             Dashboard / Orders
           </p>
-          <h1 className="mt-1 text-2xl font-semibold text-slate-900">Orders</h1>
+          <h1 className={clsx('mt-1', 'text-2xl', 'font-semibold', 'text-slate-900')}>Orders</h1>
         </div>
       </header>
 
-      <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
+      <section className={clsx('grid', 'grid-cols-1', 'gap-4', 'md:grid-cols-2', 'xl:grid-cols-5')}>
         {summaryCards.map((card) => (
           <div
             key={card.key}
-            className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
+            className={clsx('rounded-2xl', 'border', 'border-slate-200', 'bg-white', 'p-4', 'shadow-sm')}
           >
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
+            <p className={clsx('text-xs', 'font-semibold', 'uppercase', 'tracking-[0.18em]', 'text-slate-400')}>
               {card.label}
             </p>
-            <p className="mt-3 text-2xl font-semibold text-slate-900">
+            <p className={clsx('mt-3', 'text-2xl', 'font-semibold', 'text-slate-900')}>
               {card.value}
             </p>
           </div>
         ))}
       </section>
 
-      <section className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+      <section className={clsx('space-y-3', 'rounded-2xl', 'border', 'border-slate-200', 'bg-white', 'p-4', 'shadow-sm')}>
         <form
           onSubmit={handleSearchSubmit}
-          className="flex flex-col gap-3 lg:flex-row lg:items-center"
+          className={clsx('flex', 'flex-col', 'gap-3', 'lg:flex-row', 'lg:items-center')}
         >
-          <div className="relative flex-1">
-            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+          <div className={clsx('relative', 'flex-1')}>
+            <div className={clsx('pointer-events-none', 'absolute', 'inset-y-0', 'left-0', 'flex', 'items-center', 'pl-3')}>
               <Search size={16} className="text-slate-400" />
             </div>
             <input
@@ -1613,33 +1743,33 @@ const SellerOrders = () => {
               value={searchValue}
               onChange={(event) => setSearchValue(event.target.value)}
               placeholder="Search by order ID, product, or customer"
-              className="w-full rounded-xl border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm text-slate-700 placeholder:text-slate-400 focus:border-blue-400 focus:outline-none"
+              className={clsx('w-full', 'rounded-xl', 'border', 'border-slate-200', 'bg-white', 'py-2', 'pl-9', 'pr-3', 'text-sm', 'text-slate-700', 'placeholder:text-slate-400', 'focus:border-blue-400', 'focus:outline-none')}
             />
           </div>
-          <div className="flex gap-2">
+          <div className={clsx('flex', 'gap-2')}>
             <button
               type="submit"
-              className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700"
+              className={clsx('rounded-xl', 'bg-blue-600', 'px-4', 'py-2', 'text-sm', 'font-semibold', 'text-white', 'shadow-sm', 'hover:bg-blue-700')}
             >
               Search
             </button>
             <button
               type="button"
               onClick={handleResetFilters}
-              className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:border-blue-300 hover:text-blue-700"
+              className={clsx('rounded-xl', 'border', 'border-slate-200', 'px-4', 'py-2', 'text-sm', 'font-semibold', 'text-slate-600', 'hover:border-blue-300', 'hover:text-blue-700')}
             >
               Reset
             </button>
           </div>
         </form>
 
-        <div className="grid gap-3 text-xs text-slate-600 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
-          <label className="flex flex-col gap-1">
-            <span className="font-medium text-slate-500">Status</span>
+        <div className={clsx('grid', 'gap-3', 'text-xs', 'text-slate-600', 'md:grid-cols-2', 'lg:grid-cols-4', 'xl:grid-cols-5')}>
+          <label className={clsx('flex', 'flex-col', 'gap-1')}>
+            <span className={clsx('font-medium', 'text-slate-500')}>Status</span>
             <select
               value={status}
               onChange={(event) => setStatus(event.target.value)}
-              className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-700 focus:border-blue-400 focus:outline-none"
+              className={clsx('rounded-lg', 'border', 'border-slate-200', 'px-3', 'py-1.5', 'text-sm', 'text-slate-700', 'focus:border-blue-400', 'focus:outline-none')}
             >
               {STATUS_OPTIONS.map((option) => (
                 <option key={option.value} value={option.value}>
@@ -1649,12 +1779,12 @@ const SellerOrders = () => {
             </select>
           </label>
 
-          <label className="flex flex-col gap-1">
-            <span className="font-medium text-slate-500">Payment</span>
+          <label className={clsx('flex', 'flex-col', 'gap-1')}>
+            <span className={clsx('font-medium', 'text-slate-500')}>Payment</span>
             <select
               value={paymentStatus}
               onChange={(event) => setPaymentStatus(event.target.value)}
-              className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-700 focus:border-blue-400 focus:outline-none"
+              className={clsx('rounded-lg', 'border', 'border-slate-200', 'px-3', 'py-1.5', 'text-sm', 'text-slate-700', 'focus:border-blue-400', 'focus:outline-none')}
             >
               {PAYMENT_OPTIONS.map((option) => (
                 <option key={option.value} value={option.value}>
@@ -1664,30 +1794,30 @@ const SellerOrders = () => {
             </select>
           </label>
 
-          <div className="grid grid-cols-2 gap-3">
-            <label className="flex flex-col gap-1">
-              <span className="font-medium text-slate-500">Start date</span>
+          <div className={clsx('grid', 'grid-cols-2', 'gap-3')}>
+            <label className={clsx('flex', 'flex-col', 'gap-1')}>
+              <span className={clsx('font-medium', 'text-slate-500')}>Start date</span>
               <input
                 type="date"
                 value={startDate}
                 onChange={(event) => setStartDate(event.target.value)}
-                className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-700 focus:border-blue-400 focus:outline-none"
+                className={clsx('rounded-lg', 'border', 'border-slate-200', 'px-3', 'py-1.5', 'text-sm', 'text-slate-700', 'focus:border-blue-400', 'focus:outline-none')}
               />
             </label>
-            <label className="flex flex-col gap-1">
-              <span className="font-medium text-slate-500">End date</span>
+            <label className={clsx('flex', 'flex-col', 'gap-1')}>
+              <span className={clsx('font-medium', 'text-slate-500')}>End date</span>
               <input
                 type="date"
                 value={endDate}
                 onChange={(event) => setEndDate(event.target.value)}
-                className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-700 focus:border-blue-400 focus:outline-none"
+                className={clsx('rounded-lg', 'border', 'border-slate-200', 'px-3', 'py-1.5', 'text-sm', 'text-slate-700', 'focus:border-blue-400', 'focus:outline-none')}
               />
             </label>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <label className="flex flex-col gap-1">
-              <span className="font-medium text-slate-500">Amount min</span>
+          <div className={clsx('grid', 'grid-cols-2', 'gap-3')}>
+            <label className={clsx('flex', 'flex-col', 'gap-1')}>
+              <span className={clsx('font-medium', 'text-slate-500')}>Amount min</span>
               <input
                 type="text"
                 inputMode="decimal"
@@ -1695,12 +1825,12 @@ const SellerOrders = () => {
                 onChange={(event) =>
                   handleAmountChange("min", event.target.value)
                 }
-                className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-700 focus:border-blue-400 focus:outline-none"
+                className={clsx('rounded-lg', 'border', 'border-slate-200', 'px-3', 'py-1.5', 'text-sm', 'text-slate-700', 'focus:border-blue-400', 'focus:outline-none')}
                 placeholder="Min"
               />
             </label>
-            <label className="flex flex-col gap-1">
-              <span className="font-medium text-slate-500">Amount max</span>
+            <label className={clsx('flex', 'flex-col', 'gap-1')}>
+              <span className={clsx('font-medium', 'text-slate-500')}>Amount max</span>
               <input
                 type="text"
                 inputMode="decimal"
@@ -1708,18 +1838,18 @@ const SellerOrders = () => {
                 onChange={(event) =>
                   handleAmountChange("max", event.target.value)
                 }
-                className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-700 focus:border-blue-400 focus:outline-none"
+                className={clsx('rounded-lg', 'border', 'border-slate-200', 'px-3', 'py-1.5', 'text-sm', 'text-slate-700', 'focus:border-blue-400', 'focus:outline-none')}
                 placeholder="Max"
               />
             </label>
           </div>
 
-          <label className="flex flex-col gap-1">
-            <span className="font-medium text-slate-500">Sort</span>
+          <label className={clsx('flex', 'flex-col', 'gap-1')}>
+            <span className={clsx('font-medium', 'text-slate-500')}>Sort</span>
             <select
               value={sortOrder}
               onChange={(event) => setSortOrder(event.target.value)}
-              className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-700 focus:border-blue-400 focus:outline-none"
+              className={clsx('rounded-lg', 'border', 'border-slate-200', 'px-3', 'py-1.5', 'text-sm', 'text-slate-700', 'focus:border-blue-400', 'focus:outline-none')}
             >
               {SORT_OPTIONS.map((option) => (
                 <option key={option.value} value={option.value}>
@@ -1732,25 +1862,25 @@ const SellerOrders = () => {
       </section>
 
       {error && (
-        <div className="flex items-center gap-3 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-600">
+        <div className={clsx('flex', 'items-center', 'gap-3', 'rounded-2xl', 'border', 'border-rose-200', 'bg-rose-50', 'px-4', 'py-3', 'text-sm', 'text-rose-600')}>
           <AlertCircle size={16} />
           {error}
         </div>
       )}
 
-      <section className="overflow-visible md:overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-        <div className="pb-2 flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-4 py-3 text-sm text-slate-500">
+      <section className={clsx('overflow-visible', 'md:overflow-hidden', 'rounded-3xl', 'border', 'border-slate-200', 'bg-white', 'shadow-sm')}>
+        <div className={clsx('pb-2', 'flex', 'flex-wrap', 'items-center', 'justify-between', 'gap-3', 'border-b', 'border-slate-100', 'px-4', 'py-3', 'text-sm', 'text-slate-500')}>
           <div>
             {meta.total > 0 ? (
               <>
                 Showing
-                <span className="font-semibold text-slate-700">
+                <span className={clsx('font-semibold', 'text-slate-700')}>
                   {startIndex}
                 </span>
                 -
-                <span className="font-semibold text-slate-700">{endIndex}</span>{" "}
+                <span className={clsx('font-semibold', 'text-slate-700')}>{endIndex}</span>{" "}
                 of
-                <span className="font-semibold text-slate-700">
+                <span className={clsx('font-semibold', 'text-slate-700')}>
                   {" "}
                   {meta.total}
                 </span>
@@ -1759,12 +1889,12 @@ const SellerOrders = () => {
               "Showing 0 of 0"
             )}
           </div>
-          <div className="flex flex-wrap items-center gap-3">
+          <div className={clsx('flex', 'flex-wrap', 'items-center', 'gap-3')}>
             <div className="relative">
               <button
                 type="button"
                 onClick={() => setIsExportMenuOpen((prev) => !prev)}
-                className="inline-flex items-center gap-2 rounded-full border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:border-blue-200 hover:text-blue-600"
+                className={clsx('inline-flex', 'items-center', 'gap-2', 'rounded-full', 'border', 'border-slate-200', 'px-3', 'py-1.5', 'text-xs', 'font-semibold', 'text-slate-600', 'transition', 'hover:border-blue-200', 'hover:text-blue-600')}
               >
                 <Download size={14} /> Export
               </button>
@@ -1775,7 +1905,7 @@ const SellerOrders = () => {
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -8 }}
                     transition={{ duration: 0.18 }}
-                    className="absolute left-0 top-full z-20 mt-2 w-44 rounded-xl border border-slate-200 bg-white text-left shadow-xl origin-top-left sm:left-auto sm:right-0 sm:origin-top-right"
+                    className={clsx('absolute', 'left-0', 'top-full', 'z-20', 'mt-2', 'w-44', 'rounded-xl', 'border', 'border-slate-200', 'bg-white', 'text-left', 'shadow-xl', 'origin-top-left', 'sm:left-auto', 'sm:right-0', 'sm:origin-top-right')}
                   >
                     <button
                       type="button"
@@ -1783,7 +1913,7 @@ const SellerOrders = () => {
                         handleExportCsv();
                         setIsExportMenuOpen(false);
                       }}
-                      className="block w-full px-4 py-2 text-xs text-slate-600 hover:bg-slate-50"
+                      className={clsx('block', 'w-full', 'px-4', 'py-2', 'text-xs', 'text-slate-600', 'hover:bg-slate-50')}
                     >
                       Export as CSV
                     </button>
@@ -1793,7 +1923,7 @@ const SellerOrders = () => {
                         handleExportXlsx();
                         setIsExportMenuOpen(false);
                       }}
-                      className="block w-full px-4 py-2 text-xs text-slate-600 hover:bg-slate-50"
+                      className={clsx('block', 'w-full', 'px-4', 'py-2', 'text-xs', 'text-slate-600', 'hover:bg-slate-50')}
                     >
                       Export as XLSX
                     </button>
@@ -1803,7 +1933,7 @@ const SellerOrders = () => {
                         handleExportPdf();
                         setIsExportMenuOpen(false);
                       }}
-                      className="block w-full px-4 py-2 text-xs text-slate-600 hover:bg-slate-50"
+                      className={clsx('block', 'w-full', 'px-4', 'py-2', 'text-xs', 'text-slate-600', 'hover:bg-slate-50')}
                     >
                       Export as PDF
                     </button>
@@ -1815,7 +1945,7 @@ const SellerOrders = () => {
               type="button"
               onClick={handleBulkDeleteSelected}
               disabled={!selectedOrderIds.length || isBulkDeleting || loading}
-              className="inline-flex items-center gap-2 rounded-full border border-rose-100 px-3 py-1.5 text-xs font-semibold text-rose-600 transition hover:border-rose-200 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
+              className={clsx('inline-flex', 'items-center', 'gap-2', 'rounded-full', 'border', 'border-rose-100', 'px-3', 'py-1.5', 'text-xs', 'font-semibold', 'text-rose-600', 'transition', 'hover:border-rose-200', 'hover:bg-rose-50', 'disabled:cursor-not-allowed', 'disabled:opacity-60')}
             >
               <Trash2 size={14} />
               <span>
@@ -1826,36 +1956,35 @@ const SellerOrders = () => {
           </div>
         </div>
 
-        <div className="hidden overflow-x-auto md:block">
-          <table className="min-w-full divide-y divide-slate-100 text-sm">
+        <div className={clsx('hidden', 'overflow-x-auto', 'md:block')}>
+          <table className={clsx('min-w-full', 'divide-y', 'divide-slate-100', 'text-xs')}>
             <thead className="bg-slate-50">
-              <tr className="text-left text-xs font-medium uppercase text-slate-500">
-                <th className="px-4 py-3">
+              <tr className={clsx('text-left', 'text-xs', 'font-medium', 'uppercase', 'text-slate-500')}>
+                <th className={clsx('px-3', 'py-2')}>
                   <input
                     type="checkbox"
                     checked={allSelected}
                     onChange={handleToggleSelectAll}
-                    className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                    className={clsx('h-4', 'w-4', 'rounded', 'border-slate-300', 'text-blue-600', 'focus:ring-blue-500')}
                     aria-label="Select all orders"
                   />
                 </th>
-                <th className="px-4 py-3">Order ID</th>
-                <th className="px-4 py-3">Product</th>
-                <th className="px-4 py-3">Size</th>
-                <th className="px-4 py-3">Date</th>
-                <th className="px-4 py-3">Customer</th>
-                <th className="px-4 py-3 text-center">QR</th>
-                <th className="px-4 py-3">Total</th>
-                <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3 text-right">Action</th>
+                <th className={clsx('px-3', 'py-2')}>Order ID</th>
+                <th className={clsx('px-3', 'py-2')}>Product</th>
+                <th className={clsx('px-3', 'py-2')}>Date</th>
+                <th className={clsx('px-3', 'py-2')}>Customer</th>
+                <th className={clsx('px-3', 'py-2', 'text-center')}>QR</th>
+                <th className={clsx('px-3', 'py-2')}>Total</th>
+                <th className={clsx('px-3', 'py-2')}>Status</th>
+                <th className={clsx('px-3', 'py-2', 'text-right')}>Action</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 bg-white text-sm text-slate-600">
+            <tbody className={clsx('divide-y', 'divide-slate-100', 'bg-white', 'text-xs', 'text-slate-600')}>
               {loading && (
                 <tr>
                   <td
-                    colSpan={10}
-                    className="px-4 py-8 text-center text-slate-400"
+                    colSpan={9}
+                    className={clsx('px-3', 'py-6', 'text-center', 'text-slate-400')}
                   >
                     Loading orders...
                   </td>
@@ -1864,8 +1993,8 @@ const SellerOrders = () => {
               {error && !loading && (
                 <tr>
                   <td
-                    colSpan={10}
-                    className="px-4 py-8 text-center text-rose-500"
+                    colSpan={9}
+                    className={clsx('px-3', 'py-6', 'text-center', 'text-rose-500')}
                   >
                     {error}
                   </td>
@@ -1874,59 +2003,65 @@ const SellerOrders = () => {
               {!loading && !error && orders.length === 0 && (
                 <tr>
                   <td
-                    colSpan={10}
-                    className="px-4 py-8 text-center text-slate-400"
+                    colSpan={9}
+                    className={clsx('px-3', 'py-6', 'text-center', 'text-slate-400')}
                   >
                     No orders found for the selected filters.
                   </td>
                 </tr>
               )}
-              {!loading &&
-                !error &&
-                orders.map((order) => {
-                  const id = String(order.id);
-                  const orderKey = order.orderId ? String(order.orderId) : id;
-                  const firstItem = order.items?.[0] || {};
-                  const productImage = firstItem.image || null;
-                  const remaining = Math.max((order.items?.length || 0) - 1, 0);
-                  const sizeLabel =
-                    firstItem.size || firstItem.selectedSize || "--";
-                  const qrfolioImage =
-                    order.qrfolio?.imageUrl || order.qrfolio?.image || "";
-                  const customerName = order.buyerName || "Customer";
-                  const customerEmail = order.buyerEmail || "";
-                  const isSelected = selectedOrderIds.includes(orderKey);
-                  const paymentStatusValue = String(
-                    order.paymentStatus || "pending",
-                  ).toLowerCase();
-                  const isPaymentPaid = paymentStatusValue === "paid";
-                  const statusKey = String(order.status || "").toLowerCase();
-                  const statusClass =
-                    statusBadgeClasses[statusKey] ||
-                    "bg-slate-50 text-slate-600 border border-slate-200";
+          {!loading &&
+            !error &&
+            orders.map((order) => {
+              const id = String(order.orderId || order.id || order._id || "");
+              const orderKey = order.orderId ? String(order.orderId) : id;
+              const firstItem = order.items?.[0] || {};
+              const productImage = firstItem.image || null;
+              const remaining = Math.max((order.items?.length || 0) - 1, 0);
+              const productLabel =
+                firstItem.productName ||
+                firstItem.itemName ||
+                firstItem.name ||
+                "Product";
+              const sizeLabel = firstItem.size || firstItem.selectedSize;
+              const customerName = order.buyerName || "Customer";
+              const customerEmail = order.buyerEmail || "";
+              const qrfolioImage =
+                order.qrfolio?.imageUrl || order.qrfolio?.image || "";
+              const paymentStatusValue = String(
+                order.paymentStatus || "pending",
+              ).toLowerCase();
+              const isPaymentPaid = paymentStatusValue === "paid";
+              const statusKey = String(
+                order.status || "processing",
+              ).toLowerCase();
+              const statusClass =
+                statusBadgeClasses[statusKey] ||
+                "bg-slate-50 text-slate-600 border border-slate-200";
+              const isSelected = selectedOrderIds.includes(orderKey);
 
                   return (
                     <tr
                       key={id}
                       className={isSelected ? "bg-slate-50" : undefined}
                     >
-                      <td className="px-4 py-3 align-middle">
+                      <td className={clsx('px-3', 'py-2', 'align-middle')}>
                         <input
                           type="checkbox"
                           checked={isSelected}
                           onChange={() =>
-                            handleToggleRowSelection(order.orderId)
+                            handleToggleRowSelection(orderKey)
                           }
-                          className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                          className={clsx('h-4', 'w-4', 'rounded', 'border-slate-300', 'text-blue-600', 'focus:ring-blue-500')}
                           aria-label={`Select order ${order.orderId}`}
                         />
                       </td>
-                      <td className="px-4 py-3 font-semibold text-slate-700">
+                      <td className={clsx('px-3', 'py-2', 'font-semibold', 'text-slate-700')}>
                         #{order.orderId}
                       </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-3">
-                          <div className="h-10 w-10 overflow-hidden rounded-xl bg-slate-100">
+                      <td className={clsx('px-3', 'py-2')}>
+                        <div className={clsx('flex', 'items-center', 'gap-2')}>
+                          <div className={clsx('h-9', 'w-9', 'overflow-hidden', 'rounded-xl', 'bg-slate-100')}>
                             {productImage ? (
                               <img
                                 src={productImage}
@@ -1935,48 +2070,47 @@ const SellerOrders = () => {
                                   firstItem.itemName ||
                                   "Product"
                                 }
-                                className="h-full w-full object-cover"
+                                className={clsx('h-full', 'w-full', 'object-cover')}
                               />
                             ) : (
-                              <div className="grid h-full w-full place-items-center text-xs text-slate-400">
+                              <div className={clsx('grid', 'h-full', 'w-full', 'place-items-center', 'text-xs', 'text-slate-400')}>
                                 Img
                               </div>
                             )}
                           </div>
-                          <div className="text-sm text-slate-600">
-                            <p className="font-medium text-slate-800">
-                              {firstItem.productName ||
-                                firstItem.itemName ||
-                                "Product"}
+                          <div className={clsx('text-[11px]', 'text-slate-600')}>
+                            <p className={clsx('font-medium', 'text-slate-800')}>
+                              {productLabel}
                             </p>
-                            <p className="text-xs text-slate-400">
-                              Size: {sizeLabel}
-                            </p>
+                            {sizeLabel ? (
+                              <p className={clsx('text-xs', 'text-slate-500')}>
+                                Size: {String(sizeLabel).toUpperCase()}
+                              </p>
+                            ) : null}
                             {remaining > 0 && (
-                              <p className="text-xs text-slate-400">
+                              <p className={clsx('text-xs', 'text-slate-400')}>
                                 + {remaining} other items
                               </p>
                             )}
                           </div>
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-slate-500">{sizeLabel}</td>
-                      <td className="px-4 py-3 text-slate-500">
+                      <td className={clsx('px-3', 'py-2', 'text-slate-500')}>
                         {formatDate(order.createdAt)}
                       </td>
-                      <td className="px-4 py-3">
-                        <div className="text-sm">
-                          <p className="font-medium text-slate-700">
+                      <td className={clsx('px-3', 'py-2')}>
+                        <div className="text-[11px]">
+                          <p className={clsx('font-medium', 'text-slate-700')}>
                             {customerName}
                           </p>
                           {customerEmail ? (
-                            <p className="break-all text-xs text-slate-500">
+                            <p className={clsx('break-all', 'text-xs', 'text-slate-500')}>
                               {customerEmail}
                             </p>
                           ) : null}
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-center">
+                      <td className={clsx('px-3', 'py-2', 'text-center')}>
                         <button
                           type="button"
                           onClick={async () => {
@@ -2008,10 +2142,8 @@ const SellerOrders = () => {
                               setDownloadingQrId(null);
                             }
                           }}
-                          disabled={
-                            !qrfolioImage || downloadingQrId === orderKey
-                          }
-                          className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:border-blue-200 hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-60"
+                          disabled={!qrfolioImage || downloadingQrId === orderKey}
+                          className={clsx('inline-flex', 'h-8', 'w-8', 'items-center', 'justify-center', 'rounded-full', 'border', 'border-slate-200', 'text-slate-500', 'transition', 'hover:border-blue-200', 'hover:bg-blue-50', 'disabled:cursor-not-allowed', 'disabled:opacity-60')}
                           aria-label={`Download QR for order ${order.orderId}`}
                         >
                           {downloadingQrId === orderKey ? (
@@ -2021,11 +2153,11 @@ const SellerOrders = () => {
                           )}
                         </button>
                       </td>
-                      <td className="px-4 py-3 font-semibold text-slate-700">
+                      <td className={clsx('px-3', 'py-2', 'font-semibold', 'text-slate-700')}>
                         {formatCurrency(order.total)}
                       </td>
-                      <td className="px-4 py-3">
-                        <div className="flex flex-col items-start gap-1">
+                      <td className={clsx('px-3', 'py-2')}>
+                        <div className={clsx('flex', 'flex-col', 'items-start', 'gap-1')}>
                           <span
                             className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-medium ${statusClass}`}
                           >
@@ -2042,12 +2174,12 @@ const SellerOrders = () => {
                           </span>
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-right">
-                        <div className="flex justify-end gap-2 text-sm">
+                      <td className={clsx('px-3', 'py-2', 'text-right')}>
+                        <div className={clsx('flex', 'justify-end', 'gap-1.5', 'text-xs')}>
                           <button
                             type="button"
                             onClick={() => handleViewOrder(order)}
-                            className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-blue-100 text-blue-600 transition hover:border-blue-200 hover:bg-blue-50"
+                            className={clsx('inline-flex', 'h-8', 'w-8', 'items-center', 'justify-center', 'rounded-full', 'border', 'border-blue-100', 'text-blue-600', 'transition', 'hover:border-blue-200', 'hover:bg-blue-50')}
                             aria-label={`View order ${order.orderId}`}
                           >
                             <Eye size={16} />
@@ -2058,7 +2190,7 @@ const SellerOrders = () => {
                             disabled={
                               downloadingOrderId === order.orderId || loading
                             }
-                            className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:border-slate-300 hover:bg-slate-50"
+                            className={clsx('inline-flex', 'h-8', 'w-8', 'items-center', 'justify-center', 'rounded-full', 'border', 'border-slate-200', 'text-slate-500', 'transition', 'hover:border-slate-300', 'hover:bg-slate-50')}
                             aria-label={`Download invoice for order ${order.orderId}`}
                           >
                             {downloadingOrderId === order.orderId ? (
@@ -2073,7 +2205,7 @@ const SellerOrders = () => {
                             disabled={
                               deletingOrderId === order.orderId || loading
                             }
-                            className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-rose-100 text-rose-600 transition hover:border-rose-200 hover:bg-rose-50"
+                            className={clsx('inline-flex', 'h-8', 'w-8', 'items-center', 'justify-center', 'rounded-full', 'border', 'border-rose-100', 'text-rose-600', 'transition', 'hover:border-rose-200', 'hover:bg-rose-50')}
                             aria-label={`Delete order ${order.orderId}`}
                           >
                             {deletingOrderId === order.orderId ? (
@@ -2085,7 +2217,7 @@ const SellerOrders = () => {
                           <button
                             type="button"
                             onClick={() => handleEditOrderClick(order)}
-                            className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-purple-100 text-purple-600 transition hover:border-purple-200 hover:bg-purple-50"
+                            className={clsx('inline-flex', 'h-8', 'w-8', 'items-center', 'justify-center', 'rounded-full', 'border', 'border-purple-100', 'text-purple-600', 'transition', 'hover:border-purple-200', 'hover:bg-purple-50')}
                             aria-label={`Edit order ${order.orderId}`}
                           >
                             <PencilLine size={16} />
@@ -2099,23 +2231,23 @@ const SellerOrders = () => {
           </table>
         </div>
 
-        <div className="space-y-3 border-t border-slate-100 px-4 py-4 md:hidden">
+        <div className={clsx('space-y-3', 'border-t', 'border-slate-100', 'px-4', 'py-4', 'md:hidden')}>
           {loading && (
-            <div className="rounded-3xl border border-slate-200 bg-white p-5 text-center text-slate-500">
-              <div className="inline-flex items-center gap-2 text-sm">
-                <Loader2 className="h-4 w-4 animate-spin" /> Loading orders...
+            <div className={clsx('rounded-3xl', 'border', 'border-slate-200', 'bg-white', 'p-5', 'text-center', 'text-slate-500')}>
+              <div className={clsx('inline-flex', 'items-center', 'gap-2', 'text-sm')}>
+                <Loader2 className={clsx('h-4', 'w-4', 'animate-spin')} /> Loading orders...
               </div>
             </div>
           )}
 
           {!loading && error && (
-            <div className="rounded-3xl border border-rose-200 bg-white p-5 text-center text-rose-600">
+            <div className={clsx('rounded-3xl', 'border', 'border-rose-200', 'bg-white', 'p-5', 'text-center', 'text-rose-600')}>
               {error}
             </div>
           )}
 
           {!loading && !error && orders.length === 0 && (
-            <div className="rounded-3xl border border-slate-200 bg-white p-5 text-center text-slate-500">
+            <div className={clsx('rounded-3xl', 'border', 'border-slate-200', 'bg-white', 'p-5', 'text-center', 'text-slate-500')}>
               No orders found for the selected filters.
             </div>
           )}
@@ -2123,7 +2255,7 @@ const SellerOrders = () => {
           {!loading &&
             !error &&
             orders.map((order) => {
-              const id = String(order.id);
+              const id = String(order.orderId || order.id || order._id || "");
               const orderKey = order.orderId ? String(order.orderId) : id;
               const firstItem = order.items?.[0] || {};
               const productImage = firstItem.image || null;
@@ -2132,7 +2264,6 @@ const SellerOrders = () => {
                 firstItem.itemName ||
                 firstItem.name ||
                 "Product";
-              const sizeLabel = firstItem.size || firstItem.selectedSize;
               const customerName = order.buyerName || "Customer";
               const qrfolioImage =
                 order.qrfolio?.imageUrl || order.qrfolio?.image || "";
@@ -2157,19 +2288,19 @@ const SellerOrders = () => {
                       : "border-slate-200"
                   }`}
                 >
-                  <div className="flex items-start justify-between gap-3">
+                  <div className={clsx('flex', 'items-start', 'justify-between', 'gap-3')}>
                     <div>
-                      <div className="text-[11px] font-semibold uppercase tracking-[0.26em] text-slate-400">
+                      <div className={clsx('text-[11px]', 'font-semibold', 'uppercase', 'tracking-[0.26em]', 'text-slate-400')}>
                         Order
                       </div>
-                      <div className="mt-1 break-all text-lg font-semibold text-slate-900">
+                      <div className={clsx('mt-1', 'break-all', 'text-lg', 'font-semibold', 'text-slate-900')}>
                         #{order.orderId}
                       </div>
                     </div>
                     <button
                       type="button"
                       onClick={() => handleToggleRowSelection(order.orderId)}
-                      className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-blue-600 shadow-sm"
+                      className={clsx('inline-flex', 'h-9', 'w-9', 'items-center', 'justify-center', 'rounded-full', 'border', 'border-slate-200', 'bg-white', 'text-blue-600', 'shadow-sm')}
                       aria-label={
                         isSelected
                           ? `Deselect order ${order.orderId}`
@@ -2184,56 +2315,51 @@ const SellerOrders = () => {
                     </button>
                   </div>
 
-                  <div className="mt-3 flex items-center gap-3">
-                    <div className="h-14 w-14 overflow-hidden rounded-xl bg-slate-100">
+                  <div className={clsx('mt-3', 'flex', 'items-center', 'gap-3')}>
+                    <div className={clsx('h-14', 'w-14', 'overflow-hidden', 'rounded-xl', 'bg-slate-100')}>
                       {productImage ? (
                         <img
                           src={productImage}
                           alt={productLabel}
-                          className="h-full w-full object-cover"
+                          className={clsx('h-full', 'w-full', 'object-cover')}
                           onError={(event) => {
                             event.currentTarget.src =
                               "https://placehold.co/80x80/f8fafc/e2e8f0?text=IMG";
                           }}
                         />
                       ) : (
-                        <div className="flex h-full w-full items-center justify-center text-xs text-slate-400">
+                        <div className={clsx('flex', 'h-full', 'w-full', 'items-center', 'justify-center', 'text-xs', 'text-slate-400')}>
                           Img
                         </div>
                       )}
                     </div>
-                    <div className="flex-1 space-y-0.5">
-                      <p className="text-sm font-semibold text-slate-900">
+                    <div className={clsx('flex-1', 'space-y-0.5')}>
+                      <p className={clsx('text-sm', 'font-semibold', 'text-slate-900')}>
                         {productLabel}
                       </p>
-                      <p className="text-xs text-slate-500">{customerName}</p>
-                      {sizeLabel && (
-                        <p className="text-xs text-slate-400">
-                          Size: {sizeLabel}
-                        </p>
-                      )}
+                      <p className={clsx('text-xs', 'text-slate-500')}>{customerName}</p>
                     </div>
                   </div>
 
-                  <div className="mt-3 grid grid-cols-2 gap-3 text-xs text-slate-500">
-                    <div className="rounded-xl bg-slate-50 p-2">
-                      <p className="uppercase text-[10px] tracking-wide text-slate-400">
+                  <div className={clsx('mt-3', 'grid', 'grid-cols-2', 'gap-3', 'text-xs', 'text-slate-500')}>
+                    <div className={clsx('rounded-xl', 'bg-slate-50', 'p-2')}>
+                      <p className={clsx('uppercase', 'text-[10px]', 'tracking-wide', 'text-slate-400')}>
                         Placed
                       </p>
-                      <p className="mt-1 text-xs font-medium text-slate-700">
+                      <p className={clsx('mt-1', 'text-xs', 'font-medium', 'text-slate-700')}>
                         {formatDate(order.createdAt)}
                       </p>
                     </div>
-                    <div className="rounded-xl bg-slate-50 p-2">
-                      <p className="uppercase text-[10px] tracking-wide text-slate-400">
+                    <div className={clsx('rounded-xl', 'bg-slate-50', 'p-2')}>
+                      <p className={clsx('uppercase', 'text-[10px]', 'tracking-wide', 'text-slate-400')}>
                         Amount
                       </p>
-                      <p className="mt-1 text-sm font-semibold text-slate-900">
+                      <p className={clsx('mt-1', 'text-sm', 'font-semibold', 'text-slate-900')}>
                         {formatCurrency(order.total)}
                       </p>
                     </div>
-                    <div className="rounded-xl bg-slate-50 p-2">
-                      <p className="uppercase text-[10px] tracking-wide text-slate-400">
+                    <div className={clsx('rounded-xl', 'bg-slate-50', 'p-2')}>
+                      <p className={clsx('uppercase', 'text-[10px]', 'tracking-wide', 'text-slate-400')}>
                         Status
                       </p>
                       <span
@@ -2242,8 +2368,8 @@ const SellerOrders = () => {
                         {order.status}
                       </span>
                     </div>
-                    <div className="rounded-xl bg-slate-50 p-2">
-                      <p className="uppercase text-[10px] tracking-wide text-slate-400">
+                    <div className={clsx('rounded-xl', 'bg-slate-50', 'p-2')}>
+                      <p className={clsx('uppercase', 'text-[10px]', 'tracking-wide', 'text-slate-400')}>
                         Payment
                       </p>
                       <span
@@ -2258,7 +2384,7 @@ const SellerOrders = () => {
                     </div>
                   </div>
 
-                  <div className="mt-4 flex flex-wrap items-center gap-2 text-xs font-semibold">
+                  <div className={clsx('mt-4', 'flex', 'flex-wrap', 'items-center', 'gap-2', 'text-xs', 'font-semibold')}>
                     <button
                       type="button"
                       onClick={async () => {
@@ -2289,13 +2415,11 @@ const SellerOrders = () => {
                           setDownloadingQrId(null);
                         }
                       }}
-                      disabled={
-                        !qrfolioImage || downloadingQrId === order.orderId
-                      }
-                      className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:border-blue-200 hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-60"
+                      disabled={!qrfolioImage || downloadingQrId === orderKey}
+                      className={clsx('inline-flex', 'h-9', 'w-9', 'items-center', 'justify-center', 'rounded-full', 'border', 'border-slate-200', 'text-slate-500', 'transition', 'hover:border-blue-200', 'hover:bg-blue-50', 'disabled:cursor-not-allowed', 'disabled:opacity-60')}
                       aria-label={`Download QR for order ${order.orderId}`}
                     >
-                      {downloadingQrId === order.orderId ? (
+                      {downloadingQrId === orderKey ? (
                         <Loader2 size={16} className="animate-spin" />
                       ) : (
                         <QrCode size={16} />
@@ -2304,7 +2428,7 @@ const SellerOrders = () => {
                     <button
                       type="button"
                       onClick={() => handleViewOrder(order)}
-                      className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-blue-100 text-blue-600 transition hover:border-blue-200 hover:bg-blue-50"
+                      className={clsx('inline-flex', 'h-9', 'w-9', 'items-center', 'justify-center', 'rounded-full', 'border', 'border-blue-100', 'text-blue-600', 'transition', 'hover:border-blue-200', 'hover:bg-blue-50')}
                       aria-label={`View order ${order.orderId}`}
                     >
                       <Eye size={16} />
@@ -2313,7 +2437,7 @@ const SellerOrders = () => {
                       type="button"
                       onClick={() => handleDownloadInvoiceClick(order)}
                       disabled={downloadingOrderId === order.orderId || loading}
-                      className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                      className={clsx('inline-flex', 'h-9', 'w-9', 'items-center', 'justify-center', 'rounded-full', 'border', 'border-slate-200', 'text-slate-500', 'transition', 'hover:border-slate-300', 'hover:bg-slate-50', 'disabled:cursor-not-allowed', 'disabled:opacity-60')}
                       aria-label={`Download invoice for order ${order.orderId}`}
                     >
                       {downloadingOrderId === order.orderId ? (
@@ -2326,7 +2450,7 @@ const SellerOrders = () => {
                       type="button"
                       onClick={() => handleDeleteOrderClick(order)}
                       disabled={deletingOrderId === order.orderId || loading}
-                      className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-rose-100 text-rose-600 transition hover:border-rose-200 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
+                      className={clsx('inline-flex', 'h-9', 'w-9', 'items-center', 'justify-center', 'rounded-full', 'border', 'border-rose-100', 'text-rose-600', 'transition', 'hover:border-rose-200', 'hover:bg-rose-50', 'disabled:cursor-not-allowed', 'disabled:opacity-60')}
                       aria-label={`Delete order ${order.orderId}`}
                     >
                       {deletingOrderId === order.orderId ? (
@@ -2338,7 +2462,7 @@ const SellerOrders = () => {
                     <button
                       type="button"
                       onClick={() => handleEditOrderClick(order)}
-                      className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-purple-100 text-purple-600 transition hover:border-purple-200 hover:bg-purple-50"
+                      className={clsx('inline-flex', 'h-9', 'w-9', 'items-center', 'justify-center', 'rounded-full', 'border', 'border-purple-100', 'text-purple-600', 'transition', 'hover:border-purple-200', 'hover:bg-purple-50')}
                       aria-label={`Edit order ${order.orderId}`}
                     >
                       <PencilLine size={16} />
@@ -2350,9 +2474,9 @@ const SellerOrders = () => {
         </div>
       </section>
 
-      <footer className="flex flex-col justify-between gap-3 border-t border-slate-200 bg-slate-50 px-5 py-4 text-xs text-slate-500 sm:flex-row sm:items-center">
-        <div className="flex items-center gap-3">
-          <label className="flex items-center gap-2">
+      <footer className={clsx('flex', 'flex-col', 'justify-between', 'gap-3', 'border-t', 'border-slate-200', 'bg-slate-50', 'px-5', 'py-4', 'text-xs', 'text-slate-500', 'sm:flex-row', 'sm:items-center')}>
+        <div className={clsx('flex', 'items-center', 'gap-3')}>
+          <label className={clsx('flex', 'items-center', 'gap-2')}>
             <span className="text-slate-600">Rows per page</span>
             <select
               value={pageSize}
@@ -2361,7 +2485,7 @@ const SellerOrders = () => {
                 setPageSize(next);
                 setPage(1);
               }}
-              className="rounded-xl border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700 focus:border-blue-400 focus:outline-none"
+              className={clsx('rounded-xl', 'border', 'border-slate-300', 'bg-white', 'px-2', 'py-1', 'text-xs', 'text-slate-700', 'focus:border-blue-400', 'focus:outline-none')}
             >
               <option value={10}>10</option>
               <option value={20}>20</option>
@@ -2369,16 +2493,16 @@ const SellerOrders = () => {
             </select>
           </label>
         </div>
-        <div className="flex items-center gap-3">
+        <div className={clsx('flex', 'items-center', 'gap-3')}>
           <span>
             Page {page} of {meta.totalPages || 1}
           </span>
-          <div className="flex items-center gap-2">
+          <div className={clsx('flex', 'items-center', 'gap-2')}>
             <button
               type="button"
               onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
               disabled={page <= 1 || loading}
-              className="rounded-full border border-slate-300 px-3 py-1 text-xs font-semibold text-slate-600 transition enabled:hover:border-blue-200 enabled:hover:bg-blue-50 enabled:hover:text-blue-600 disabled:cursor-not-allowed disabled:opacity-40"
+              className={clsx('rounded-full', 'border', 'border-slate-300', 'px-3', 'py-1', 'text-xs', 'font-semibold', 'text-slate-600', 'transition', 'enabled:hover:border-blue-200', 'enabled:hover:bg-blue-50', 'enabled:hover:text-blue-600', 'disabled:cursor-not-allowed', 'disabled:opacity-40')}
             >
               Prev
             </button>
@@ -2388,7 +2512,7 @@ const SellerOrders = () => {
                 setPage((prev) => (prev < meta.totalPages ? prev + 1 : prev))
               }
               disabled={page >= meta.totalPages || loading}
-              className="rounded-full border border-slate-300 px-3 py-1 text-xs font-semibold text-slate-600 transition enabled:hover:border-blue-200 enabled:hover:bg-blue-50 enabled:hover:text-blue-600 disabled:cursor-not-allowed disabled:opacity-40"
+              className={clsx('rounded-full', 'border', 'border-slate-300', 'px-3', 'py-1', 'text-xs', 'font-semibold', 'text-slate-600', 'transition', 'enabled:hover:border-blue-200', 'enabled:hover:bg-blue-50', 'enabled:hover:text-blue-600', 'disabled:cursor-not-allowed', 'disabled:opacity-40')}
             >
               Next
             </button>
@@ -2402,7 +2526,7 @@ const SellerOrders = () => {
             <AnimatePresence>
               {(viewingOrder || viewingOrderLoading || viewingOrderError) && (
                 <motion.div
-                  className="fixed inset-0 z-[1200] flex h-screen w-screen items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm"
+                  className={clsx('fixed', 'inset-0', 'z-[1200]', 'flex', 'h-screen', 'w-screen', 'items-center', 'justify-center', 'bg-slate-900/60', 'p-4', 'backdrop-blur-sm')}
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
@@ -2413,18 +2537,18 @@ const SellerOrders = () => {
                     animate={{ y: 0, opacity: 1 }}
                     exit={{ y: 24, opacity: 0 }}
                     transition={{ duration: 0.2 }}
-                    className="modal-scroll w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-5 shadow-xl md:max-h-[calc(100vh-4rem)]"
+                    className={clsx('modal-scroll', 'w-full', 'max-w-2xl', 'overflow-y-auto', 'rounded-2xl', 'bg-white', 'p-5', 'shadow-xl', 'md:max-h-[calc(100vh-4rem)]')}
                     data-modal-dvh="true"
                     style={{ maxHeight: "calc(100vh - 2.5rem)" }}
                     onClick={(event) => event.stopPropagation()}
                   >
-                    <div className="mb-4 flex items-center justify-between gap-3">
+                    <div className={clsx('mb-4', 'flex', 'items-center', 'justify-between', 'gap-3')}>
                       <div>
-                        <p className="text-xs uppercase tracking-[0.22em] text-slate-400">
+                        <p className={clsx('text-xs', 'uppercase', 'tracking-[0.22em]', 'text-slate-400')}>
                           Order details
                         </p>
                         {viewingOrder && (
-                          <h2 className="mt-1 text-lg font-semibold text-slate-900">
+                          <h2 className={clsx('mt-1', 'text-lg', 'font-semibold', 'text-slate-900')}>
                             #{viewingOrder._id}
                           </h2>
                         )}
@@ -2432,7 +2556,7 @@ const SellerOrders = () => {
                       <button
                         type="button"
                         onClick={handleCloseView}
-                        className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 text-slate-500 hover:border-slate-300 hover:text-slate-800"
+                        className={clsx('inline-flex', 'h-8', 'w-8', 'items-center', 'justify-center', 'rounded-full', 'border', 'border-slate-200', 'text-slate-500', 'hover:border-slate-300', 'hover:text-slate-800')}
                         aria-label="Close order details"
                       >
                         ×
@@ -2440,8 +2564,8 @@ const SellerOrders = () => {
                     </div>
 
                     {viewingOrderLoading && (
-                      <div className="flex items-center justify-center gap-2 py-10 text-sm text-slate-500">
-                        <Loader2 className="h-4 w-4 animate-spin" />
+                      <div className={clsx('flex', 'items-center', 'justify-center', 'gap-2', 'py-10', 'text-sm', 'text-slate-500')}>
+                        <Loader2 className={clsx('h-4', 'w-4', 'animate-spin')} />
                         <span>Loading order details...</span>
                       </div>
                     )}
@@ -2449,36 +2573,36 @@ const SellerOrders = () => {
                     {!viewingOrderLoading &&
                       viewingOrderError &&
                       !viewingOrder && (
-                        <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-600">
+                        <div className={clsx('rounded-xl', 'border', 'border-rose-200', 'bg-rose-50', 'px-4', 'py-3', 'text-sm', 'text-rose-600')}>
                           {viewingOrderError}
                         </div>
                       )}
 
                     {!viewingOrderLoading && viewingOrder && (
-                      <div className="space-y-4 text-sm text-slate-700">
-                        <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div className={clsx('space-y-4', 'text-sm', 'text-slate-700')}>
+                        <div className={clsx('flex', 'flex-wrap', 'items-center', 'justify-between', 'gap-3')}>
                           <div>
-                            <p className="text-xs text-slate-500">
+                            <p className={clsx('text-xs', 'text-slate-500')}>
                               Placed on {formatDate(viewingOrder.createdAt)}
                             </p>
-                            <p className="text-xs text-slate-500">
+                            <p className={clsx('text-xs', 'text-slate-500')}>
                               Payment status:{" "}
                               {viewingOrder.payment?.status || "--"}
                             </p>
                           </div>
-                          <div className="text-right text-sm text-slate-600">
+                          <div className={clsx('text-right', 'text-sm', 'text-slate-600')}>
                             <p>
                               Buyer:{" "}
                               {viewingOrder.shippingAddress?.fullName || "--"}
                             </p>
                             {viewingOrder.shippingAddress?.mobile && (
-                              <p className="flex items-center justify-end gap-1 text-xs text-slate-500">
+                              <p className={clsx('flex', 'items-center', 'justify-end', 'gap-1', 'text-xs', 'text-slate-500')}>
                                 <Phone size={12} className="text-slate-400" />
                                 {viewingOrder.shippingAddress.mobile}
                               </p>
                             )}
                             {viewingOrder.shippingAddress?.email && (
-                              <p className="flex items-center justify-end gap-1 text-xs text-slate-500">
+                              <p className={clsx('flex', 'items-center', 'justify-end', 'gap-1', 'text-xs', 'text-slate-500')}>
                                 <Mail size={12} className="text-slate-400" />
                                 {viewingOrder.shippingAddress.email}
                               </p>
@@ -2486,44 +2610,44 @@ const SellerOrders = () => {
                           </div>
                         </div>
 
-                        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+                        <div className={clsx('rounded-2xl', 'border', 'border-slate-200', 'bg-slate-50', 'p-4')}>
+                          <p className={clsx('text-xs', 'font-semibold', 'uppercase', 'tracking-[0.16em]', 'text-slate-500')}>
                             Items
                           </p>
-                          <div className="mt-3 space-y-3">
+                          <div className={clsx('mt-3', 'space-y-3')}>
                             {Array.isArray(viewingOrder.items) &&
                             viewingOrder.items.length > 0 ? (
                               viewingOrder.items.map((item, index) => (
                                 <div
                                   key={`${item.product || item.name}-${index}`}
-                                  className="flex flex-wrap items-center justify-between gap-3 text-sm"
+                                  className={clsx('flex', 'flex-wrap', 'items-center', 'justify-between', 'gap-3', 'text-sm')}
                                 >
-                                  <div className="flex items-center gap-3">
-                                    <div className="h-10 w-10 overflow-hidden rounded-xl bg-slate-100">
+                                  <div className={clsx('flex', 'items-center', 'gap-3')}>
+                                    <div className={clsx('h-10', 'w-10', 'overflow-hidden', 'rounded-xl', 'bg-slate-100')}>
                                       {item.image ? (
                                         <img
                                           src={item.image}
                                           alt={item.name || "Product"}
-                                          className="h-full w-full object-cover"
+                                          className={clsx('h-full', 'w-full', 'object-cover')}
                                         />
                                       ) : (
-                                        <div className="flex h-full w-full items-center justify-center text-[10px] text-slate-400">
+                                        <div className={clsx('flex', 'h-full', 'w-full', 'items-center', 'justify-center', 'text-[10px]', 'text-slate-400')}>
                                           <Package size={14} />
                                         </div>
                                       )}
                                     </div>
                                     <div>
-                                      <p className="font-medium text-slate-900">
+                                      <p className={clsx('font-medium', 'text-slate-900')}>
                                         {item.name || "Product"}
                                       </p>
-                                      <p className="text-xs text-slate-500">
+                                      <p className={clsx('text-xs', 'text-slate-500')}>
                                         Qty: {item.quantity || 0}
                                       </p>
                                     </div>
                                   </div>
-                                  <div className="text-right text-sm text-slate-700">
+                                  <div className={clsx('text-right', 'text-sm', 'text-slate-700')}>
                                     <p>{formatCurrency(item.price || 0)}</p>
-                                    <p className="text-xs text-slate-500">
+                                    <p className={clsx('text-xs', 'text-slate-500')}>
                                       Total:{" "}
                                       {formatCurrency(
                                         (item.price || 0) *
@@ -2534,19 +2658,19 @@ const SellerOrders = () => {
                                 </div>
                               ))
                             ) : (
-                              <p className="py-4 text-sm text-slate-500">
+                              <p className={clsx('py-4', 'text-sm', 'text-slate-500')}>
                                 No items recorded for this order.
                               </p>
                             )}
                           </div>
                         </div>
 
-                        <div className="grid gap-3 md:grid-cols-2">
-                          <div className="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-700">
-                            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+                        <div className={clsx('grid', 'gap-3', 'md:grid-cols-2')}>
+                          <div className={clsx('rounded-2xl', 'border', 'border-slate-200', 'bg-white', 'p-4', 'text-sm', 'text-slate-700')}>
+                            <p className={clsx('text-xs', 'font-semibold', 'uppercase', 'tracking-[0.16em]', 'text-slate-500')}>
                               Shipping address
                             </p>
-                            <div className="mt-2 space-y-1">
+                            <div className={clsx('mt-2', 'space-y-1')}>
                               <p>{viewingOrder.shippingAddress?.addressLine}</p>
                               <p>
                                 {viewingOrder.shippingAddress?.city},{" "}
@@ -2555,11 +2679,11 @@ const SellerOrders = () => {
                               </p>
                             </div>
                           </div>
-                          <div className="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-700">
-                            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+                          <div className={clsx('rounded-2xl', 'border', 'border-slate-200', 'bg-white', 'p-4', 'text-sm', 'text-slate-700')}>
+                            <p className={clsx('text-xs', 'font-semibold', 'uppercase', 'tracking-[0.16em]', 'text-slate-500')}>
                               Payment summary
                             </p>
-                            <div className="mt-2 space-y-1">
+                            <div className={clsx('mt-2', 'space-y-1')}>
                               <p>
                                 Subtotal:{" "}
                                 {formatCurrency(
@@ -2578,7 +2702,7 @@ const SellerOrders = () => {
                                   viewingOrder.pricing?.taxAmount || 0,
                                 )}
                               </p>
-                              <p className="font-semibold text-slate-900">
+                              <p className={clsx('font-semibold', 'text-slate-900')}>
                                 Total:{" "}
                                 {formatCurrency(
                                   viewingOrder.pricing?.total || 0,
@@ -2597,7 +2721,7 @@ const SellerOrders = () => {
             <AnimatePresence>
               {editingOrder && (
                 <motion.div
-                  className="fixed inset-0 z-[1200] flex h-screen w-screen items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm"
+                  className={clsx('fixed', 'inset-0', 'z-[1200]', 'flex', 'h-screen', 'w-screen', 'items-center', 'justify-center', 'bg-slate-900/60', 'p-4', 'backdrop-blur-sm')}
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
@@ -2608,21 +2732,21 @@ const SellerOrders = () => {
                     animate={{ y: 0, opacity: 1 }}
                     exit={{ y: 24, opacity: 0 }}
                     transition={{ duration: 0.2 }}
-                    className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl"
+                    className={clsx('w-full', 'max-w-lg', 'rounded-2xl', 'bg-white', 'p-6', 'shadow-xl')}
                     onClick={(event) => event.stopPropagation()}
                   >
-                    <div className="mb-4 flex items-start justify-between">
+                    <div className={clsx('mb-4', 'flex', 'items-start', 'justify-between')}>
                       <div>
-                        <h2 className="text-xl font-semibold text-slate-900">
+                        <h2 className={clsx('text-xl', 'font-semibold', 'text-slate-900')}>
                           Edit Order
                         </h2>
-                        <p className="text-xs text-slate-500">
+                        <p className={clsx('text-xs', 'text-slate-500')}>
                           Order #{editingOrder._id}
                         </p>
                       </div>
                       <button
                         type="button"
-                        className="rounded-full p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                        className={clsx('rounded-full', 'p-1', 'text-slate-400', 'hover:bg-slate-100', 'hover:text-slate-600')}
                         onClick={handleCloseEdit}
                         aria-label="Close edit order"
                         disabled={isSavingEdit}
@@ -2632,12 +2756,12 @@ const SellerOrders = () => {
                     </div>
 
                     <div className="space-y-4">
-                      <label className="block text-sm font-medium text-slate-700">
+                      <label className={clsx('block', 'text-sm', 'font-medium', 'text-slate-700')}>
                         Order Status
                         <select
                           value={editForm.status}
                           onChange={handleStatusFieldChange}
-                          className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                          className={clsx('mt-1', 'w-full', 'rounded-xl', 'border', 'border-slate-200', 'px-3', 'py-2', 'text-sm', 'focus:border-blue-500', 'focus:outline-none', 'focus:ring-1', 'focus:ring-blue-500')}
                           disabled={isRejectionLockActive}
                         >
                           <option value="confirmed">Order Confirmed</option>
@@ -2655,10 +2779,10 @@ const SellerOrders = () => {
 
                       {String(editForm.status || "").toLowerCase() ===
                         "rejected" && (
-                        <label className="mt-1 flex items-center gap-2 text-xs font-medium text-rose-600">
+                        <label className={clsx('mt-1', 'flex', 'items-center', 'gap-2', 'text-xs', 'font-medium', 'text-rose-600')}>
                           <input
                             type="checkbox"
-                            className="h-4 w-4 rounded border-slate-300 text-rose-600 focus:ring-rose-500"
+                            className={clsx('h-4', 'w-4', 'rounded', 'border-slate-300', 'text-rose-600', 'focus:ring-rose-500')}
                             checked={Boolean(editForm.rejectionPermanent)}
                             onChange={(event) =>
                               handleEditFieldChange(
@@ -2675,13 +2799,13 @@ const SellerOrders = () => {
                       )}
 
                       {isRejectionLockActive ? (
-                        <p className="text-xs text-rose-500">
+                        <p className={clsx('text-xs', 'text-rose-500')}>
                           Unlock the toggle above to change the order status.
                         </p>
                       ) : null}
 
-                      <div className="grid gap-4 sm:grid-cols-2">
-                        <label className="block text-sm font-medium text-slate-700">
+                      <div className={clsx('grid', 'gap-4', 'sm:grid-cols-2')}>
+                        <label className={clsx('block', 'text-sm', 'font-medium', 'text-slate-700')}>
                           Payment Status
                           <select
                             value={editForm.paymentStatus}
@@ -2692,7 +2816,7 @@ const SellerOrders = () => {
                                 event.target.value,
                               )
                             }
-                            className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            className={clsx('mt-1', 'w-full', 'rounded-xl', 'border', 'border-slate-200', 'px-3', 'py-2', 'text-sm', 'focus:border-blue-500', 'focus:outline-none', 'focus:ring-1', 'focus:ring-blue-500')}
                           >
                             <option value="">Keep unchanged</option>
                             <option value="pending">Pending</option>
@@ -2700,13 +2824,13 @@ const SellerOrders = () => {
                             <option value="failed">Failed</option>
                           </select>
                           {isPaymentStatusLocked ? (
-                            <p className="mt-1 text-xs text-slate-500">
+                            <p className={clsx('mt-1', 'text-xs', 'text-slate-500')}>
                               Payment is already marked successful and cannot be
                               changed.
                             </p>
                           ) : null}
                         </label>
-                        <label className="block text-sm font-medium text-slate-700">
+                        <label className={clsx('block', 'text-sm', 'font-medium', 'text-slate-700')}>
                           Payment Method
                           <select
                             value={editForm.paymentMethod}
@@ -2716,7 +2840,7 @@ const SellerOrders = () => {
                                 event.target.value,
                               )
                             }
-                            className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            className={clsx('mt-1', 'w-full', 'rounded-xl', 'border', 'border-slate-200', 'px-3', 'py-2', 'text-sm', 'focus:border-blue-500', 'focus:outline-none', 'focus:ring-1', 'focus:ring-blue-500')}
                           >
                             <option value="">Keep unchanged</option>
                             <option value="cod">Cash on Delivery</option>
@@ -2728,17 +2852,17 @@ const SellerOrders = () => {
                         </label>
                       </div>
 
-                      <label className="block text-sm font-medium text-slate-700">
+                      <label className={clsx('block', 'text-sm', 'font-medium', 'text-slate-700')}>
                         Estimated Delivery Date
                         <input
                           type="date"
                           value={editForm.estimatedDeliveryDate}
                           disabled={isDeliveryDateLocked}
                           onChange={handleEstimatedDeliveryChange}
-                          className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                          className={clsx('mt-1', 'w-full', 'rounded-xl', 'border', 'border-slate-200', 'px-3', 'py-2', 'text-sm', 'focus:border-blue-500', 'focus:outline-none', 'focus:ring-1', 'focus:ring-blue-500')}
                         />
                         {isDeliveryDateLocked ? (
-                          <p className="mt-1 text-xs text-slate-500">
+                          <p className={clsx('mt-1', 'text-xs', 'text-slate-500')}>
                             Delivery date is locked because the order has
                             already been{" "}
                             {editingOrder?.status === "returned"
@@ -2749,8 +2873,8 @@ const SellerOrders = () => {
                         ) : null}
                       </label>
 
-                      <div className="grid gap-4 sm:grid-cols-2">
-                        <label className="block text-sm font-medium text-slate-700">
+                      <div className={clsx('grid', 'gap-4', 'sm:grid-cols-2')}>
+                        <label className={clsx('block', 'text-sm', 'font-medium', 'text-slate-700')}>
                           Courier
                           <select
                             value={editForm.courier}
@@ -2760,7 +2884,7 @@ const SellerOrders = () => {
                                 event.target.value,
                               )
                             }
-                            className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            className={clsx('mt-1', 'w-full', 'rounded-xl', 'border', 'border-slate-200', 'px-3', 'py-2', 'text-sm', 'focus:border-blue-500', 'focus:outline-none', 'focus:ring-1', 'focus:ring-blue-500')}
                           >
                             {COURIER_OPTIONS.map((option) => (
                               <option key={option.value} value={option.value}>
@@ -2770,7 +2894,7 @@ const SellerOrders = () => {
                           </select>
                         </label>
 
-                        <label className="block text-sm font-medium text-slate-700">
+                        <label className={clsx('block', 'text-sm', 'font-medium', 'text-slate-700')}>
                           Tracking ID
                           <input
                             type="text"
@@ -2781,23 +2905,23 @@ const SellerOrders = () => {
                                 event.target.value,
                               )
                             }
-                            className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            className={clsx('mt-1', 'w-full', 'rounded-xl', 'border', 'border-slate-200', 'px-3', 'py-2', 'text-sm', 'focus:border-blue-500', 'focus:outline-none', 'focus:ring-1', 'focus:ring-blue-500')}
                             placeholder="To be assigned"
                           />
                         </label>
                       </div>
                     </div>
 
-                    <div className="mt-6 flex flex-wrap items-center justify-end gap-3">
+                    <div className={clsx('mt-6', 'flex', 'flex-wrap', 'items-center', 'justify-end', 'gap-3')}>
                       {requiresPaymentSuccess && !isPaymentSuccessful ? (
-                        <p className="mr-auto text-xs text-rose-500">
+                        <p className={clsx('mr-auto', 'text-xs', 'text-rose-500')}>
                           Mark payment as successful before setting the order to
                           Delivered.
                         </p>
                       ) : null}
                       <button
                         type="button"
-                        className="rounded-xl border border-slate-200 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50"
+                        className={clsx('rounded-xl', 'border', 'border-slate-200', 'px-4', 'py-2', 'text-sm', 'text-slate-600', 'hover:bg-slate-50')}
                         onClick={handleCloseEdit}
                         disabled={isSavingEdit}
                       >
@@ -2805,7 +2929,7 @@ const SellerOrders = () => {
                       </button>
                       <button
                         type="button"
-                        className="rounded-xl bg-blue-600 px-5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+                        className={clsx('rounded-xl', 'bg-blue-600', 'px-5', 'py-2', 'text-sm', 'font-semibold', 'text-white', 'shadow-sm', 'hover:bg-blue-700', 'disabled:cursor-not-allowed', 'disabled:opacity-60')}
                         onClick={handleSaveEdit}
                         disabled={isSavingEdit || !canSaveEdit}
                       >

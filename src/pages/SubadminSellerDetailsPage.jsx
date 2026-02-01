@@ -4,6 +4,7 @@ import jsPDF from "jspdf";
 import { toast } from "react-hot-toast";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
+import clsx from "clsx";
 import {
   Eye,
   Filter,
@@ -1935,11 +1936,11 @@ const SubadminSellerDetailsPage = () => {
   const secondaryImages = collectAdditionalImages(viewProduct, primaryImage);
 
   return (
-    <div className="min-h-screen md:h-screen bg-slate-50 text-slate-900 overflow-x-hidden">
-      <div className="flex md:h-screen">
+    <div className={clsx('min-h-screen', 'md:h-screen', 'bg-slate-50', 'text-slate-900', 'overflow-x-hidden')}>
+      <div className={clsx('flex', 'md:h-screen')}>
         <SubadminSidebar
           active="Dashboard"
-          className="hidden lg:flex lg:w-64 lg:flex-none"
+          className={clsx('hidden', 'lg:flex', 'lg:w-64', 'lg:flex-none')}
           onNavigate={() => setIsSidebarOpen(false)}
         />
 
@@ -1949,32 +1950,32 @@ const SubadminSellerDetailsPage = () => {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 z-40 flex lg:hidden"
+              className={clsx('fixed', 'inset-0', 'z-40', 'flex', 'lg:hidden')}
             >
               <motion.div
                 initial={{ x: "-100%" }}
                 animate={{ x: 0 }}
                 exit={{ x: "-100%" }}
                 transition={{ type: "spring", stiffness: 220, damping: 24 }}
-                className="bg-white w-72 max-w-sm h-full shadow-xl"
+                className={clsx('bg-white', 'w-72', 'max-w-sm', 'h-full', 'shadow-xl')}
               >
                 <SubadminSidebar
                   active="Dashboard"
-                  className="flex w-full"
+                  className={clsx('flex', 'w-full')}
                   onNavigate={() => setIsSidebarOpen(false)}
                 />
               </motion.div>
               <button
                 type="button"
                 onClick={() => setIsSidebarOpen(false)}
-                className="flex-1 bg-black/30"
+                className={clsx('flex-1', 'bg-black/30')}
                 aria-label="Close sidebar"
               />
             </motion.div>
           )}
         </AnimatePresence>
 
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div className={clsx('flex-1', 'flex', 'flex-col', 'overflow-hidden')}>
           <Navbar
             onToggleSidebar={() => setIsSidebarOpen((prev) => !prev)}
             activeRange="All Time"
@@ -1991,20 +1992,20 @@ const SubadminSellerDetailsPage = () => {
             onLogout={logout}
           />
 
-          <main className="flex-1 overflow-y-auto px-4 py-6 md:px-8 space-y-6">
+          <main className={clsx('flex-1', 'overflow-y-auto', 'px-4', 'py-6', 'md:px-8', 'space-y-6')}>
             <div className="space-y-1">
-              <p className="text-sm text-slate-500">
+              <p className={clsx('text-sm', 'text-slate-500')}>
                 Subadmin / Sellers / Details
               </p>
-              <h1 className="text-2xl font-semibold text-slate-900">
+              <h1 className={clsx('text-2xl', 'font-semibold', 'text-slate-900')}>
                 Seller Details
               </h1>
-              <p className="text-xs text-slate-500">
+              <p className={clsx('text-xs', 'text-slate-500')}>
                 Seller ID: <span className="font-mono">{sellerId}</span>
               </p>
             </div>
 
-            <div className="flex flex-wrap items-center gap-3">
+            <div className={clsx('flex', 'flex-wrap', 'items-center', 'gap-3')}>
               <button
                 type="button"
                 onClick={() => handleChangeTab("products")}
@@ -2042,27 +2043,27 @@ const SubadminSellerDetailsPage = () => {
 
             {activeTab === "products" && (
               <section className="space-y-4">
-                <header className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                  <div className="flex flex-col gap-1">
-                    <div className="flex items-center gap-3">
-                      <h2 className="text-lg font-semibold text-slate-900">
+                <header className={clsx('flex', 'flex-col', 'gap-3', 'md:flex-row', 'md:items-center', 'md:justify-between')}>
+                  <div className={clsx('flex', 'flex-col', 'gap-1')}>
+                    <div className={clsx('flex', 'items-center', 'gap-3')}>
+                      <h2 className={clsx('text-lg', 'font-semibold', 'text-slate-900')}>
                         Products
                       </h2>
                       {productsLoading && (
-                        <p className="text-xs text-slate-500">
+                        <p className={clsx('text-xs', 'text-slate-500')}>
                           Loading products...
                         </p>
                       )}
                     </div>
-                    <p className="text-xs text-slate-500">
+                    <p className={clsx('text-xs', 'text-slate-500')}>
                       {productsLoading
                         ? "Fetching latest products..."
                         : `Showing ${filteredProducts.length} of ${products.length} items`}
                     </p>
                   </div>
-                  <div className="flex w-full flex-col gap-2 md:w-auto md:flex-row md:items-center md:justify-end">
-                    <div className="relative w-full md:w-64">
-                      <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <div className={clsx('flex', 'w-full', 'flex-col', 'gap-2', 'md:w-auto', 'md:flex-row', 'md:items-center', 'md:justify-end')}>
+                    <div className={clsx('relative', 'w-full', 'md:w-64')}>
+                      <Search className={clsx('pointer-events-none', 'absolute', 'left-3', 'top-1/2', 'h-4', 'w-4', '-translate-y-1/2', 'text-slate-400')} />
                       <input
                         type="text"
                         value={productSearch}
@@ -2070,16 +2071,16 @@ const SubadminSellerDetailsPage = () => {
                           setProductSearch(event.target.value)
                         }
                         placeholder="Search name, SKU or brand"
-                        className="w-full rounded-full border border-slate-200 bg-white py-1.5 pl-8 pr-3 text-xs text-slate-700 placeholder:text-slate-400 focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                        className={clsx('w-full', 'rounded-full', 'border', 'border-slate-200', 'bg-white', 'py-1.5', 'pl-8', 'pr-3', 'text-xs', 'text-slate-700', 'placeholder:text-slate-400', 'focus:border-blue-300', 'focus:outline-none', 'focus:ring-2', 'focus:ring-blue-100')}
                       />
                     </div>
-                    <div className="flex flex-wrap items-center gap-2 md:justify-end">
+                    <div className={clsx('flex', 'flex-wrap', 'items-center', 'gap-2', 'md:justify-end')}>
                       <select
                         value={productStatusFilter}
                         onChange={(event) =>
                           setProductStatusFilter(event.target.value)
                         }
-                        className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-700 focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                        className={clsx('rounded-lg', 'border', 'border-slate-200', 'bg-white', 'px-3', 'py-1.5', 'text-xs', 'text-slate-700', 'focus:border-blue-300', 'focus:outline-none', 'focus:ring-2', 'focus:ring-blue-100')}
                       >
                         {productStatusOptions.map((status) => (
                           <option key={status || "all"} value={status}>
@@ -2094,7 +2095,7 @@ const SubadminSellerDetailsPage = () => {
                         onChange={(event) =>
                           setProductAvailabilityFilter(event.target.value)
                         }
-                        className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-700 focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                        className={clsx('rounded-lg', 'border', 'border-slate-200', 'bg-white', 'px-3', 'py-1.5', 'text-xs', 'text-slate-700', 'focus:border-blue-300', 'focus:outline-none', 'focus:ring-2', 'focus:ring-blue-100')}
                       >
                         {PRODUCT_AVAILABILITY_OPTIONS.map((option) => (
                           <option key={option.value} value={option.value}>
@@ -2107,7 +2108,7 @@ const SubadminSellerDetailsPage = () => {
                         onChange={(event) =>
                           setProductDateFilter(event.target.value)
                         }
-                        className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-700 focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                        className={clsx('rounded-lg', 'border', 'border-slate-200', 'bg-white', 'px-3', 'py-1.5', 'text-xs', 'text-slate-700', 'focus:border-blue-300', 'focus:outline-none', 'focus:ring-2', 'focus:ring-blue-100')}
                       >
                         {PRODUCT_DATE_FILTER_OPTIONS.map((option) => (
                           <option key={option.value} value={option.value}>
@@ -2119,43 +2120,43 @@ const SubadminSellerDetailsPage = () => {
                   </div>
                 </header>
                 {productsError && (
-                  <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-600">
+                  <div className={clsx('rounded-xl', 'border', 'border-rose-200', 'bg-rose-50', 'px-4', 'py-3', 'text-sm', 'text-rose-600')}>
                     {productsError}
                   </div>
                 )}
-                <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
-                  <table className="min-w-full divide-y divide-slate-200 text-sm">
+                <div className={clsx('overflow-x-auto', 'rounded-2xl', 'border', 'border-slate-200', 'bg-white')}>
+                  <table className={clsx('min-w-full', 'divide-y', 'divide-slate-200', 'text-sm')}>
                     <thead className="bg-slate-50">
                       <tr>
-                        <th className="px-3 py-2 text-left font-semibold text-slate-600 w-16">
+                        <th className={clsx('px-3', 'py-2', 'text-left', 'font-semibold', 'text-slate-600', 'w-16')}>
                           S/N
                         </th>
-                        <th className="px-3 py-2 text-left font-semibold text-slate-600">
+                        <th className={clsx('px-3', 'py-2', 'text-left', 'font-semibold', 'text-slate-600')}>
                           Image
                         </th>
-                        <th className="px-3 py-2 text-left font-semibold text-slate-600">
+                        <th className={clsx('px-3', 'py-2', 'text-left', 'font-semibold', 'text-slate-600')}>
                           Name
                         </th>
-                        <th className="px-3 py-2 text-left font-semibold text-slate-600">
+                        <th className={clsx('px-3', 'py-2', 'text-left', 'font-semibold', 'text-slate-600')}>
                           SKU
                         </th>
-                        <th className="px-3 py-2 text-left font-semibold text-slate-600">
+                        <th className={clsx('px-3', 'py-2', 'text-left', 'font-semibold', 'text-slate-600')}>
                           Price
                         </th>
-                        <th className="px-3 py-2 text-left font-semibold text-slate-600">
+                        <th className={clsx('px-3', 'py-2', 'text-left', 'font-semibold', 'text-slate-600')}>
                           Status
                         </th>
-                        <th className="px-3 py-2 text-center font-semibold text-slate-600">
+                        <th className={clsx('px-3', 'py-2', 'text-center', 'font-semibold', 'text-slate-600')}>
                           View
                         </th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100 bg-white">
+                    <tbody className={clsx('divide-y', 'divide-slate-100', 'bg-white')}>
                       {productsLoading ? (
                         <tr>
                           <td
                             colSpan={7}
-                            className="px-3 py-6 text-center text-slate-500"
+                            className={clsx('px-3', 'py-6', 'text-center', 'text-slate-500')}
                           >
                             Loading products...
                           </td>
@@ -2164,7 +2165,7 @@ const SubadminSellerDetailsPage = () => {
                         <tr>
                           <td
                             colSpan={7}
-                            className="px-3 py-6 text-center text-slate-500"
+                            className={clsx('px-3', 'py-6', 'text-center', 'text-slate-500')}
                           >
                             No products found for this seller.
                           </td>
@@ -2173,7 +2174,7 @@ const SubadminSellerDetailsPage = () => {
                         <tr>
                           <td
                             colSpan={7}
-                            className="px-3 py-6 text-center text-slate-500"
+                            className={clsx('px-3', 'py-6', 'text-center', 'text-slate-500')}
                           >
                             No products match the current filters.
                           </td>
@@ -2181,39 +2182,39 @@ const SubadminSellerDetailsPage = () => {
                       ) : (
                         filteredProducts.map((product, index) => (
                           <tr key={product._id} className="hover:bg-slate-50">
-                            <td className="px-3 py-2 align-middle text-xs font-semibold text-slate-500">
+                            <td className={clsx('px-3', 'py-2', 'align-middle', 'text-xs', 'font-semibold', 'text-slate-500')}>
                               {index + 1}
                             </td>
-                            <td className="px-3 py-2 align-middle">
+                            <td className={clsx('px-3', 'py-2', 'align-middle')}>
                               {resolveProductImage(product) ? (
                                 <img
                                   src={resolveProductImage(product)}
                                   alt={product.name || product.sku || "Product"}
-                                  className="h-12 w-12 rounded-lg border border-slate-200 object-cover"
+                                  className={clsx('h-12', 'w-12', 'rounded-lg', 'border', 'border-slate-200', 'object-cover')}
                                 />
                               ) : (
-                                <div className="flex h-12 w-12 items-center justify-center rounded-lg border border-dashed border-slate-200 bg-slate-50 text-slate-400">
+                                <div className={clsx('flex', 'h-12', 'w-12', 'items-center', 'justify-center', 'rounded-lg', 'border', 'border-dashed', 'border-slate-200', 'bg-slate-50', 'text-slate-400')}>
                                   <ImageOff size={16} />
                                 </div>
                               )}
                             </td>
-                            <td className="px-3 py-2 align-middle text-slate-800">
+                            <td className={clsx('px-3', 'py-2', 'align-middle', 'text-slate-800')}>
                               {product.name || "--"}
                             </td>
-                            <td className="px-3 py-2 align-middle text-slate-600">
+                            <td className={clsx('px-3', 'py-2', 'align-middle', 'text-slate-600')}>
                               {product.sku || "--"}
                             </td>
-                            <td className="px-3 py-2 align-middle text-slate-600">
+                            <td className={clsx('px-3', 'py-2', 'align-middle', 'text-slate-600')}>
                               {formatCurrency(product.price)}
                             </td>
-                            <td className="px-3 py-2 align-middle text-slate-600">
+                            <td className={clsx('px-3', 'py-2', 'align-middle', 'text-slate-600')}>
                               {product.status || "--"}
                             </td>
-                            <td className="px-3 py-2 align-middle text-center">
+                            <td className={clsx('px-3', 'py-2', 'align-middle', 'text-center')}>
                               <button
                                 type="button"
                                 onClick={() => setViewProduct(product)}
-                                className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 text-slate-600 transition hover:border-blue-200 hover:text-blue-600"
+                                className={clsx('inline-flex', 'h-8', 'w-8', 'items-center', 'justify-center', 'rounded-full', 'border', 'border-slate-200', 'text-slate-600', 'transition', 'hover:border-blue-200', 'hover:text-blue-600')}
                                 aria-label="View product details"
                               >
                                 <Eye size={16} />
@@ -2231,17 +2232,17 @@ const SubadminSellerDetailsPage = () => {
             {activeTab === "orders" && (
               <section className="space-y-4">
                 {!ordersLoading && orders.length > 0 && (
-                  <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                  <div className={clsx('grid', 'gap-3', 'sm:grid-cols-2', 'xl:grid-cols-3')}>
                     {orderSummaryCards.map(
                       ({ key, label, value, accent, badge }) => (
                         <div
                           key={key}
-                          className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
+                          className={clsx('rounded-2xl', 'border', 'border-slate-200', 'bg-white', 'p-4', 'shadow-sm')}
                         >
-                          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
+                          <p className={clsx('text-xs', 'font-semibold', 'uppercase', 'tracking-[0.18em]', 'text-slate-400')}>
                             {label}
                           </p>
-                          <div className="mt-3 flex items-baseline gap-3">
+                          <div className={clsx('mt-3', 'flex', 'items-baseline', 'gap-3')}>
                             <span
                               className={`text-3xl font-semibold ${accent}`}
                             >
@@ -2259,27 +2260,27 @@ const SubadminSellerDetailsPage = () => {
                   </div>
                 )}
 
-                <header className="flex flex-wrap items-center justify-between gap-3">
+                <header className={clsx('flex', 'flex-wrap', 'items-center', 'justify-between', 'gap-3')}>
                   <div className="space-y-1">
-                    <h2 className="text-lg font-semibold text-slate-900">
+                    <h2 className={clsx('text-lg', 'font-semibold', 'text-slate-900')}>
                       Orders
                     </h2>
                     {!ordersLoading && (
-                      <p className="text-xs text-slate-500">
+                      <p className={clsx('text-xs', 'text-slate-500')}>
                         Showing {filteredOrders.length} of {orders.length}{" "}
                         orders
                       </p>
                     )}
                   </div>
-                  <div className="flex flex-wrap items-center gap-3">
-                    <div className="flex items-center gap-2">
+                  <div className={clsx('flex', 'flex-wrap', 'items-center', 'gap-3')}>
+                    <div className={clsx('flex', 'items-center', 'gap-2')}>
                       <Filter size={16} className="text-slate-400" />
                       <select
                         value={ordersStatusFilter}
                         onChange={(event) =>
                           setOrdersStatusFilter(event.target.value)
                         }
-                        className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-700 focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                        className={clsx('rounded-lg', 'border', 'border-slate-200', 'bg-white', 'px-3', 'py-1.5', 'text-xs', 'text-slate-700', 'focus:border-blue-300', 'focus:outline-none', 'focus:ring-2', 'focus:ring-blue-100')}
                       >
                         {ORDER_STATUS_OPTIONS.map((value) => (
                           <option key={value || "all"} value={value}>
@@ -2289,7 +2290,7 @@ const SubadminSellerDetailsPage = () => {
                       </select>
                     </div>
                     <div className="relative">
-                      <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                      <Search className={clsx('absolute', 'left-3', 'top-1/2', 'h-4', 'w-4', '-translate-y-1/2', 'text-slate-400')} />
                       <input
                         type="text"
                         value={ordersSearch}
@@ -2297,14 +2298,14 @@ const SubadminSellerDetailsPage = () => {
                           setOrdersSearch(event.target.value)
                         }
                         placeholder="Search by order id, buyer, email or tracking"
-                        className="w-64 rounded-full border border-slate-200 bg-white py-1.5 pl-8 pr-3 text-xs text-slate-700 placeholder:text-slate-400 focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                        className={clsx('w-64', 'rounded-full', 'border', 'border-slate-200', 'bg-white', 'py-1.5', 'pl-8', 'pr-3', 'text-xs', 'text-slate-700', 'placeholder:text-slate-400', 'focus:border-blue-300', 'focus:outline-none', 'focus:ring-2', 'focus:ring-blue-100')}
                       />
                     </div>
                     <div className="relative">
                       <button
                         type="button"
                         onClick={() => setIsExportMenuOpen((prev) => !prev)}
-                        className="inline-flex items-center gap-2 rounded-full border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:border-blue-200 hover:text-blue-600"
+                        className={clsx('inline-flex', 'items-center', 'gap-2', 'rounded-full', 'border', 'border-slate-200', 'px-3', 'py-1.5', 'text-xs', 'font-semibold', 'text-slate-600', 'transition', 'hover:border-blue-200', 'hover:text-blue-600')}
                       >
                         <Download size={14} /> Export
                       </button>
@@ -2315,7 +2316,7 @@ const SubadminSellerDetailsPage = () => {
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: -6 }}
                             transition={{ duration: 0.18 }}
-                            className="absolute right-0 top-full z-20 mt-2 w-44 rounded-xl border border-slate-200 bg-white text-left shadow-xl"
+                            className={clsx('absolute', 'right-0', 'top-full', 'z-20', 'mt-2', 'w-44', 'rounded-xl', 'border', 'border-slate-200', 'bg-white', 'text-left', 'shadow-xl')}
                           >
                             <button
                               type="button"
@@ -2323,7 +2324,7 @@ const SubadminSellerDetailsPage = () => {
                                 handleExportCsv();
                                 setIsExportMenuOpen(false);
                               }}
-                              className="block w-full px-4 py-2 text-xs text-slate-600 hover:bg-slate-50"
+                              className={clsx('block', 'w-full', 'px-4', 'py-2', 'text-xs', 'text-slate-600', 'hover:bg-slate-50')}
                             >
                               Export as CSV
                             </button>
@@ -2333,7 +2334,7 @@ const SubadminSellerDetailsPage = () => {
                                 handleExportXlsx();
                                 setIsExportMenuOpen(false);
                               }}
-                              className="block w-full px-4 py-2 text-xs text-slate-600 hover:bg-slate-50"
+                              className={clsx('block', 'w-full', 'px-4', 'py-2', 'text-xs', 'text-slate-600', 'hover:bg-slate-50')}
                             >
                               Export as XLSX
                             </button>
@@ -2343,7 +2344,7 @@ const SubadminSellerDetailsPage = () => {
                                 handleExportPdf();
                                 setIsExportMenuOpen(false);
                               }}
-                              className="block w-full px-4 py-2 text-xs text-slate-600 hover:bg-slate-50"
+                              className={clsx('block', 'w-full', 'px-4', 'py-2', 'text-xs', 'text-slate-600', 'hover:bg-slate-50')}
                             >
                               Export as PDF
                             </button>
@@ -2355,20 +2356,20 @@ const SubadminSellerDetailsPage = () => {
                 </header>
 
                 {ordersError && (
-                  <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-600">
+                  <div className={clsx('rounded-xl', 'border', 'border-rose-200', 'bg-rose-50', 'px-4', 'py-3', 'text-sm', 'text-rose-600')}>
                     {ordersError}
                   </div>
                 )}
 
-                <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
-                  <table className="min-w-full divide-y divide-slate-200 text-[11px]">
+                <div className={clsx('overflow-x-auto', 'rounded-2xl', 'border', 'border-slate-200', 'bg-white')}>
+                  <table className={clsx('min-w-full', 'divide-y', 'divide-slate-200', 'text-[11px]')}>
                     <thead className="bg-slate-50">
                       <tr>
-                        <th className="px-3 py-2 text-center font-semibold text-slate-600 w-12">
+                        <th className={clsx('px-3', 'py-2', 'text-center', 'font-semibold', 'text-slate-600', 'w-12')}>
                           <input
                             ref={selectAllCheckboxRef}
                             type="checkbox"
-                            className="h-4 w-4 rounded border-slate-300 text-slate-700 focus:ring-blue-500"
+                            className={clsx('h-4', 'w-4', 'rounded', 'border-slate-300', 'text-slate-700', 'focus:ring-blue-500')}
                             checked={
                               filteredOrders.length > 0 &&
                               filteredSelectedCount === filteredOrders.length
@@ -2377,47 +2378,47 @@ const SubadminSellerDetailsPage = () => {
                             aria-label="Select all visible orders"
                           />
                         </th>
-                        <th className="px-3 py-2 text-left font-semibold text-slate-600 w-12">
+                        <th className={clsx('px-3', 'py-2', 'text-left', 'font-semibold', 'text-slate-600', 'w-12')}>
                           S/N
                         </th>
-                        <th className="px-3 py-2 text-left font-semibold text-slate-600">
+                        <th className={clsx('px-3', 'py-2', 'text-left', 'font-semibold', 'text-slate-600')}>
                           Order ID
                         </th>
-                        <th className="px-3 py-2 text-left font-semibold text-slate-600">
+                        <th className={clsx('px-3', 'py-2', 'text-left', 'font-semibold', 'text-slate-600')}>
                           Size
                         </th>
-                        <th className="px-3 py-2 text-left font-semibold text-slate-600">
+                        <th className={clsx('px-3', 'py-2', 'text-left', 'font-semibold', 'text-slate-600')}>
                           Customer
                         </th>
-                        <th className="px-3 py-2 text-left font-semibold text-slate-600">
+                        <th className={clsx('px-3', 'py-2', 'text-left', 'font-semibold', 'text-slate-600')}>
                           Mobile
                         </th>
-                        <th className="px-3 py-2 text-center font-semibold text-slate-600">
+                        <th className={clsx('px-3', 'py-2', 'text-center', 'font-semibold', 'text-slate-600')}>
                           QR
                         </th>
-                        <th className="px-3 py-2 text-left font-semibold text-slate-600">
+                        <th className={clsx('px-3', 'py-2', 'text-left', 'font-semibold', 'text-slate-600')}>
                           Total
                         </th>
-                        <th className="px-3 py-2 text-left font-semibold text-slate-600">
+                        <th className={clsx('px-3', 'py-2', 'text-left', 'font-semibold', 'text-slate-600')}>
                           Fulfilment
                         </th>
-                        <th className="px-3 py-2 text-left font-semibold text-slate-600">
+                        <th className={clsx('px-3', 'py-2', 'text-left', 'font-semibold', 'text-slate-600')}>
                           Shipping
                         </th>
-                        <th className="px-3 py-2 text-center font-semibold text-slate-600">
+                        <th className={clsx('px-3', 'py-2', 'text-center', 'font-semibold', 'text-slate-600')}>
                           Invoice
                         </th>
-                        <th className="px-3 py-2 text-center font-semibold text-slate-600">
+                        <th className={clsx('px-3', 'py-2', 'text-center', 'font-semibold', 'text-slate-600')}>
                           Actions
                         </th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100 bg-white">
+                    <tbody className={clsx('divide-y', 'divide-slate-100', 'bg-white')}>
                       {ordersLoading ? (
                         <tr>
                           <td
                             colSpan={12}
-                            className="px-3 py-6 text-center text-slate-500"
+                            className={clsx('px-3', 'py-6', 'text-center', 'text-slate-500')}
                           >
                             Loading orders...
                           </td>
@@ -2426,7 +2427,7 @@ const SubadminSellerDetailsPage = () => {
                         <tr>
                           <td
                             colSpan={12}
-                            className="px-3 py-6 text-center text-slate-500"
+                            className={clsx('px-3', 'py-6', 'text-center', 'text-slate-500')}
                           >
                             No orders found for this seller.
                           </td>
@@ -2464,10 +2465,10 @@ const SubadminSellerDetailsPage = () => {
 
                           return (
                             <tr key={order._id} className="hover:bg-slate-50">
-                              <td className="px-3 py-2 align-middle text-center">
+                              <td className={clsx('px-3', 'py-2', 'align-middle', 'text-center')}>
                                 <input
                                   type="checkbox"
-                                  className="h-4 w-4 rounded border-slate-300 text-slate-700 focus:ring-blue-500"
+                                  className={clsx('h-4', 'w-4', 'rounded', 'border-slate-300', 'text-slate-700', 'focus:ring-blue-500')}
                                   checked={isSelected}
                                   onChange={() =>
                                     handleToggleRowSelection(orderKeyString)
@@ -2475,29 +2476,29 @@ const SubadminSellerDetailsPage = () => {
                                   aria-label={`Select order ${orderKeyString}`}
                                 />
                               </td>
-                              <td className="px-3 py-2 align-middle text-[11px] font-semibold text-slate-500">
+                              <td className={clsx('px-3', 'py-2', 'align-middle', 'text-[11px]', 'font-semibold', 'text-slate-500')}>
                                 {index + 1}
                               </td>
-                              <td className="px-3 py-2 align-middle font-mono text-[11px] text-slate-800">
+                              <td className={clsx('px-3', 'py-2', 'align-middle', 'font-mono', 'text-[11px]', 'text-slate-800')}>
                                 {orderKey}
                               </td>
-                              <td className="px-3 py-2 align-middle text-slate-700">
+                              <td className={clsx('px-3', 'py-2', 'align-middle', 'text-slate-700')}>
                                 {sizeLabel}
                               </td>
-                              <td className="px-3 py-2 align-middle text-slate-700">
-                                <div className="flex flex-col">
+                              <td className={clsx('px-3', 'py-2', 'align-middle', 'text-slate-700')}>
+                                <div className={clsx('flex', 'flex-col')}>
                                   <span>{customerName}</span>
                                   {customerEmail && customerEmail !== "--" && (
-                                    <span className="text-[11px] text-slate-500">
+                                    <span className={clsx('text-[11px]', 'text-slate-500')}>
                                       {customerEmail}
                                     </span>
                                   )}
                                 </div>
                               </td>
-                              <td className="px-3 py-2 align-middle text-slate-700">
+                              <td className={clsx('px-3', 'py-2', 'align-middle', 'text-slate-700')}>
                                 {customerPhone || "--"}
                               </td>
-                              <td className="px-3 py-2 align-middle text-center">
+                              <td className={clsx('px-3', 'py-2', 'align-middle', 'text-center')}>
                                 <button
                                   type="button"
                                   onClick={async () => {
@@ -2535,7 +2536,7 @@ const SubadminSellerDetailsPage = () => {
                                     !qrfolioImage ||
                                     downloadingQrId === orderKeyString
                                   }
-                                  className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:border-blue-200 hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-60"
+                                  className={clsx('inline-flex', 'h-7', 'w-7', 'items-center', 'justify-center', 'rounded-full', 'border', 'border-slate-200', 'text-slate-500', 'transition', 'hover:border-blue-200', 'hover:bg-blue-50', 'disabled:cursor-not-allowed', 'disabled:opacity-60')}
                                   aria-label={`Download QR for order ${orderKey}`}
                                 >
                                   {downloadingQrId === orderKeyString ? (
@@ -2548,35 +2549,35 @@ const SubadminSellerDetailsPage = () => {
                                   )}
                                 </button>
                               </td>
-                              <td className="px-3 py-2 align-middle text-slate-800">
+                              <td className={clsx('px-3', 'py-2', 'align-middle', 'text-slate-800')}>
                                 {formatCurrency(totalAmount)}
                               </td>
-                              <td className="px-3 py-2 align-middle text-slate-700">
+                              <td className={clsx('px-3', 'py-2', 'align-middle', 'text-slate-700')}>
                                 <div className="space-y-1">
-                                  <span className="font-medium text-slate-800">
+                                  <span className={clsx('font-medium', 'text-slate-800')}>
                                     {order.orderStatus ||
                                       order.status ||
                                       "processing"}
                                   </span>
-                                  <span className="block text-[11px] text-slate-500">
+                                  <span className={clsx('block', 'text-[11px]', 'text-slate-500')}>
                                     Payment: {paymentStatus}
                                   </span>
                                 </div>
                               </td>
-                              <td className="px-3 py-2 align-middle text-slate-700">
+                              <td className={clsx('px-3', 'py-2', 'align-middle', 'text-slate-700')}>
                                 <div className="space-y-1">
                                   <span>{courier}</span>
-                                  <span className="block text-[11px] text-slate-500 break-all">
+                                  <span className={clsx('block', 'text-[11px]', 'text-slate-500', 'break-all')}>
                                     {trackingId || "--"}
                                   </span>
                                 </div>
                               </td>
-                              <td className="px-3 py-2 align-middle text-center">
+                              <td className={clsx('px-3', 'py-2', 'align-middle', 'text-center')}>
                                 <button
                                   type="button"
                                   onClick={() => handleDownloadInvoice(order)}
                                   disabled={isDownloading}
-                                  className="inline-flex items-center gap-1 rounded-full border border-slate-200 px-3 py-1 text-[11px] font-medium text-slate-700 transition hover:border-blue-200 hover:text-blue-600 disabled:cursor-not-allowed disabled:opacity-60"
+                                  className={clsx('inline-flex', 'items-center', 'gap-1', 'rounded-full', 'border', 'border-slate-200', 'px-3', 'py-1', 'text-[11px]', 'font-medium', 'text-slate-700', 'transition', 'hover:border-blue-200', 'hover:text-blue-600', 'disabled:cursor-not-allowed', 'disabled:opacity-60')}
                                 >
                                   {isDownloading ? (
                                     <Loader2
@@ -2589,8 +2590,8 @@ const SubadminSellerDetailsPage = () => {
                                   Invoice
                                 </button>
                               </td>
-                              <td className="px-3 py-2 align-middle text-center">
-                                <div className="flex items-center justify-center gap-2">
+                              <td className={clsx('px-3', 'py-2', 'align-middle', 'text-center')}>
+                                <div className={clsx('flex', 'items-center', 'justify-center', 'gap-2')}>
                                   <button
                                     type="button"
                                     onClick={() =>
@@ -2609,7 +2610,7 @@ const SubadminSellerDetailsPage = () => {
                                         },
                                       )
                                     }
-                                    className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 text-slate-600 hover:border-blue-200 hover:text-blue-600"
+                                    className={clsx('inline-flex', 'h-7', 'w-7', 'items-center', 'justify-center', 'rounded-full', 'border', 'border-slate-200', 'text-slate-600', 'hover:border-blue-200', 'hover:text-blue-600')}
                                     aria-label="View order"
                                   >
                                     <Eye size={14} />
@@ -2619,7 +2620,7 @@ const SubadminSellerDetailsPage = () => {
                                     onClick={() =>
                                       handleOpenEditShipping(order)
                                     }
-                                    className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 text-slate-600 hover:border-blue-200 hover:text-blue-600"
+                                    className={clsx('inline-flex', 'h-7', 'w-7', 'items-center', 'justify-center', 'rounded-full', 'border', 'border-slate-200', 'text-slate-600', 'hover:border-blue-200', 'hover:text-blue-600')}
                                     aria-label="Edit courier & tracking"
                                   >
                                     <PencilLine size={14} />
@@ -2638,27 +2639,27 @@ const SubadminSellerDetailsPage = () => {
 
             {activeTab === "coupons" && (
               <section className="space-y-4">
-                <header className="flex items-center justify-between gap-3">
+                <header className={clsx('flex', 'items-center', 'justify-between', 'gap-3')}>
                   <div className="space-y-1">
-                    <h2 className="text-lg font-semibold text-slate-900">
+                    <h2 className={clsx('text-lg', 'font-semibold', 'text-slate-900')}>
                       Coupons
                     </h2>
                     {!couponsLoading && (
-                      <p className="text-xs text-slate-500">
+                      <p className={clsx('text-xs', 'text-slate-500')}>
                         Showing {filteredCoupons.length} of {coupons.length}{" "}
                         coupons
                       </p>
                     )}
                   </div>
-                  <div className="flex flex-wrap items-center gap-3">
-                    <div className="flex items-center gap-2">
+                  <div className={clsx('flex', 'flex-wrap', 'items-center', 'gap-3')}>
+                    <div className={clsx('flex', 'items-center', 'gap-2')}>
                       <Filter size={16} className="text-slate-400" />
                       <select
                         value={couponStatusFilter}
                         onChange={(event) =>
                           setCouponStatusFilter(event.target.value)
                         }
-                        className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-700 focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                        className={clsx('rounded-lg', 'border', 'border-slate-200', 'bg-white', 'px-3', 'py-1.5', 'text-xs', 'text-slate-700', 'focus:border-blue-300', 'focus:outline-none', 'focus:ring-2', 'focus:ring-blue-100')}
                       >
                         {COUPON_STATUS_OPTIONS.map((option) => (
                           <option key={option.value} value={option.value}>
@@ -2668,7 +2669,7 @@ const SubadminSellerDetailsPage = () => {
                       </select>
                     </div>
                     <div className="relative">
-                      <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                      <Search className={clsx('absolute', 'left-3', 'top-1/2', 'h-4', 'w-4', '-translate-y-1/2', 'text-slate-400')} />
                       <input
                         type="text"
                         value={couponSearch}
@@ -2676,21 +2677,21 @@ const SubadminSellerDetailsPage = () => {
                           setCouponSearch(event.target.value)
                         }
                         placeholder="Search by code, description or discount"
-                        className="w-64 rounded-full border border-slate-200 bg-white py-1.5 pl-8 pr-3 text-xs text-slate-700 placeholder:text-slate-400 focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                        className={clsx('w-64', 'rounded-full', 'border', 'border-slate-200', 'bg-white', 'py-1.5', 'pl-8', 'pr-3', 'text-xs', 'text-slate-700', 'placeholder:text-slate-400', 'focus:border-blue-300', 'focus:outline-none', 'focus:ring-2', 'focus:ring-blue-100')}
                       />
                     </div>
                   </div>
                 </header>
                 {!couponsLoading && filteredCoupons.length > 0 && (
-                  <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                  <div className={clsx('grid', 'gap-3', 'sm:grid-cols-2', 'xl:grid-cols-4')}>
                     {couponCards.map(
                       ({ key, label, value, icon: Icon, iconBg, helper }) => (
                         <div
                           key={key}
-                          className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
+                          className={clsx('rounded-2xl', 'border', 'border-slate-200', 'bg-white', 'p-4', 'shadow-sm')}
                         >
-                          <div className="flex items-center justify-between">
-                            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
+                          <div className={clsx('flex', 'items-center', 'justify-between')}>
+                            <p className={clsx('text-xs', 'font-semibold', 'uppercase', 'tracking-[0.18em]', 'text-slate-400')}>
                               {label}
                             </p>
                             <span
@@ -2699,11 +2700,11 @@ const SubadminSellerDetailsPage = () => {
                               <Icon size={16} />
                             </span>
                           </div>
-                          <p className="mt-3 text-2xl font-semibold text-slate-900">
+                          <p className={clsx('mt-3', 'text-2xl', 'font-semibold', 'text-slate-900')}>
                             {value}
                           </p>
                           {helper && (
-                            <p className="text-[11px] font-medium text-slate-500">
+                            <p className={clsx('text-[11px]', 'font-medium', 'text-slate-500')}>
                               {helper}
                             </p>
                           )}
@@ -2713,49 +2714,49 @@ const SubadminSellerDetailsPage = () => {
                   </div>
                 )}
                 {couponsError && (
-                  <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-600">
+                  <div className={clsx('rounded-xl', 'border', 'border-rose-200', 'bg-rose-50', 'px-4', 'py-3', 'text-sm', 'text-rose-600')}>
                     {couponsError}
                   </div>
                 )}
-                <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
-                  <table className="min-w-full divide-y divide-slate-200 text-sm">
+                <div className={clsx('overflow-x-auto', 'rounded-2xl', 'border', 'border-slate-200', 'bg-white')}>
+                  <table className={clsx('min-w-full', 'divide-y', 'divide-slate-200', 'text-sm')}>
                     <thead className="bg-slate-50">
                       <tr>
-                        <th className="px-3 py-2 text-left font-semibold text-slate-600 w-16">
+                        <th className={clsx('px-3', 'py-2', 'text-left', 'font-semibold', 'text-slate-600', 'w-16')}>
                           S/N
                         </th>
-                        <th className="px-3 py-2 text-left font-semibold text-slate-600">
+                        <th className={clsx('px-3', 'py-2', 'text-left', 'font-semibold', 'text-slate-600')}>
                           Code
                         </th>
-                        <th className="px-3 py-2 text-left font-semibold text-slate-600">
+                        <th className={clsx('px-3', 'py-2', 'text-left', 'font-semibold', 'text-slate-600')}>
                           Description
                         </th>
-                        <th className="px-3 py-2 text-left font-semibold text-slate-600">
+                        <th className={clsx('px-3', 'py-2', 'text-left', 'font-semibold', 'text-slate-600')}>
                           Discount
                         </th>
-                        <th className="px-3 py-2 text-left font-semibold text-slate-600">
+                        <th className={clsx('px-3', 'py-2', 'text-left', 'font-semibold', 'text-slate-600')}>
                           Type
                         </th>
-                        <th className="px-3 py-2 text-left font-semibold text-slate-600">
+                        <th className={clsx('px-3', 'py-2', 'text-left', 'font-semibold', 'text-slate-600')}>
                           Usage
                         </th>
-                        <th className="px-3 py-2 text-left font-semibold text-slate-600">
+                        <th className={clsx('px-3', 'py-2', 'text-left', 'font-semibold', 'text-slate-600')}>
                           Validity
                         </th>
-                        <th className="px-3 py-2 text-left font-semibold text-slate-600">
+                        <th className={clsx('px-3', 'py-2', 'text-left', 'font-semibold', 'text-slate-600')}>
                           Status
                         </th>
-                        <th className="px-3 py-2 text-left font-semibold text-slate-600">
+                        <th className={clsx('px-3', 'py-2', 'text-left', 'font-semibold', 'text-slate-600')}>
                           Active
                         </th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100 bg-white">
+                    <tbody className={clsx('divide-y', 'divide-slate-100', 'bg-white')}>
                       {couponsLoading ? (
                         <tr>
                           <td
                             colSpan={9}
-                            className="px-3 py-6 text-center text-slate-500"
+                            className={clsx('px-3', 'py-6', 'text-center', 'text-slate-500')}
                           >
                             Loading coupons...
                           </td>
@@ -2764,7 +2765,7 @@ const SubadminSellerDetailsPage = () => {
                         <tr>
                           <td
                             colSpan={9}
-                            className="px-3 py-6 text-center text-slate-500"
+                            className={clsx('px-3', 'py-6', 'text-center', 'text-slate-500')}
                           >
                             No coupons found for this seller.
                           </td>
@@ -2810,32 +2811,32 @@ const SubadminSellerDetailsPage = () => {
                                 key={coupon._id}
                                 className="hover:bg-slate-50"
                               >
-                                <td className="px-3 py-2 align-middle text-xs font-semibold text-slate-500">
+                                <td className={clsx('px-3', 'py-2', 'align-middle', 'text-xs', 'font-semibold', 'text-slate-500')}>
                                   {index + 1}
                                 </td>
-                                <td className="px-3 py-2 align-middle font-mono text-xs text-slate-800">
+                                <td className={clsx('px-3', 'py-2', 'align-middle', 'font-mono', 'text-xs', 'text-slate-800')}>
                                   {coupon.code}
                                 </td>
-                                <td className="px-3 py-2 align-middle text-slate-700">
+                                <td className={clsx('px-3', 'py-2', 'align-middle', 'text-slate-700')}>
                                   {coupon.description || "--"}
                                 </td>
-                                <td className="px-3 py-2 align-middle text-slate-700">
+                                <td className={clsx('px-3', 'py-2', 'align-middle', 'text-slate-700')}>
                                   {coupon.discountType === "flat"
                                     ? `₹${coupon.discountValue}`
                                     : `${coupon.discountValue}%`}
                                 </td>
-                                <td className="px-3 py-2 align-middle text-slate-700">
+                                <td className={clsx('px-3', 'py-2', 'align-middle', 'text-slate-700')}>
                                   {isSingleUse ? "Single" : "Multi"}
                                 </td>
-                                <td className="px-3 py-2 align-middle text-slate-700">
+                                <td className={clsx('px-3', 'py-2', 'align-middle', 'text-slate-700')}>
                                   {`${usageCount} / ${
                                     maxRedemptions > 0 ? maxRedemptions : "∞"
                                   }`}
                                 </td>
-                                <td className="px-3 py-2 align-middle text-slate-700">
+                                <td className={clsx('px-3', 'py-2', 'align-middle', 'text-slate-700')}>
                                   {`${formatDate(startDate)} - ${formatDate(endDate)}`}
                                 </td>
-                                <td className="px-3 py-2 align-middle text-slate-700">
+                                <td className={clsx('px-3', 'py-2', 'align-middle', 'text-slate-700')}>
                                   <span
                                     className={`inline-flex items-center rounded-full px-3 py-1 text-[11px] font-semibold ${
                                       statusLabel === "Redeemed"
@@ -2848,7 +2849,7 @@ const SubadminSellerDetailsPage = () => {
                                     {statusLabel}
                                   </span>
                                 </td>
-                                <td className="px-3 py-2 align-middle text-slate-700">
+                                <td className={clsx('px-3', 'py-2', 'align-middle', 'text-slate-700')}>
                                   {coupon.isActive !== false ? "Yes" : "No"}
                                 </td>
                               </tr>
@@ -2870,7 +2871,7 @@ const SubadminSellerDetailsPage = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+            className={clsx('fixed', 'inset-0', 'z-50', 'flex', 'items-center', 'justify-center', 'bg-black/40', 'px-4')}
             onClick={() => setViewProduct(null)}
           >
             <motion.div
@@ -2878,21 +2879,21 @@ const SubadminSellerDetailsPage = () => {
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
               transition={{ duration: 0.2 }}
-              className="relative flex w-full max-w-5xl max-h-[90vh] min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl"
+              className={clsx('relative', 'flex', 'w-full', 'max-w-5xl', 'max-h-[90vh]', 'min-h-0', 'flex-col', 'overflow-hidden', 'rounded-2xl', 'border', 'border-slate-200', 'bg-white', 'shadow-2xl')}
               onClick={(event) => event.stopPropagation()}
             >
               <button
                 type="button"
                 onClick={() => setViewProduct(null)}
-                className="absolute right-4 top-4 z-30 inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white/90 text-slate-500 shadow-sm transition hover:border-slate-300 hover:text-slate-700"
+                className={clsx('absolute', 'right-4', 'top-4', 'z-30', 'inline-flex', 'h-9', 'w-9', 'items-center', 'justify-center', 'rounded-xl', 'border', 'border-slate-200', 'bg-white/90', 'text-slate-500', 'shadow-sm', 'transition', 'hover:border-slate-300', 'hover:text-slate-700')}
                 aria-label="Close"
               >
                 <X size={18} />
               </button>
 
-              <div className="group relative flex-1 min-h-0">
+              <div className={clsx('group', 'relative', 'flex-1', 'min-h-0')}>
                 <div
-                  className="modal-scroll h-full min-h-0 overflow-y-scroll px-6 pb-6 pt-20 md:px-8 md:pb-8 md:pt-24 relative"
+                  className={clsx('modal-scroll', 'h-full', 'min-h-0', 'overflow-y-scroll', 'px-6', 'pb-6', 'pt-20', 'md:px-8', 'md:pb-8', 'md:pt-24', 'relative')}
                   style={{
                     maxHeight: "calc(90vh - 96px)",
                     scrollbarWidth: "thin",
@@ -2900,31 +2901,31 @@ const SubadminSellerDetailsPage = () => {
                     WebkitOverflowScrolling: "touch",
                   }}
                 >
-                  <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 pr-4 text-sm text-slate-700">
+                  <div className={clsx('mx-auto', 'flex', 'w-full', 'max-w-4xl', 'flex-col', 'gap-6', 'pr-4', 'text-sm', 'text-slate-700')}>
                     <section className="space-y-4">
-                      <div className="flex flex-col gap-4 lg:flex-row">
-                        <div className="relative flex flex-1 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50">
+                      <div className={clsx('flex', 'flex-col', 'gap-4', 'lg:flex-row')}>
+                        <div className={clsx('relative', 'flex', 'flex-1', 'items-center', 'justify-center', 'rounded-2xl', 'border', 'border-slate-200', 'bg-slate-50')}>
                           {primaryImage ? (
                             <img
                               src={primaryImage}
                               alt={viewProduct.name || "Product image"}
-                              className="h-auto max-h-96 w-full rounded-2xl object-contain p-4"
+                              className={clsx('h-auto', 'max-h-96', 'w-full', 'rounded-2xl', 'object-contain', 'p-4')}
                             />
                           ) : (
-                            <div className="flex h-64 w-full items-center justify-center text-slate-400">
+                            <div className={clsx('flex', 'h-64', 'w-full', 'items-center', 'justify-center', 'text-slate-400')}>
                               <ImageOff size={28} />
                             </div>
                           )}
                         </div>
 
                         {secondaryImages.length > 0 && (
-                          <div className="flex w-full flex-1 flex-wrap items-start justify-center gap-3 rounded-2xl border border-slate-200 bg-white/60 p-4 lg:max-w-xs">
+                          <div className={clsx('flex', 'w-full', 'flex-1', 'flex-wrap', 'items-start', 'justify-center', 'gap-3', 'rounded-2xl', 'border', 'border-slate-200', 'bg-white/60', 'p-4', 'lg:max-w-xs')}>
                             {secondaryImages.slice(0, 8).map((url) => (
                               <img
                                 key={url}
                                 src={url}
                                 alt="Product gallery thumbnail"
-                                className="h-20 w-20 rounded-xl border border-slate-200 object-cover transition hover:scale-[1.02]"
+                                className={clsx('h-20', 'w-20', 'rounded-xl', 'border', 'border-slate-200', 'object-cover', 'transition', 'hover:scale-[1.02]')}
                               />
                             ))}
                           </div>
@@ -2934,20 +2935,20 @@ const SubadminSellerDetailsPage = () => {
 
                     <section className="space-y-5">
                       <div className="space-y-3">
-                        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
+                        <p className={clsx('text-xs', 'font-semibold', 'uppercase', 'tracking-[0.18em]', 'text-slate-400')}>
                           Product Overview
                         </p>
-                        <div className="flex flex-wrap items-center gap-3">
-                          <h2 className="text-2xl font-semibold text-slate-900">
+                        <div className={clsx('flex', 'flex-wrap', 'items-center', 'gap-3')}>
+                          <h2 className={clsx('text-2xl', 'font-semibold', 'text-slate-900')}>
                             {viewProduct.name || "Untitled Product"}
                           </h2>
-                          <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-600">
+                          <span className={clsx('inline-flex', 'items-center', 'rounded-full', 'border', 'border-slate-200', 'bg-slate-50', 'px-3', 'py-1', 'text-xs', 'font-semibold', 'text-slate-600')}>
                             {viewProduct.status
                               ? viewProduct.status
                               : "Status unavailable"}
                           </span>
                         </div>
-                        <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500">
+                        <div className={clsx('flex', 'flex-wrap', 'items-center', 'gap-3', 'text-xs', 'text-slate-500')}>
                           <span>
                             ID:{" "}
                             <span className="font-mono">{viewProduct._id}</span>
@@ -2963,50 +2964,50 @@ const SubadminSellerDetailsPage = () => {
                         </div>
                       </div>
 
-                      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                        <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-400">
+                      <div className={clsx('grid', 'gap-4', 'sm:grid-cols-2', 'lg:grid-cols-3')}>
+                        <div className={clsx('rounded-xl', 'border', 'border-slate-200', 'bg-slate-50', 'px-4', 'py-3')}>
+                          <p className={clsx('text-[11px]', 'font-semibold', 'uppercase', 'tracking-[0.12em]', 'text-slate-400')}>
                             SKU
                           </p>
-                          <p className="mt-1 font-mono text-sm text-slate-800">
+                          <p className={clsx('mt-1', 'font-mono', 'text-sm', 'text-slate-800')}>
                             {viewProduct.sku || "--"}
                           </p>
                         </div>
-                        <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-400">
+                        <div className={clsx('rounded-xl', 'border', 'border-slate-200', 'bg-slate-50', 'px-4', 'py-3')}>
+                          <p className={clsx('text-[11px]', 'font-semibold', 'uppercase', 'tracking-[0.12em]', 'text-slate-400')}>
                             Category
                           </p>
-                          <p className="mt-1 text-sm text-slate-800">
+                          <p className={clsx('mt-1', 'text-sm', 'text-slate-800')}>
                             {viewProduct.category || "--"}
                           </p>
                         </div>
-                        <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-400">
+                        <div className={clsx('rounded-xl', 'border', 'border-slate-200', 'bg-slate-50', 'px-4', 'py-3')}>
+                          <p className={clsx('text-[11px]', 'font-semibold', 'uppercase', 'tracking-[0.12em]', 'text-slate-400')}>
                             Brand
                           </p>
-                          <p className="mt-1 text-sm text-slate-800">
+                          <p className={clsx('mt-1', 'text-sm', 'text-slate-800')}>
                             {viewProduct.brand || "--"}
                           </p>
                         </div>
-                        <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-400">
+                        <div className={clsx('rounded-xl', 'border', 'border-slate-200', 'bg-slate-50', 'px-4', 'py-3')}>
+                          <p className={clsx('text-[11px]', 'font-semibold', 'uppercase', 'tracking-[0.12em]', 'text-slate-400')}>
                             Price
                           </p>
-                          <p className="mt-1 text-base font-semibold text-slate-900">
+                          <p className={clsx('mt-1', 'text-base', 'font-semibold', 'text-slate-900')}>
                             {formatCurrency(viewProduct.price)}
                           </p>
                           {viewProduct.originalPrice ? (
-                            <p className="text-xs text-slate-500">
+                            <p className={clsx('text-xs', 'text-slate-500')}>
                               Original:{" "}
                               {formatCurrency(viewProduct.originalPrice)}
                             </p>
                           ) : null}
                         </div>
-                        <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-400">
+                        <div className={clsx('rounded-xl', 'border', 'border-slate-200', 'bg-slate-50', 'px-4', 'py-3')}>
+                          <p className={clsx('text-[11px]', 'font-semibold', 'uppercase', 'tracking-[0.12em]', 'text-slate-400')}>
                             Discount
                           </p>
-                          <p className="mt-1 text-base font-semibold text-slate-900">
+                          <p className={clsx('mt-1', 'text-base', 'font-semibold', 'text-slate-900')}>
                             {viewProduct.discountPercentage !== undefined &&
                             viewProduct.discountPercentage !== null
                               ? `${viewProduct.discountPercentage}%`
@@ -3015,17 +3016,17 @@ const SubadminSellerDetailsPage = () => {
                                 : "--"}
                           </p>
                         </div>
-                        <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-400">
+                        <div className={clsx('rounded-xl', 'border', 'border-slate-200', 'bg-slate-50', 'px-4', 'py-3')}>
+                          <p className={clsx('text-[11px]', 'font-semibold', 'uppercase', 'tracking-[0.12em]', 'text-slate-400')}>
                             Stock
                           </p>
-                          <p className="mt-1 text-base font-semibold text-slate-900">
+                          <p className={clsx('mt-1', 'text-base', 'font-semibold', 'text-slate-900')}>
                             {Number.isFinite(Number(viewProduct.stock))
                               ? Number(viewProduct.stock)
                               : "--"}
                           </p>
                           {viewProduct.lowStockThreshold ? (
-                            <p className="text-xs text-slate-500">
+                            <p className={clsx('text-xs', 'text-slate-500')}>
                               Low stock alert at {viewProduct.lowStockThreshold}
                             </p>
                           ) : null}
@@ -3033,11 +3034,11 @@ const SubadminSellerDetailsPage = () => {
                       </div>
 
                       {viewProduct.description && (
-                        <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
-                          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-400">
+                        <div className={clsx('rounded-2xl', 'border', 'border-slate-200', 'bg-white', 'px-5', 'py-4', 'shadow-sm')}>
+                          <p className={clsx('text-[11px]', 'font-semibold', 'uppercase', 'tracking-[0.12em]', 'text-slate-400')}>
                             Description
                           </p>
-                          <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-slate-700">
+                          <p className={clsx('mt-2', 'whitespace-pre-line', 'text-sm', 'leading-relaxed', 'text-slate-700')}>
                             {viewProduct.description}
                           </p>
                         </div>
@@ -3045,11 +3046,11 @@ const SubadminSellerDetailsPage = () => {
 
                       {Array.isArray(viewProduct.keyFeatures) &&
                         viewProduct.keyFeatures.length > 0 && (
-                          <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
-                            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-400">
+                          <div className={clsx('rounded-2xl', 'border', 'border-slate-200', 'bg-white', 'px-5', 'py-4', 'shadow-sm')}>
+                            <p className={clsx('text-[11px]', 'font-semibold', 'uppercase', 'tracking-[0.12em]', 'text-slate-400')}>
                               Key Features
                             </p>
-                            <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-700">
+                            <ul className={clsx('mt-2', 'list-disc', 'space-y-1', 'pl-5', 'text-sm', 'text-slate-700')}>
                               {viewProduct.keyFeatures
                                 .filter((feature) => Boolean(feature))
                                 .map((feature) => (
@@ -3061,11 +3062,11 @@ const SubadminSellerDetailsPage = () => {
 
                       {Array.isArray(viewProduct.sizes) &&
                         viewProduct.sizes.length > 0 && (
-                          <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
-                            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-400">
+                          <div className={clsx('rounded-2xl', 'border', 'border-slate-200', 'bg-white', 'px-5', 'py-4', 'shadow-sm')}>
+                            <p className={clsx('text-[11px]', 'font-semibold', 'uppercase', 'tracking-[0.12em]', 'text-slate-400')}>
                               Sizes
                             </p>
-                            <div className="mt-2 flex flex-wrap gap-2 text-xs">
+                            <div className={clsx('mt-2', 'flex', 'flex-wrap', 'gap-2', 'text-xs')}>
                               {viewProduct.sizes.map((size, index) => (
                                 <span
                                   key={`${size?.label || "size"}-${index}`}
@@ -3076,7 +3077,7 @@ const SubadminSellerDetailsPage = () => {
                                   }`}
                                 >
                                   {size?.label || "--"}
-                                  <span className="font-mono text-[11px]">
+                                  <span className={clsx('font-mono', 'text-[11px]')}>
                                     {Number.isFinite(Number(size?.stock))
                                       ? Number(size.stock)
                                       : 0}
@@ -3088,19 +3089,19 @@ const SubadminSellerDetailsPage = () => {
                         )}
                     </section>
 
-                    <div className="flex justify-end pb-2">
+                    <div className={clsx('flex', 'justify-end', 'pb-2')}>
                       <button
                         type="button"
                         onClick={() => setViewProduct(null)}
-                        className="inline-flex items-center justify-center rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 transition hover:border-slate-300 hover:text-slate-800"
+                        className={clsx('inline-flex', 'items-center', 'justify-center', 'rounded-xl', 'border', 'border-slate-200', 'px-4', 'py-2', 'text-sm', 'font-semibold', 'text-slate-600', 'transition', 'hover:border-slate-300', 'hover:text-slate-800')}
                       >
                         Close
                       </button>
                     </div>
                   </div>
                 </div>
-                <div className="pointer-events-none absolute inset-x-8 bottom-0 h-14 bg-gradient-to-t from-white via-white/90 to-transparent opacity-80 transition-opacity duration-300 group-hover:opacity-5" />
-                <div className="pointer-events-none absolute inset-x-0 bottom-4 flex justify-center text-xs font-medium text-slate-400 opacity-80 transition-opacity duration-300 group-hover:opacity-5">
+                <div className={clsx('pointer-events-none', 'absolute', 'inset-x-8', 'bottom-0', 'h-14', 'bg-gradient-to-t', 'from-white', 'via-white/90', 'to-transparent', 'opacity-80', 'transition-opacity', 'duration-300', 'group-hover:opacity-5')} />
+                <div className={clsx('pointer-events-none', 'absolute', 'inset-x-0', 'bottom-4', 'flex', 'justify-center', 'text-xs', 'font-medium', 'text-slate-400', 'opacity-80', 'transition-opacity', 'duration-300', 'group-hover:opacity-5')}>
                   Scroll to see full details
                 </div>
               </div>
@@ -3113,7 +3114,7 @@ const SubadminSellerDetailsPage = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+            className={clsx('fixed', 'inset-0', 'z-50', 'flex', 'items-center', 'justify-center', 'bg-black/40', 'px-4')}
             onClick={handleCloseEdit}
           >
             <motion.div
@@ -3121,35 +3122,35 @@ const SubadminSellerDetailsPage = () => {
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
               transition={{ duration: 0.2 }}
-              className="relative w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl"
+              className={clsx('relative', 'w-full', 'max-w-lg', 'rounded-2xl', 'border', 'border-slate-200', 'bg-white', 'p-6', 'shadow-2xl')}
               onClick={(event) => event.stopPropagation()}
             >
               <button
                 type="button"
                 onClick={handleCloseEdit}
-                className="absolute right-4 top-4 inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 text-slate-500 hover:border-slate-300 hover:text-slate-700"
+                className={clsx('absolute', 'right-4', 'top-4', 'inline-flex', 'h-8', 'w-8', 'items-center', 'justify-center', 'rounded-full', 'border', 'border-slate-200', 'text-slate-500', 'hover:border-slate-300', 'hover:text-slate-700')}
                 aria-label="Close"
                 disabled={isSavingEdit}
               >
                 <X size={16} />
               </button>
-              <h2 className="text-lg font-semibold text-slate-900">
+              <h2 className={clsx('text-lg', 'font-semibold', 'text-slate-900')}>
                 Edit Order
               </h2>
-              <p className="mt-1 text-xs text-slate-500">
+              <p className={clsx('mt-1', 'text-xs', 'text-slate-500')}>
                 Update order status, payment details and courier information.
               </p>
               <form
                 onSubmit={handleSaveShipping}
-                className="mt-4 space-y-4 text-sm"
+                className={clsx('mt-4', 'space-y-4', 'text-sm')}
               >
                 <div>
-                  <label className="block text-xs font-medium text-slate-700">
+                  <label className={clsx('block', 'text-xs', 'font-medium', 'text-slate-700')}>
                     Order Status
                     <select
                       value={editForm.status}
                       onChange={handleStatusFieldChange}
-                      className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      className={clsx('mt-1', 'w-full', 'rounded-xl', 'border', 'border-slate-200', 'px-3', 'py-2', 'text-sm', 'focus:border-blue-500', 'focus:outline-none', 'focus:ring-1', 'focus:ring-blue-500')}
                       disabled={isRejectionLockActive}
                     >
                       <option value="confirmed">Order Confirmed</option>
@@ -3165,10 +3166,10 @@ const SubadminSellerDetailsPage = () => {
 
                   {String(editForm.status || "").toLowerCase() ===
                     "rejected" && (
-                    <label className="mt-2 flex items-center gap-2 text-xs font-medium text-rose-600">
+                    <label className={clsx('mt-2', 'flex', 'items-center', 'gap-2', 'text-xs', 'font-medium', 'text-rose-600')}>
                       <input
                         type="checkbox"
-                        className="h-4 w-4 rounded border-slate-300 text-rose-600 focus:ring-rose-500"
+                        className={clsx('h-4', 'w-4', 'rounded', 'border-slate-300', 'text-rose-600', 'focus:ring-rose-500')}
                         checked={Boolean(editForm.rejectionPermanent)}
                         onChange={(event) =>
                           handleEditFieldChange(
@@ -3185,14 +3186,14 @@ const SubadminSellerDetailsPage = () => {
                   )}
 
                   {isRejectionLockActive ? (
-                    <p className="mt-1 text-xs text-rose-500">
+                    <p className={clsx('mt-1', 'text-xs', 'text-rose-500')}>
                       Unlock the toggle above to change the order status.
                     </p>
                   ) : null}
                 </div>
 
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <label className="block text-xs font-medium text-slate-700">
+                <div className={clsx('grid', 'gap-4', 'sm:grid-cols-2')}>
+                  <label className={clsx('block', 'text-xs', 'font-medium', 'text-slate-700')}>
                     Payment Status
                     <select
                       value={editForm.paymentStatus}
@@ -3203,7 +3204,7 @@ const SubadminSellerDetailsPage = () => {
                           event.target.value,
                         )
                       }
-                      className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      className={clsx('mt-1', 'w-full', 'rounded-xl', 'border', 'border-slate-200', 'px-3', 'py-2', 'text-sm', 'focus:border-blue-500', 'focus:outline-none', 'focus:ring-1', 'focus:ring-blue-500')}
                     >
                       <option value="">Keep unchanged</option>
                       <option value="pending">Pending</option>
@@ -3211,13 +3212,13 @@ const SubadminSellerDetailsPage = () => {
                       <option value="failed">Failed</option>
                     </select>
                     {isPaymentStatusLocked ? (
-                      <p className="mt-1 text-[11px] text-slate-500">
+                      <p className={clsx('mt-1', 'text-[11px]', 'text-slate-500')}>
                         Payment is already marked successful and cannot be
                         changed.
                       </p>
                     ) : null}
                   </label>
-                  <label className="block text-xs font-medium text-slate-700">
+                  <label className={clsx('block', 'text-xs', 'font-medium', 'text-slate-700')}>
                     Payment Method
                     <select
                       value={editForm.paymentMethod}
@@ -3227,7 +3228,7 @@ const SubadminSellerDetailsPage = () => {
                           event.target.value,
                         )
                       }
-                      className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      className={clsx('mt-1', 'w-full', 'rounded-xl', 'border', 'border-slate-200', 'px-3', 'py-2', 'text-sm', 'focus:border-blue-500', 'focus:outline-none', 'focus:ring-1', 'focus:ring-blue-500')}
                     >
                       <option value="">Keep unchanged</option>
                       <option value="cod">Cash on Delivery</option>
@@ -3239,32 +3240,32 @@ const SubadminSellerDetailsPage = () => {
                   </label>
                 </div>
 
-                <label className="block text-xs font-medium text-slate-700">
+                <label className={clsx('block', 'text-xs', 'font-medium', 'text-slate-700')}>
                   Estimated Delivery Date
                   <input
                     type="date"
                     value={editForm.estimatedDeliveryDate}
                     disabled={isDeliveryDateLocked}
                     onChange={handleEstimatedDeliveryChange}
-                    className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    className={clsx('mt-1', 'w-full', 'rounded-xl', 'border', 'border-slate-200', 'px-3', 'py-2', 'text-sm', 'focus:border-blue-500', 'focus:outline-none', 'focus:ring-1', 'focus:ring-blue-500')}
                   />
                   {isDeliveryDateLocked ? (
-                    <p className="mt-1 text-xs text-slate-500">
+                    <p className={clsx('mt-1', 'text-xs', 'text-slate-500')}>
                       Delivery date is locked because the order has already been
                       delivered or returned.
                     </p>
                   ) : null}
                 </label>
 
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <label className="block text-xs font-medium text-slate-700">
+                <div className={clsx('grid', 'gap-4', 'sm:grid-cols-2')}>
+                  <label className={clsx('block', 'text-xs', 'font-medium', 'text-slate-700')}>
                     Courier
                     <select
                       value={editForm.courier}
                       onChange={(event) =>
                         handleEditFieldChange("courier", event.target.value)
                       }
-                      className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      className={clsx('mt-1', 'w-full', 'rounded-xl', 'border', 'border-slate-200', 'px-3', 'py-2', 'text-sm', 'focus:border-blue-500', 'focus:outline-none', 'focus:ring-1', 'focus:ring-blue-500')}
                     >
                       {COURIER_OPTIONS.map((option) => (
                         <option key={option.value} value={option.value}>
@@ -3273,7 +3274,7 @@ const SubadminSellerDetailsPage = () => {
                       ))}
                     </select>
                   </label>
-                  <label className="block text-xs font-medium text-slate-700">
+                  <label className={clsx('block', 'text-xs', 'font-medium', 'text-slate-700')}>
                     Tracking ID
                     <input
                       type="text"
@@ -3281,15 +3282,15 @@ const SubadminSellerDetailsPage = () => {
                       onChange={(event) =>
                         handleEditFieldChange("trackingId", event.target.value)
                       }
-                      className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      className={clsx('mt-1', 'w-full', 'rounded-xl', 'border', 'border-slate-200', 'px-3', 'py-2', 'text-sm', 'focus:border-blue-500', 'focus:outline-none', 'focus:ring-1', 'focus:ring-blue-500')}
                       placeholder="To be assigned"
                     />
                   </label>
                 </div>
 
-                <div className="mt-2 flex flex-wrap items-center justify-end gap-3">
+                <div className={clsx('mt-2', 'flex', 'flex-wrap', 'items-center', 'justify-end', 'gap-3')}>
                   {requiresPaymentSuccess && !isPaymentSuccessful ? (
-                    <p className="mr-auto text-xs text-rose-500">
+                    <p className={clsx('mr-auto', 'text-xs', 'text-rose-500')}>
                       Mark payment as successful before setting the order to
                       Delivered.
                     </p>
@@ -3297,7 +3298,7 @@ const SubadminSellerDetailsPage = () => {
                   <button
                     type="button"
                     onClick={handleCloseEdit}
-                    className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-50"
+                    className={clsx('rounded-xl', 'border', 'border-slate-200', 'px-4', 'py-2', 'text-xs', 'font-medium', 'text-slate-600', 'hover:bg-slate-50')}
                     disabled={isSavingEdit}
                   >
                     Cancel
@@ -3305,7 +3306,7 @@ const SubadminSellerDetailsPage = () => {
                   <button
                     type="submit"
                     disabled={isSavingEdit || !canSaveEdit}
-                    className="rounded-xl bg-slate-900 px-4 py-2 text-xs font-medium text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-70"
+                    className={clsx('rounded-xl', 'bg-slate-900', 'px-4', 'py-2', 'text-xs', 'font-medium', 'text-white', 'hover:bg-slate-800', 'disabled:cursor-not-allowed', 'disabled:opacity-70')}
                   >
                     {isSavingEdit ? "Saving..." : "Save Changes"}
                   </button>

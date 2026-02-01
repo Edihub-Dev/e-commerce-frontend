@@ -45,7 +45,11 @@ const VerifyEmail = () => {
     try {
       setSubmitting(true);
       await verifyEmail({ email: formData.email, otp: formData.otp });
-      navigate("/", { replace: true });
+      const from = location.state?.from;
+      const nextPath = from
+        ? `${from.pathname || ""}${from.search || ""}`
+        : "/";
+      navigate(nextPath || "/", { replace: true });
     } catch (error) {
       toast.error(error.message, { autoClose: 1000 });
     } finally {

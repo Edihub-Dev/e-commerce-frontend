@@ -184,6 +184,10 @@ export const calculateTotals = (
     return sum + price * quantity;
   }, 0);
 
+  const rawDiscount = Math.max(Number(discount) || 0, 0);
+  const effectiveDiscount = subtotal > 0 ? Math.min(rawDiscount, subtotal) : 0;
+  const discountRatio = subtotal > 0 ? effectiveDiscount / subtotal : 0;
+
   let derivedTax = 0;
   if (taxAmount !== undefined && taxAmount !== null) {
     derivedTax = Number(taxAmount) || 0;
@@ -195,13 +199,15 @@ export const calculateTotals = (
       }
       const price = Number(item?.price) || 0;
       const quantity = Number(item?.quantity) || 0;
-      return sum + (price * quantity * rate) / 100;
+      const lineTotal = price * quantity;
+      const discountedLineTotal = lineTotal - lineTotal * discountRatio;
+      return sum + (discountedLineTotal * rate) / 100;
     }, 0);
   }
 
   const normalizedTax = Number(derivedTax.toFixed(2));
   const normalizedShipping = Number((Number(shippingFee) || 0).toFixed(2));
-  const normalizedDiscount = Number((Number(discount) || 0).toFixed(2));
+  const normalizedDiscount = Number(effectiveDiscount.toFixed(2));
   const normalizedSubtotal = Number(subtotal.toFixed(2));
   const total = Math.max(
     Number(

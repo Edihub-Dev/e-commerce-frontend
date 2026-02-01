@@ -1,21 +1,27 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { useSelector, useDispatch } from "react-redux";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
+import clsx from "clsx";
 import {
   setCheckoutStep,
   setCheckoutTotals,
   setAppliedCoupon,
   clearAppliedCoupon,
   setQrfolioUpload,
+  setCheckoutItems,
 } from "../../store/slices/checkoutSlice";
 import { calculateTotals } from "../../store/slices/checkoutSlice";
 import { Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
 import { validateCouponThunk } from "../../store/thunks/couponThunks";
+import { getProductById } from "../../utils/api";
+
+const SIZE_REQUIRED_PRODUCT_IDS = new Set(["695222aa79763e5b5af59d35"]);
 
 const CheckoutOrder = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const dispatch = useDispatch();
   const { items, totals, appliedCoupon, qrfolioUpload } = useSelector(
     (state) => state.checkout
@@ -41,6 +47,9 @@ const CheckoutOrder = () => {
   });
   const [qrfolioError, setQrfolioError] = useState("");
   const [qrfolioUploading, setQrfolioUploading] = useState(false);
+  const [sizeErrors, setSizeErrors] = useState({});
+  const [sizesByItemKey, setSizesByItemKey] = useState({});
+  const [sizesLoading, setSizesLoading] = useState(false);
   const isQrfolioCoupon = Boolean(appliedCoupon?.isQrfolioCoupon);
   const isQrfolioCouponApplied = Boolean(
     appliedCoupon?.isQrfolioCoupon && appliedCoupon?.code?.trim()
@@ -72,6 +81,251 @@ const CheckoutOrder = () => {
   const isCouponLoading = couponState.status === "loading";
   const couponError = couponState.error;
 
+  const normalizeSizeLabel = useCallback(
+    (value) => String(value || "").trim().toUpperCase(),
+    []
+  );
+
+  const resolveItemKey = useCallback((item) => {
+    if (!item || typeof item !== "object") {
+      return "";
+    }
+
+    const candidate = item.product || item.id || item._id;
+    return candidate ? String(candidate).trim() : "";
+  }, []);
+
+  const resolveSizesForItem = useCallback(
+    (item) => {
+      if (!item || typeof item !== "object") {
+        return [];
+      }
+
+      if (Array.isArray(item.sizes) && item.sizes.length) {
+        return item.sizes;
+      }
+
+      const key = resolveItemKey(item);
+      const entry = key ? sizesByItemKey[key] : null;
+      return Array.isArray(entry?.sizes) ? entry.sizes : [];
+    },
+    [resolveItemKey, sizesByItemKey]
+  );
+
+  const isSizeRequired = useCallback(
+    (item) => {
+      if (!item || typeof item !== "object") {
+        return false;
+      }
+
+      const key = resolveItemKey(item);
+      if (key && SIZE_REQUIRED_PRODUCT_IDS.has(key)) {
+        return true;
+      }
+
+      if (item.showSizes) {
+        return true;
+      }
+
+      const entry = key ? sizesByItemKey[key] : null;
+      if (entry?.showSizes) {
+        return true;
+      }
+
+      return Boolean(resolveSizesForItem(item).length);
+    },
+    [resolveItemKey, resolveSizesForItem, sizesByItemKey]
+  );
+
+  const getSelectedSizeInfo = useCallback(
+    (item) => {
+      const selected = normalizeSizeLabel(item?.size);
+      if (!selected) {
+        return null;
+      }
+
+      const sizes = resolveSizesForItem(item);
+      return (
+        sizes.find((entry) => normalizeSizeLabel(entry?.label) === selected) ||
+        null
+      );
+    },
+    [normalizeSizeLabel, resolveSizesForItem]
+  );
+
+  const handleSelectSize = useCallback(
+    (index, label) => {
+      const nextSize = normalizeSizeLabel(label);
+      if (!nextSize) {
+        return;
+      }
+
+      const updatedItems = items.map((item, idx) => {
+        if (idx !== index) {
+          return item;
+        }
+        return {
+          ...item,
+          size: nextSize,
+        };
+      });
+
+      dispatch(setCheckoutItems(updatedItems));
+      setSizeErrors((prev) => {
+        const next = { ...(prev || {}) };
+        delete next[index];
+        return next;
+      });
+    },
+    [dispatch, items, normalizeSizeLabel]
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadSizes = async () => {
+      const keys = items
+        .map((item) => resolveItemKey(item))
+        .filter(Boolean)
+        .filter((key) => !sizesByItemKey[key]);
+
+      if (!keys.length) {
+        return;
+      }
+
+      setSizesLoading(true);
+
+      try {
+        const results = await Promise.all(
+          keys.map(async (key) => {
+            try {
+              const response = await getProductById(key);
+              const product = response?.data || null;
+              if (!product) {
+                return null;
+              }
+              return {
+                key,
+                showSizes: Boolean(product.showSizes),
+                sizes: Array.isArray(product.sizes) ? product.sizes : [],
+              };
+            } catch (error) {
+              return null;
+            }
+          })
+        );
+
+        if (cancelled) {
+          return;
+        }
+
+        setSizesByItemKey((prev) => {
+          const next = { ...(prev || {}) };
+          results.filter(Boolean).forEach((entry) => {
+            next[entry.key] = {
+              showSizes: entry.showSizes,
+              sizes: entry.sizes,
+            };
+          });
+          return next;
+        });
+      } finally {
+        if (!cancelled) {
+          setSizesLoading(false);
+        }
+      }
+    };
+
+    loadSizes();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [items, resolveItemKey, sizesByItemKey]);
+
+  const applyCoupon = useCallback(
+    async (codeValue, { silent = false, itemsOverride } = {}) => {
+      const code = String(codeValue || "").trim().toUpperCase();
+      if (!code) {
+        if (!silent) {
+          toast.error("Enter a coupon code");
+        }
+        return;
+      }
+
+      const itemsForCoupon = Array.isArray(itemsOverride) ? itemsOverride : items;
+      const subtotalForCoupon = itemsForCoupon.reduce(
+        (sum, item) =>
+          sum + Number(item.price || 0) * Number(item.quantity || 0),
+        0
+      );
+
+      const couponItems = itemsForCoupon.map((item) => ({
+        product: item.product || item.id || item._id,
+        price: Number(item.price) || 0,
+        quantity: Number(item.quantity) || 0,
+      }));
+
+      const result = await dispatch(
+        validateCouponThunk({
+          code,
+          orderAmount: subtotalForCoupon,
+          items: couponItems,
+        })
+      ).unwrap();
+
+      dispatch(
+        setAppliedCoupon({
+          code: result.code,
+          type: result.type,
+          discountType: result.discountType,
+          discountValue: result.discountValue,
+          discountAmount: result.discountAmount,
+          isQrfolioCoupon: Boolean(result.isQrfolioCoupon),
+        })
+      );
+
+      if (result.isQrfolioCoupon && result.qrfolio) {
+        dispatch(
+          setQrfolioUpload({
+            imageUrl: result.qrfolio.imageUrl || result.qrfolio.link || null,
+            link: result.qrfolio.link || null,
+            name: result.qrfolio.name || null,
+          })
+        );
+      } else {
+        dispatch(setQrfolioUpload(null));
+      }
+
+      const updatedTotals = calculateTotals(itemsForCoupon, {
+        shippingFee,
+        discount: result.discountAmount,
+        currency: totals.currency,
+      });
+
+      const baseTotal =
+        subtotalForCoupon + updatedTotals.shippingFee + updatedTotals.taxAmount;
+
+      dispatch(
+        setCheckoutTotals({
+          ...updatedTotals,
+          baseSubtotal: subtotalForCoupon,
+          baseTotal,
+        })
+      );
+
+      if (!silent) {
+        toast.success("Coupon applied");
+      }
+    },
+    [
+      dispatch,
+      items,
+      shippingFee,
+      totals.currency,
+    ]
+  );
+
   useEffect(() => {
     setCouponCode(appliedCoupon?.code || "");
   }, [appliedCoupon?.code]);
@@ -93,6 +347,51 @@ const CheckoutOrder = () => {
   }, [qrfolioUpload]);
 
   const handleContinue = () => {
+    if (sizesLoading) {
+      toast.error("Please wait while product details are loading.");
+      return;
+    }
+
+    const nextSizeErrors = {};
+
+    items.forEach((item, index) => {
+      if (!isSizeRequired(item)) {
+        return;
+      }
+
+      const selected = normalizeSizeLabel(item?.size);
+      if (!selected) {
+        nextSizeErrors[index] = "Please select a size before continuing.";
+        return;
+      }
+
+      const sizes = resolveSizesForItem(item);
+      if (sizes.length) {
+        const selectedInfo = getSelectedSizeInfo(item);
+        if (!selectedInfo) {
+          nextSizeErrors[index] = "Selected size is invalid. Please pick again.";
+          return;
+        }
+        if (!selectedInfo.isAvailable || selectedInfo.stock <= 0) {
+          nextSizeErrors[index] = `Size ${selectedInfo.label} is currently unavailable.`;
+          return;
+        }
+        if (
+          selectedInfo.stock > 0 &&
+          Number(item.quantity || 0) > selectedInfo.stock
+        ) {
+          nextSizeErrors[index] = `Quantity unavailable. Max ${selectedInfo.stock} for size ${selectedInfo.label}.`;
+        }
+      }
+    });
+
+    if (Object.keys(nextSizeErrors).length) {
+      setSizeErrors(nextSizeErrors);
+      const firstKey = Object.keys(nextSizeErrors)[0];
+      toast.error(nextSizeErrors[firstKey] || "Please select a size.");
+      return;
+    }
+
     if (couponRequired && !isCouponFulfilled) {
       const message = "Please apply a valid coupon code before continuing.";
       toast.error(message);
@@ -191,74 +490,102 @@ const CheckoutOrder = () => {
   }, [resetQrfolioState]);
 
   const handleApplyCoupon = async () => {
-    const code = couponCode.trim().toUpperCase();
-    if (!code) {
-      toast.error("Enter a coupon code");
-      return;
-    }
-
     try {
-      const couponItems = items.map((item) => ({
-        product: item.product || item.id || item._id,
-        price: Number(item.price) || 0,
-        quantity: Number(item.quantity) || 0,
-      }));
-
-      const result = await dispatch(
-        validateCouponThunk({
-          code,
-          orderAmount: baseSubtotal,
-          items: couponItems,
-        })
-      ).unwrap();
-
-      dispatch(
-        setAppliedCoupon({
-          code: result.code,
-          type: result.type,
-          discountType: result.discountType,
-          discountValue: result.discountValue,
-          discountAmount: result.discountAmount,
-          isQrfolioCoupon: Boolean(result.isQrfolioCoupon),
-        })
-      );
-
-      if (result.isQrfolioCoupon && result.qrfolio) {
-        dispatch(
-          setQrfolioUpload({
-            imageUrl: result.qrfolio.imageUrl || result.qrfolio.link || null,
-            link: result.qrfolio.link || null,
-            name: result.qrfolio.name || null,
-          })
-        );
-      } else {
-        dispatch(setQrfolioUpload(null));
-      }
-
-      const updatedTotals = calculateTotals(items, {
-        shippingFee,
-        discount: result.discountAmount,
-        currency: totals.currency,
-      });
-
-      const baseTotal =
-        baseSubtotal + updatedTotals.shippingFee + updatedTotals.taxAmount;
-
-      dispatch(
-        setCheckoutTotals({
-          ...updatedTotals,
-          baseSubtotal,
-          baseTotal,
-        })
-      );
-
-      toast.success("Coupon applied");
+      await applyCoupon(couponCode, { silent: false });
     } catch (applyError) {
       const message =
         applyError?.message || couponError || "Unable to apply coupon";
       toast.error(message);
     }
   };
+
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search || "");
+    const productId = (searchParams.get("productId") || "").trim();
+    const coupon = (searchParams.get("coupon") || "").trim();
+
+    if (!productId) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const seed = async () => {
+      try {
+        const currentItemId =
+          items?.[0]?.product || items?.[0]?.id || items?.[0]?._id || null;
+        const currentProductId = currentItemId ? String(currentItemId).trim() : "";
+        const shouldReplaceItems =
+          !items.length ||
+          items.length !== 1 ||
+          currentProductId !== productId;
+
+        if (shouldReplaceItems) {
+          const result = await getProductById(productId);
+          const product = result?.data || null;
+          if (!product) {
+            return;
+          }
+
+          const checkoutItem = {
+            id: product._id || product.mongoId || product.productId || productId,
+            product: product._id || product.mongoId || product.productId || productId,
+            name: product.name,
+            image: product.image,
+            price: Number(product.price) || 0,
+            quantity: 1,
+            gstRate: product.gstRate,
+            hsnCode: product.hsnCode,
+            showSizes: Boolean(product.showSizes),
+            sizes: Array.isArray(product.sizes) ? product.sizes : [],
+          };
+
+          if (!cancelled) {
+            dispatch(clearAppliedCoupon());
+            dispatch(setQrfolioUpload(null));
+            dispatch(setCheckoutItems([checkoutItem]));
+          }
+
+          if (coupon) {
+            const current = appliedCoupon?.code
+              ? String(appliedCoupon.code).trim().toUpperCase()
+              : "";
+            const desired = coupon.toUpperCase();
+            if (current !== desired) {
+              if (!cancelled) {
+                setCouponCode(desired);
+              }
+              await applyCoupon(desired, {
+                silent: true,
+                itemsOverride: [checkoutItem],
+              });
+            }
+          }
+
+          return;
+        }
+
+        if (coupon) {
+          const current = appliedCoupon?.code ? String(appliedCoupon.code).trim().toUpperCase() : "";
+          const desired = coupon.toUpperCase();
+          if (current !== desired) {
+            if (!cancelled) {
+              setCouponCode(desired);
+            }
+            await applyCoupon(desired, { silent: true });
+          }
+        }
+      } catch (error) {
+        console.error("Failed to seed checkout from deep link", error);
+      }
+    };
+
+    seed();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [applyCoupon, appliedCoupon?.code, dispatch, items.length, location.search]);
 
   const handleRemoveCoupon = () => {
     setCouponCode("");
@@ -284,7 +611,7 @@ const CheckoutOrder = () => {
   if (!items.length) {
     return (
       <div className="p-8">
-        <p className="text-center text-gray-500">No items in checkout.</p>
+        <p className={clsx('text-center', 'text-gray-500')}>No items in checkout.</p>
       </div>
     );
   }
@@ -295,30 +622,30 @@ const CheckoutOrder = () => {
     "rounded-2xl border border-[#e5edff] bg-white/80 p-5 sm:p-6 shadow-[0_22px_40px_-28px_rgba(59,130,246,0.25)]";
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-gradient-to-br from-[#f2f7ff] via-[#eef3ff] to-[#f8fbff] py-10 sm:py-12">
-      <div className="mx-auto w-full max-w-6xl px-3 sm:px-5 lg:px-8">
-        <div className="grid grid-cols-1 gap-6 sm:gap-8 lg:grid-cols-[1.05fr,1fr]">
+    <div className={clsx('min-h-screen', 'overflow-x-hidden', 'bg-gradient-to-br', 'from-[#f2f7ff]', 'via-[#eef3ff]', 'to-[#f8fbff]', 'py-10', 'sm:py-12')}>
+      <div className={clsx('mx-auto', 'w-full', 'max-w-6xl', 'px-3', 'sm:px-5', 'lg:px-8')}>
+        <div className={clsx('grid', 'grid-cols-1', 'gap-6', 'sm:gap-8', 'lg:grid-cols-[1.05fr,1fr]')}>
           <section className={`${shellCardClass} space-y-6`}>
             <div>
-              <h2 className="text-xl font-semibold text-secondary">
+              <h2 className={clsx('text-xl', 'font-semibold', 'text-secondary')}>
                 Redeem Coupon
               </h2>
-              <p className="mt-1 text-sm text-[#7b8bb4]">
+              <p className={clsx('mt-1', 'text-sm', 'text-[#7b8bb4]')}>
                 Confirm product details and pricing before continuing.
               </p>
             </div>
 
             <div className="space-y-5">
               <div className={innerPanelClass}>
-                <h3 className="text-sm font-semibold uppercase tracking-wide text-[#274287]">
+                <h3 className={clsx('text-sm', 'font-semibold', 'uppercase', 'tracking-wide', 'text-[#274287]')}>
                   Price Details
                 </h3>
-                <p className="mt-1 text-xs text-[#7b8bb4]">
+                <p className={clsx('mt-1', 'text-xs', 'text-[#7b8bb4]')}>
                   Apply your QRfolio referral code as a coupon code.
                 </p>
 
-                <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
-                  <div className="w-full flex-1 min-w-0 sm:min-w-[200px]">
+                <div className={clsx('mt-4', 'flex', 'flex-col', 'gap-3', 'sm:flex-row', 'sm:flex-wrap', 'sm:items-center', 'sm:gap-4')}>
+                  <div className={clsx('w-full', 'flex-1', 'min-w-0', 'sm:min-w-[200px]')}>
                     <label htmlFor="checkout-order-coupon" className="sr-only">
                       Coupon code
                     </label>
@@ -330,7 +657,7 @@ const CheckoutOrder = () => {
                         setCouponCode(event.target.value.toUpperCase())
                       }
                       placeholder="MEGA50"
-                      className="w-full rounded-2xl border border-[#cfdcff] bg-white px-4 py-2.5 text-sm font-semibold uppercase tracking-wide text-[#1c2f63] shadow-[0_8px_22px_-18px_rgba(37,99,235,0.65)] transition focus:border-[#4c7dff] focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+                      className={clsx('w-full', 'rounded-2xl', 'border', 'border-[#cfdcff]', 'bg-white', 'px-4', 'py-2.5', 'text-sm', 'font-semibold', 'uppercase', 'tracking-wide', 'text-[#1c2f63]', 'shadow-[0_8px_22px_-18px_rgba(37,99,235,0.65)]', 'transition', 'focus:border-[#4c7dff]', 'focus:outline-none', 'disabled:cursor-not-allowed', 'disabled:opacity-60')}
                       disabled={isCouponLoading}
                     />
                   </div>
@@ -339,7 +666,7 @@ const CheckoutOrder = () => {
                     <button
                       type="button"
                       onClick={handleRemoveCoupon}
-                      className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-[#fecdd3] bg-[#fff1f2] px-4 py-2.5 text-sm font-semibold text-[#d53f6a] shadow-[0_12px_26px_-20px_rgba(225,29,72,0.55)] transition hover:bg-[#ffe4e6] disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+                      className={clsx('inline-flex', 'w-full', 'items-center', 'justify-center', 'gap-2', 'rounded-2xl', 'border', 'border-[#fecdd3]', 'bg-[#fff1f2]', 'px-4', 'py-2.5', 'text-sm', 'font-semibold', 'text-[#d53f6a]', 'shadow-[0_12px_26px_-20px_rgba(225,29,72,0.55)]', 'transition', 'hover:bg-[#ffe4e6]', 'disabled:cursor-not-allowed', 'disabled:opacity-60', 'sm:w-auto')}
                       disabled={isCouponLoading}
                     >
                       Remove
@@ -348,7 +675,7 @@ const CheckoutOrder = () => {
                     <button
                       type="button"
                       onClick={handleApplyCoupon}
-                      className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#4c7dff] via-[#3d6bed] to-[#2451d8] px-5 py-2.5 text-sm font-semibold text-white shadow-[0_12px_30px_-16px_rgba(37,99,235,0.65)] transition hover:from-[#547fff] hover:via-[#3b69ea] hover:to-[#1f47c5] disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+                      className={clsx('inline-flex', 'w-full', 'items-center', 'justify-center', 'gap-2', 'rounded-2xl', 'bg-gradient-to-r', 'from-[#4c7dff]', 'via-[#3d6bed]', 'to-[#2451d8]', 'px-5', 'py-2.5', 'text-sm', 'font-semibold', 'text-white', 'shadow-[0_12px_30px_-16px_rgba(37,99,235,0.65)]', 'transition', 'hover:from-[#547fff]', 'hover:via-[#3b69ea]', 'hover:to-[#1f47c5]', 'disabled:cursor-not-allowed', 'disabled:opacity-60', 'sm:w-auto')}
                       disabled={isCouponLoading || !couponCode.trim()}
                     >
                       {isCouponLoading ? (
@@ -361,20 +688,20 @@ const CheckoutOrder = () => {
                 </div>
 
                 {couponError && !appliedCoupon?.code && (
-                  <p className="mt-3 text-xs font-medium text-[#d53f6a]">
+                  <p className={clsx('mt-3', 'text-xs', 'font-medium', 'text-[#d53f6a]')}>
                     {couponError}
                   </p>
                 )}
 
                 {appliedCoupon?.code && (
-                  <div className="mt-4 rounded-2xl border border-[#bbf7d0] bg-[#f0fdf4] px-4 py-3 text-xs font-medium text-[#047857]">
+                  <div className={clsx('mt-4', 'rounded-2xl', 'border', 'border-[#bbf7d0]', 'bg-[#f0fdf4]', 'px-4', 'py-3', 'text-xs', 'font-medium', 'text-[#047857]')}>
                     Coupon applied successfully. Savings: ₹
                     {Number(appliedCoupon.discountAmount || 0).toLocaleString()}
                   </div>
                 )}
 
                 {couponRequired && !isCouponFulfilled && !couponError && (
-                  <p className="mt-3 text-xs font-medium text-[#d97706]">
+                  <p className={clsx('mt-3', 'text-xs', 'font-medium', 'text-[#d97706]')}>
                     Coupon code is required before continuing.
                   </p>
                 )}
@@ -382,29 +709,29 @@ const CheckoutOrder = () => {
 
               {qrfolioRequired && (
                 <div className={innerPanelClass}>
-                  <h3 className="text-sm font-semibold uppercase tracking-wide text-[#274287]">
+                  <h3 className={clsx('text-sm', 'font-semibold', 'uppercase', 'tracking-wide', 'text-[#274287]')}>
                     QRfolio QR Code
                   </h3>
-                  <p className="mt-1 text-xs text-[#7b8bb4]">
+                  <p className={clsx('mt-1', 'text-xs', 'text-[#7b8bb4]')}>
                     {isQrfolioCoupon
                       ? "Your QRfolio QR code is linked automatically from your QRfolio account."
                       : "Upload your QRfolio QR code image."}
                   </p>
 
-                  <div className="mt-5 space-y-4">
+                  <div className={clsx('mt-5', 'space-y-4')}>
                     {!isQrfolioCoupon && (
                       <label
                         htmlFor="checkout-qrfolio-upload"
-                        className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-3xl border-2 border-dashed border-[#ccdbff] bg-[#f5f8ff] p-6 sm:p-8 text-center transition hover:border-[#4c7dff] hover:bg-[#ecf2ff]"
+                        className={clsx('flex', 'cursor-pointer', 'flex-col', 'items-center', 'justify-center', 'gap-3', 'rounded-3xl', 'border-2', 'border-dashed', 'border-[#ccdbff]', 'bg-[#f5f8ff]', 'p-6', 'sm:p-8', 'text-center', 'transition', 'hover:border-[#4c7dff]', 'hover:bg-[#ecf2ff]')}
                       >
-                        <div className="rounded-full bg-white p-4 shadow-[0_15px_35px_-20px_rgba(37,99,235,0.45)]">
+                        <div className={clsx('rounded-full', 'bg-white', 'p-4', 'shadow-[0_15px_35px_-20px_rgba(37,99,235,0.45)]')}>
                           <svg
                             xmlns="http://www.w3.org/2000/svg"
                             viewBox="0 0 24 24"
                             fill="none"
                             stroke="currentColor"
                             strokeWidth="1.5"
-                            className="h-10 w-10 text-[#4c7dff]"
+                            className={clsx('h-10', 'w-10', 'text-[#4c7dff]')}
                           >
                             <path
                               d="M12 5v14M5 12h14"
@@ -414,12 +741,12 @@ const CheckoutOrder = () => {
                           </svg>
                         </div>
                         <div>
-                          <p className="text-sm font-semibold text-[#1b2f62]">
+                          <p className={clsx('text-sm', 'font-semibold', 'text-[#1b2f62]')}>
                             {qrfolioPreview
                               ? "Replace QR code"
                               : "Upload QR code"}
                           </p>
-                          <p className="mt-1 text-xs text-[#7b8bb4]">
+                          <p className={clsx('mt-1', 'text-xs', 'text-[#7b8bb4]')}>
                             PNG, JPG, or WEBP up to 3MB.
                           </p>
                         </div>
@@ -435,28 +762,28 @@ const CheckoutOrder = () => {
                     )}
 
                     {qrfolioUploading && (
-                      <div className="flex items-center justify-center gap-2 text-sm text-[#1b2f62]">
-                        <Loader2 className="h-4 w-4 animate-spin" />
+                      <div className={clsx('flex', 'items-center', 'justify-center', 'gap-2', 'text-sm', 'text-[#1b2f62]')}>
+                        <Loader2 className={clsx('h-4', 'w-4', 'animate-spin')} />
                         <span>Processing image…</span>
                       </div>
                     )}
 
                     {qrfolioError && (
-                      <p className="text-center text-xs font-medium text-[#d53f6a]">
+                      <p className={clsx('text-center', 'text-xs', 'font-medium', 'text-[#d53f6a]')}>
                         {qrfolioError}
                       </p>
                     )}
 
                     {qrfolioPreview && (
-                      <div className="flex flex-col gap-3 rounded-2xl border border-[#cfdcff] bg-white/90 p-4 shadow-[0_18px_32px_-30px_rgba(37,99,235,0.35)]">
-                        <div className="flex items-center justify-between">
+                      <div className={clsx('flex', 'flex-col', 'gap-3', 'rounded-2xl', 'border', 'border-[#cfdcff]', 'bg-white/90', 'p-4', 'shadow-[0_18px_32px_-30px_rgba(37,99,235,0.35)]')}>
+                        <div className={clsx('flex', 'items-center', 'justify-between')}>
                           <div>
                             {isQrfolioCoupon ? (
-                              <p className="text-sm font-extrabold tracking-tight text-[#111827]">
+                              <p className={clsx('text-sm', 'font-extrabold', 'tracking-tight', 'text-[#111827]')}>
                                 Your QRfolio QR Code
                               </p>
                             ) : (
-                              <p className="text-xs font-semibold uppercase tracking-wide text-[#4c7dff]">
+                              <p className={clsx('text-xs', 'font-semibold', 'uppercase', 'tracking-wide', 'text-[#4c7dff]')}>
                                 Preview
                               </p>
                             )}
@@ -465,29 +792,29 @@ const CheckoutOrder = () => {
                             <button
                               type="button"
                               onClick={handleQrfolioRemove}
-                              className="text-xs font-semibold text-[#d53f6a] hover:underline"
+                              className={clsx('text-xs', 'font-semibold', 'text-[#d53f6a]', 'hover:underline')}
                             >
                               Remove
                             </button>
                           )}
                         </div>
-                        <div className="mt-2 flex items-center justify-center">
-                          <div className="relative inline-flex flex-col items-center">
+                        <div className={clsx('mt-2', 'flex', 'items-center', 'justify-center')}>
+                          <div className={clsx('relative', 'inline-flex', 'flex-col', 'items-center')}>
                             {isQrfolioCoupon && (
-                              <p className="mb-3 text-base font-extrabold text-[#111827]">
+                              <p className={clsx('mb-3', 'text-base', 'font-extrabold', 'text-[#111827]')}>
                                 {qrfolioUpload?.name || "QRfolio Profile"}
                               </p>
                             )}
-                            <div className="relative rounded-2xl bg-white p-3 shadow-[0_20px_45px_-26px_rgba(15,23,42,0.45)]">
+                            <div className={clsx('relative', 'rounded-2xl', 'bg-white', 'p-3', 'shadow-[0_20px_45px_-26px_rgba(15,23,42,0.45)]')}>
                               <img
                                 src={qrfolioPreview}
                                 alt="QRfolio preview"
-                                className="h-56 w-56 rounded-2xl border border-[#dbe6ff] bg-white object-contain"
+                                className={clsx('h-56', 'w-56', 'rounded-2xl', 'border', 'border-[#dbe6ff]', 'bg-white', 'object-contain')}
                               />
                               {isQrfolioCoupon && (
-                                <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-                                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl border-2 border-white bg-gradient-to-b from-[#2563eb] to-[#1d4ed8] shadow-[0_18px_40px_-20px_rgba(37,99,235,0.9)]">
-                                    <span className="text-[10px] font-semibold leading-tight tracking-wide text-white text-center">
+                                <div className={clsx('pointer-events-none', 'absolute', 'left-1/2', 'top-1/2', '-translate-x-1/2', '-translate-y-1/2')}>
+                                  <div className={clsx('flex', 'h-12', 'w-12', 'items-center', 'justify-center', 'rounded-2xl', 'border-2', 'border-white', 'bg-gradient-to-b', 'from-[#2563eb]', 'to-[#1d4ed8]', 'shadow-[0_18px_40px_-20px_rgba(37,99,235,0.9)]')}>
+                                    <span className={clsx('text-[10px]', 'font-semibold', 'leading-tight', 'tracking-wide', 'text-white', 'text-center')}>
                                       Qr
                                       <br />
                                       Folio
@@ -502,8 +829,8 @@ const CheckoutOrder = () => {
                     )}
 
                     {isQrfolioCoupon && !qrfolioPreview && !qrfolioError && (
-                      <div className="flex items-center justify-center gap-2 text-sm text-[#1b2f62]">
-                        <Loader2 className="h-4 w-4 animate-spin" />
+                      <div className={clsx('flex', 'items-center', 'justify-center', 'gap-2', 'text-sm', 'text-[#1b2f62]')}>
+                        <Loader2 className={clsx('h-4', 'w-4', 'animate-spin')} />
                         <span>Fetching your QRfolio QR code…</span>
                       </div>
                     )}
@@ -514,16 +841,16 @@ const CheckoutOrder = () => {
           </section>
 
           <section className={`${shellCardClass} space-y-6`}>
-            <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className={clsx('flex', 'flex-wrap', 'items-start', 'justify-between', 'gap-3')}>
               <div>
-                <h2 className="text-xl font-semibold text-secondary">
+                <h2 className={clsx('text-xl', 'font-semibold', 'text-secondary')}>
                   Review your order
                 </h2>
-                <p className="mt-1 text-sm text-[#7b8bb4]">
+                <p className={clsx('mt-1', 'text-sm', 'text-[#7b8bb4]')}>
                   Confirm product details and pricing before continuing.
                 </p>
               </div>
-              <span className="rounded-full bg-[#eef3ff] px-4 py-1 text-xs font-semibold uppercase tracking-wide text-[#3b5b99]">
+              <span className={clsx('rounded-full', 'bg-[#eef3ff]', 'px-4', 'py-1', 'text-xs', 'font-semibold', 'uppercase', 'tracking-wide', 'text-[#3b5b99]')}>
                 Step 1 of 4
               </span>
             </div>
@@ -535,13 +862,13 @@ const CheckoutOrder = () => {
                   initial={{ opacity: 0, y: 16 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.05 }}
-                  className="flex w-full flex-col gap-5 rounded-2xl border border-[#e3ebff] bg-white/85 p-5 shadow-[0_18px_34px_-30px_rgba(37,99,235,0.35)] md:flex-row"
+                  className={clsx('flex', 'w-full', 'flex-col', 'gap-5', 'rounded-2xl', 'border', 'border-[#e3ebff]', 'bg-white/85', 'p-5', 'shadow-[0_18px_34px_-30px_rgba(37,99,235,0.35)]', 'md:flex-row')}
                 >
-                  <div className="flex h-40 w-full items-center justify-center overflow-hidden rounded-2xl border border-[#e3ebff] bg-[#f5f8ff] md:w-40 lg:w-44">
+                  <div className={clsx('flex', 'h-40', 'w-full', 'items-center', 'justify-center', 'overflow-hidden', 'rounded-2xl', 'border', 'border-[#e3ebff]', 'bg-[#f5f8ff]', 'md:w-40', 'lg:w-44')}>
                     <img
                       src={item.image}
                       alt={item.name}
-                      className="max-h-full max-w-full object-contain"
+                      className={clsx('max-h-full', 'max-w-full', 'object-contain')}
                       onError={(e) => {
                         e.target.onerror = null;
                         e.target.src =
@@ -549,18 +876,86 @@ const CheckoutOrder = () => {
                       }}
                     />
                   </div>
-                  <div className="flex-1 space-y-3">
+                  <div className={clsx('flex-1', 'space-y-3')}>
                     <div>
-                      <h3 className="text-lg font-semibold text-secondary">
+                      <h3 className={clsx('text-lg', 'font-semibold', 'text-secondary')}>
                         {item.name}
                       </h3>
                       {item.size && (
-                        <p className="mt-1 text-sm uppercase tracking-wide text-[#7b8bb4]">
+                        <p className={clsx('mt-1', 'text-sm', 'uppercase', 'tracking-wide', 'text-[#7b8bb4]')}>
                           Size: {item.size}
                         </p>
                       )}
                     </div>
-                    <div className="flex flex-wrap items-center gap-3 text-sm text-[#7b8bb4]">
+
+                    {isSizeRequired(item) && (
+                      <div className={clsx('space-y-2')}>
+                        <p className={clsx('text-xs', 'font-semibold', 'uppercase', 'tracking-wide', 'text-[#274287]')}>
+                          Select Size
+                        </p>
+                        <div className={clsx('flex', 'flex-wrap', 'items-center', 'gap-2')}>
+                          {(resolveSizesForItem(item).length
+                            ? resolveSizesForItem(item)
+                            : [
+                                { label: 'S', isAvailable: true },
+                                { label: 'M', isAvailable: true },
+                                { label: 'L', isAvailable: true },
+                                { label: 'XL', isAvailable: true },
+                                { label: 'XXL', isAvailable: true },
+                              ]
+                          ).map((size) => {
+                            const label = normalizeSizeLabel(size?.label);
+                            const isActive = normalizeSizeLabel(item?.size) === label;
+                            const isDisabled = !size?.isAvailable;
+                            return (
+                              <button
+                                key={label}
+                                type="button"
+                                onClick={() => {
+                                  if (isDisabled) {
+                                    return;
+                                  }
+                                  handleSelectSize(index, label);
+                                }}
+                                disabled={isDisabled}
+                                title={
+                                  !size?.isAvailable
+                                    ? "Currently unavailable"
+                                    : undefined
+                                }
+                                className={clsx(
+                                  'inline-flex',
+                                  'items-center',
+                                  'justify-center',
+                                  'rounded-full',
+                                  'border',
+                                  'px-4',
+                                  'py-1.5',
+                                  'text-xs',
+                                  'font-semibold',
+                                  'uppercase',
+                                  'tracking-wide',
+                                  'transition',
+                                  isActive
+                                    ? ['border-[#2451d8]', 'bg-[#eef3ff]', 'text-[#2451d8]']
+                                    : ['border-[#dbe6ff]', 'bg-white', 'text-[#516497]', 'hover:border-[#4c7dff]', 'hover:text-[#2451d8]'],
+                                  isDisabled && ['cursor-not-allowed', 'opacity-50']
+                                )}
+                              >
+                                {label}
+                              </button>
+                            );
+                          })}
+                        </div>
+
+                        {sizeErrors?.[index] && (
+                          <p className={clsx('text-xs', 'font-medium', 'text-[#d53f6a]')}>
+                            {sizeErrors[index]}
+                          </p>
+                        )}
+                      </div>
+                    )}
+                    <div className={clsx('flex', 'flex-wrap', 'items-center', 'gap-3', 'text-sm', 'text-[#7b8bb4]')}>
                       <span>Qty: {item.quantity}</span>
                       <span className="text-[#c3ccea]">|</span>
                       <span>Unit Price: ₹{item.price.toLocaleString()}</span>
@@ -570,7 +965,7 @@ const CheckoutOrder = () => {
                         {(item.price * item.quantity).toLocaleString()}
                       </span>
                     </div>
-                    <p className="text-sm text-[#a4b1d3]">
+                    <p className={clsx('text-sm', 'text-[#a4b1d3]')}>
                       returns within 7 days of delivery
                     </p>
                   </div>
@@ -579,23 +974,23 @@ const CheckoutOrder = () => {
             </div>
 
             <div className={innerPanelClass}>
-              <h3 className="text-sm font-semibold uppercase tracking-wide text-[#274287]">
+              <h3 className={clsx('text-sm', 'font-semibold', 'uppercase', 'tracking-wide', 'text-[#274287]')}>
                 Price Details
               </h3>
-              <div className="mt-4 space-y-4 text-sm text-[#516497]">
-                <div className="flex justify-between">
+              <div className={clsx('mt-4', 'space-y-4', 'text-sm', 'text-[#516497]')}>
+                <div className={clsx('flex', 'justify-between')}>
                   <span>Subtotal</span>
                   <span>₹{computedTotals.subtotal.toLocaleString()}</span>
                 </div>
-                <div className="flex justify-between">
+                <div className={clsx('flex', 'justify-between')}>
                   <span>Shipping Fee</span>
                   <span>₹{computedTotals.shippingFee.toLocaleString()}</span>
                 </div>
-                <div className="flex justify-between">
+                <div className={clsx('flex', 'justify-between')}>
                   <span>Tax</span>
                   <span>₹{computedTotals.taxAmount.toLocaleString()}</span>
                 </div>
-                <div className="flex justify-between">
+                <div className={clsx('flex', 'justify-between')}>
                   <span>Discount</span>
                   <span>
                     -₹
@@ -604,7 +999,7 @@ const CheckoutOrder = () => {
                     })}
                   </span>
                 </div>
-                <div className="flex items-center justify-between border-t border-[#dbe6ff] pt-4 text-base font-semibold text-secondary">
+                <div className={clsx('flex', 'items-center', 'justify-between', 'border-t', 'border-[#dbe6ff]', 'pt-4', 'text-base', 'font-semibold', 'text-secondary')}>
                   <span>Total</span>
                   <span>₹{computedTotals.total.toLocaleString()}</span>
                 </div>
@@ -615,7 +1010,7 @@ const CheckoutOrder = () => {
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={handleContinue}
-              className="w-full rounded-2xl bg-gradient-to-r from-[#4c7dff] via-[#3d6bed] to-[#2451d8] py-3 text-sm font-semibold text-white shadow-[0_20px_45px_-22px_rgba(37,99,235,0.65)] transition hover:from-[#547fff] hover:via-[#3b69ea] hover:to-[#1f47c5]"
+              className={clsx('w-full', 'rounded-2xl', 'bg-gradient-to-r', 'from-[#4c7dff]', 'via-[#3d6bed]', 'to-[#2451d8]', 'py-3', 'text-sm', 'font-semibold', 'text-white', 'shadow-[0_20px_45px_-22px_rgba(37,99,235,0.65)]', 'transition', 'hover:from-[#547fff]', 'hover:via-[#3b69ea]', 'hover:to-[#1f47c5]')}
             >
               Continue to Address
             </motion.button>

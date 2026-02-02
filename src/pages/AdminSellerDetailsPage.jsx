@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import clsx from "clsx";
 import {
   Download,
   Eye,
@@ -438,31 +439,91 @@ const BaseModal = ({ isOpen, title, onClose, children, footer }) => (
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className={clsx('fixed', 'inset-0', 'z-50', 'flex', 'items-center', 'justify-center', 'bg-black/40', 'px-4')}
+        className={clsx(
+          "fixed",
+          "inset-0",
+          "z-50",
+          "flex",
+          "items-center",
+          "justify-center",
+          "bg-black/40",
+          "px-4",
+        )}
       >
         <motion.div
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.95, opacity: 0 }}
           transition={{ duration: 0.2 }}
-          className={clsx('relative', 'w-full', 'max-w-2xl', 'rounded-2xl', 'border', 'border-slate-200', 'bg-white', 'p-6', 'shadow-2xl')}
+          className={clsx(
+            "relative",
+            "w-full",
+            "max-w-2xl",
+            "rounded-2xl",
+            "border",
+            "border-slate-200",
+            "bg-white",
+            "p-6",
+            "shadow-2xl",
+          )}
         >
           <button
             type="button"
             onClick={onClose}
-            className={clsx('absolute', 'right-4', 'top-4', 'inline-flex', 'h-9', 'w-9', 'items-center', 'justify-center', 'rounded-xl', 'border', 'border-slate-200', 'text-slate-500', 'transition', 'hover:border-slate-300', 'hover:text-slate-700', 'focus-visible:outline', 'focus-visible:outline-2', 'focus-visible:outline-offset-2', 'focus-visible:outline-blue-500')}
+            className={clsx(
+              "absolute",
+              "right-4",
+              "top-4",
+              "inline-flex",
+              "h-9",
+              "w-9",
+              "items-center",
+              "justify-center",
+              "rounded-xl",
+              "border",
+              "border-slate-200",
+              "text-slate-500",
+              "transition",
+              "hover:border-slate-300",
+              "hover:text-slate-700",
+              "focus-visible:outline",
+              "focus-visible:outline-2",
+              "focus-visible:outline-offset-2",
+              "focus-visible:outline-blue-500",
+            )}
             aria-label="Close modal"
           >
             <X size={18} />
           </button>
-          <div className={clsx('flex', 'items-start', 'justify-between', 'gap-4', 'pr-12')}>
-            <h3 className={clsx('text-lg', 'font-semibold', 'text-slate-900')}>{title}</h3>
+          <div
+            className={clsx(
+              "flex",
+              "items-start",
+              "justify-between",
+              "gap-4",
+              "pr-12",
+            )}
+          >
+            <h3 className={clsx("text-lg", "font-semibold", "text-slate-900")}>
+              {title}
+            </h3>
           </div>
-          <div className={clsx('mt-4', 'max-h-[60vh]', 'overflow-y-auto', 'pr-1', 'text-sm', 'text-slate-600')}>
+          <div
+            className={clsx(
+              "mt-4",
+              "max-h-[60vh]",
+              "overflow-y-auto",
+              "pr-1",
+              "text-sm",
+              "text-slate-600",
+            )}
+          >
             {children}
           </div>
           {footer ? (
-            <div className={clsx('mt-6', 'flex', 'justify-end', 'gap-3')}>{footer}</div>
+            <div className={clsx("mt-6", "flex", "justify-end", "gap-3")}>
+              {footer}
+            </div>
           ) : null}
         </motion.div>
       </motion.div>
@@ -471,12 +532,31 @@ const BaseModal = ({ isOpen, title, onClose, children, footer }) => (
 );
 
 const EmptyState = ({ icon: Icon, title, subtitle }) => (
-  <div className={clsx('flex', 'flex-col', 'items-center', 'justify-center', 'rounded-2xl', 'border', 'border-dashed', 'border-slate-200', 'bg-white', 'px-6', 'py-8', 'text-center')}>
-    <div className={clsx('rounded-full', 'bg-blue-50', 'p-4', 'text-blue-600')}>
+  <div
+    className={clsx(
+      "flex",
+      "flex-col",
+      "items-center",
+      "justify-center",
+      "rounded-2xl",
+      "border",
+      "border-dashed",
+      "border-slate-200",
+      "bg-white",
+      "px-6",
+      "py-8",
+      "text-center",
+    )}
+  >
+    <div className={clsx("rounded-full", "bg-blue-50", "p-4", "text-blue-600")}>
       <Icon size={24} />
     </div>
-    <h3 className={clsx('mt-4', 'text-base', 'font-semibold', 'text-slate-900')}>{title}</h3>
-    <p className={clsx('mt-2', 'text-sm', 'text-slate-500')}>{subtitle}</p>
+    <h3
+      className={clsx("mt-4", "text-base", "font-semibold", "text-slate-900")}
+    >
+      {title}
+    </h3>
+    <p className={clsx("mt-2", "text-sm", "text-slate-500")}>{subtitle}</p>
   </div>
 );
 
@@ -2207,11 +2287,19 @@ const AdminSellerDetailsPage = () => {
   };
 
   return (
-    <div className={clsx('min-h-screen', 'md:h-screen', 'bg-slate-50', 'text-slate-900', 'overflow-x-hidden')}>
-      <div className={clsx('flex', 'md:h-screen')}>
+    <div
+      className={clsx(
+        "min-h-screen",
+        "md:h-screen",
+        "bg-slate-50",
+        "text-slate-900",
+        "overflow-x-hidden",
+      )}
+    >
+      <div className={clsx("flex", "md:h-screen")}>
         <Sidebar
           active="Seller Details"
-          className={clsx('hidden', 'md:flex', 'md:w-64', 'md:flex-none')}
+          className={clsx("hidden", "md:flex", "md:w-64", "md:flex-none")}
           onNavigate={() => setIsSidebarOpen(false)}
         />
 
@@ -2221,32 +2309,38 @@ const AdminSellerDetailsPage = () => {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className={clsx('fixed', 'inset-0', 'z-40', 'flex', 'md:hidden')}
+              className={clsx("fixed", "inset-0", "z-40", "flex", "md:hidden")}
             >
               <motion.div
                 initial={{ x: "-100%" }}
                 animate={{ x: 0 }}
                 exit={{ x: "-100%" }}
                 transition={{ type: "spring", stiffness: 220, damping: 24 }}
-                className={clsx('bg-white', 'w-72', 'max-w-sm', 'h-full', 'shadow-xl')}
+                className={clsx(
+                  "bg-white",
+                  "w-72",
+                  "max-w-sm",
+                  "h-full",
+                  "shadow-xl",
+                )}
               >
                 <Sidebar
                   active="Seller Details"
-                  className={clsx('flex', 'w-full')}
+                  className={clsx("flex", "w-full")}
                   onNavigate={() => setIsSidebarOpen(false)}
                 />
               </motion.div>
               <button
                 type="button"
                 onClick={() => setIsSidebarOpen(false)}
-                className={clsx('flex-1', 'bg-black/30')}
+                className={clsx("flex-1", "bg-black/30")}
                 aria-label="Close sidebar"
               />
             </motion.div>
           )}
         </AnimatePresence>
 
-        <div className={clsx('flex-1', 'flex', 'flex-col', 'overflow-hidden')}>
+        <div className={clsx("flex-1", "flex", "flex-col", "overflow-hidden")}>
           <Navbar
             onToggleSidebar={() => setIsSidebarOpen((prev) => !prev)}
             activeRange="All Time"
@@ -2263,30 +2357,94 @@ const AdminSellerDetailsPage = () => {
             onLogout={logout}
           />
 
-          <main className={clsx('flex-1', 'overflow-y-auto', 'px-4', 'py-6', 'md:px-8', 'space-y-6')}>
-            <div className={clsx('flex', 'flex-col', 'gap-4', 'md:flex-row', 'md:items-center', 'md:justify-between')}>
+          <main
+            className={clsx(
+              "flex-1",
+              "overflow-y-auto",
+              "px-4",
+              "py-6",
+              "md:px-8",
+              "space-y-6",
+            )}
+          >
+            <div
+              className={clsx(
+                "flex",
+                "flex-col",
+                "gap-4",
+                "md:flex-row",
+                "md:items-center",
+                "md:justify-between",
+              )}
+            >
               <div className="space-y-1">
-                <p className={clsx('text-sm', 'text-slate-500')}>Dashboard / Sellers</p>
-                <h1 className={clsx('text-2xl', 'font-semibold', 'text-slate-900')}>
+                <p className={clsx("text-sm", "text-slate-500")}>
+                  Dashboard / Sellers
+                </p>
+                <h1
+                  className={clsx(
+                    "text-2xl",
+                    "font-semibold",
+                    "text-slate-900",
+                  )}
+                >
                   Seller Control Centre
                 </h1>
               </div>
-              <div className={clsx('flex', 'flex-wrap', 'items-center', 'gap-3')}>
-                <div className={clsx('flex', 'items-center', 'gap-2', 'rounded-xl', 'border', 'border-slate-200', 'px-3', 'py-2', 'bg-white')}>
-                  <Search className={clsx('h-4', 'w-4', 'text-slate-400')} />
+              <div
+                className={clsx("flex", "flex-wrap", "items-center", "gap-3")}
+              >
+                <div
+                  className={clsx(
+                    "flex",
+                    "items-center",
+                    "gap-2",
+                    "rounded-xl",
+                    "border",
+                    "border-slate-200",
+                    "px-3",
+                    "py-2",
+                    "bg-white",
+                  )}
+                >
+                  <Search className={clsx("h-4", "w-4", "text-slate-400")} />
                   <input
                     type="search"
                     value={sellerSearch}
                     onChange={(event) => setSellerSearch(event.target.value)}
                     placeholder="Search sellers"
-                    className={clsx('w-48', 'bg-transparent', 'text-sm', 'text-slate-600', 'placeholder:text-slate-400', 'focus:outline-none')}
+                    className={clsx(
+                      "w-48",
+                      "bg-transparent",
+                      "text-sm",
+                      "text-slate-600",
+                      "placeholder:text-slate-400",
+                      "focus:outline-none",
+                    )}
                   />
                 </div>
                 <button
                   type="button"
                   onClick={() => loadSellers({ silent: true })}
                   disabled={sellersRefreshing}
-                  className={clsx('inline-flex', 'items-center', 'gap-2', 'rounded-xl', 'border', 'border-slate-200', 'px-4', 'py-2', 'text-sm', 'font-medium', 'text-slate-600', 'transition', 'hover:border-blue-200', 'hover:text-blue-600', 'disabled:cursor-not-allowed', 'disabled:opacity-60')}
+                  className={clsx(
+                    "inline-flex",
+                    "items-center",
+                    "gap-2",
+                    "rounded-xl",
+                    "border",
+                    "border-slate-200",
+                    "px-4",
+                    "py-2",
+                    "text-sm",
+                    "font-medium",
+                    "text-slate-600",
+                    "transition",
+                    "hover:border-blue-200",
+                    "hover:text-blue-600",
+                    "disabled:cursor-not-allowed",
+                    "disabled:opacity-60",
+                  )}
                 >
                   <RefreshCw
                     size={16}
@@ -2298,18 +2456,39 @@ const AdminSellerDetailsPage = () => {
             </div>
 
             <section>
-              <div className={clsx('grid', 'gap-3', 'sm:grid-cols-2', 'xl:grid-cols-5')}>
+              <div
+                className={clsx(
+                  "grid",
+                  "gap-3",
+                  "sm:grid-cols-2",
+                  "xl:grid-cols-5",
+                )}
+              >
                 {summaries.map(({ label, value, icon: Icon, accent }) => (
                   <div
                     key={label}
-                    className={clsx('rounded-2xl', 'border', 'border-slate-200', 'bg-white', 'p-4', 'shadow-sm')}
+                    className={clsx(
+                      "rounded-2xl",
+                      "border",
+                      "border-slate-200",
+                      "bg-white",
+                      "p-4",
+                      "shadow-sm",
+                    )}
                   >
                     <div
                       className={`flex items-center gap-3 text-sm font-medium ${accent}`}
                     >
                       <Icon size={18} /> {label}
                     </div>
-                    <p className={clsx('mt-2', 'text-2xl', 'font-semibold', 'text-slate-900')}>
+                    <p
+                      className={clsx(
+                        "mt-2",
+                        "text-2xl",
+                        "font-semibold",
+                        "text-slate-900",
+                      )}
+                    >
                       {value}
                     </p>
                   </div>
@@ -2318,12 +2497,26 @@ const AdminSellerDetailsPage = () => {
             </section>
 
             <section className="space-y-4">
-              <div className={clsx('flex', 'flex-wrap', 'items-center', 'justify-between', 'gap-3')}>
+              <div
+                className={clsx(
+                  "flex",
+                  "flex-wrap",
+                  "items-center",
+                  "justify-between",
+                  "gap-3",
+                )}
+              >
                 <div>
-                  <h2 className={clsx('text-lg', 'font-semibold', 'text-slate-900')}>
+                  <h2
+                    className={clsx(
+                      "text-lg",
+                      "font-semibold",
+                      "text-slate-900",
+                    )}
+                  >
                     Sellers
                   </h2>
-                  <p className={clsx('text-sm', 'text-slate-500')}>
+                  <p className={clsx("text-sm", "text-slate-500")}>
                     Manage every seller account with verification and access
                     controls.
                   </p>
@@ -2331,7 +2524,18 @@ const AdminSellerDetailsPage = () => {
               </div>
 
               {sellersError && (
-                <div className={clsx('rounded-xl', 'border', 'border-rose-200', 'bg-rose-50', 'px-4', 'py-3', 'text-sm', 'text-rose-600')}>
+                <div
+                  className={clsx(
+                    "rounded-xl",
+                    "border",
+                    "border-rose-200",
+                    "bg-rose-50",
+                    "px-4",
+                    "py-3",
+                    "text-sm",
+                    "text-rose-600",
+                  )}
+                >
                   {sellersError}
                 </div>
               )}
@@ -2349,43 +2553,117 @@ const AdminSellerDetailsPage = () => {
                   subtitle="Approved sellers will appear here for administration."
                 />
               ) : (
-                <div className={clsx('overflow-x-auto', 'rounded-2xl', 'border', 'border-slate-200', 'bg-white', 'shadow-sm')}>
-                  <table className={clsx('min-w-full', 'divide-y', 'divide-slate-100', 'text-sm')}>
+                <div
+                  className={clsx(
+                    "overflow-x-auto",
+                    "rounded-2xl",
+                    "border",
+                    "border-slate-200",
+                    "bg-white",
+                    "shadow-sm",
+                  )}
+                >
+                  <table
+                    className={clsx(
+                      "min-w-full",
+                      "divide-y",
+                      "divide-slate-100",
+                      "text-sm",
+                    )}
+                  >
                     <thead className="bg-slate-50/80">
                       <tr>
-                        <th className={clsx('px-4', 'py-3', 'text-left', 'font-semibold', 'text-slate-500')}>
+                        <th
+                          className={clsx(
+                            "px-4",
+                            "py-3",
+                            "text-left",
+                            "font-semibold",
+                            "text-slate-500",
+                          )}
+                        >
                           Seller
                         </th>
-                        <th className={clsx('px-4', 'py-3', 'text-left', 'font-semibold', 'text-slate-500')}>
+                        <th
+                          className={clsx(
+                            "px-4",
+                            "py-3",
+                            "text-left",
+                            "font-semibold",
+                            "text-slate-500",
+                          )}
+                        >
                           Verification
                         </th>
-                        <th className={clsx('px-4', 'py-3', 'text-left', 'font-semibold', 'text-slate-500')}>
+                        <th
+                          className={clsx(
+                            "px-4",
+                            "py-3",
+                            "text-left",
+                            "font-semibold",
+                            "text-slate-500",
+                          )}
+                        >
                           Metrics
                         </th>
-                        <th className={clsx('px-4', 'py-3', 'text-left', 'font-semibold', 'text-slate-500')}>
+                        <th
+                          className={clsx(
+                            "px-4",
+                            "py-3",
+                            "text-left",
+                            "font-semibold",
+                            "text-slate-500",
+                          )}
+                        >
                           Joined
                         </th>
-                        <th className={clsx('px-4', 'py-3', 'text-right', 'font-semibold', 'text-slate-500')}>
+                        <th
+                          className={clsx(
+                            "px-4",
+                            "py-3",
+                            "text-right",
+                            "font-semibold",
+                            "text-slate-500",
+                          )}
+                        >
                           Actions
                         </th>
                       </tr>
                     </thead>
-                    <tbody className={clsx('divide-y', 'divide-slate-100')}>
+                    <tbody className={clsx("divide-y", "divide-slate-100")}>
                       {filteredSellers.map((seller) => (
                         <tr key={seller._id} className="hover:bg-slate-50/50">
-                          <td className={clsx('px-4', 'py-3', 'align-top')}>
-                            <div className={clsx('flex', 'flex-col', 'gap-1')}>
-                              <span className={clsx('text-sm', 'font-semibold', 'text-slate-900')}>
+                          <td className={clsx("px-4", "py-3", "align-top")}>
+                            <div className={clsx("flex", "flex-col", "gap-1")}>
+                              <span
+                                className={clsx(
+                                  "text-sm",
+                                  "font-semibold",
+                                  "text-slate-900",
+                                )}
+                              >
                                 {seller.name || "Seller"}
                               </span>
-                              <span className={clsx('text-xs', 'text-slate-500')}>
+                              <span
+                                className={clsx("text-xs", "text-slate-500")}
+                              >
                                 {seller.email} · @{seller.username}
                               </span>
                             </div>
                           </td>
-                          <td className={clsx('px-4', 'py-3', 'align-top')}>
+                          <td className={clsx("px-4", "py-3", "align-top")}>
                             <div
-                              className={clsx('inline-flex', 'items-center', 'gap-2', 'rounded-full', 'border', 'px-3', 'py-1', 'text-xs', 'font-medium')}
+                              className={clsx(
+                                "inline-flex",
+                                "items-center",
+                                "gap-2",
+                                "rounded-full",
+                                "border",
+                                "px-3",
+                                "py-1",
+                                "text-xs",
+                                "font-medium",
+                              )}
                               style={{
                                 borderColor: seller.isVerified
                                   ? "#34d399"
@@ -2403,8 +2681,23 @@ const AdminSellerDetailsPage = () => {
                               {seller.isVerified ? "Verified" : "Pending"}
                             </div>
                           </td>
-                          <td className={clsx('px-4', 'py-3', 'align-top', 'text-xs', 'text-slate-500')}>
-                            <div className={clsx('text-xs', 'text-slate-500', 'grid', 'gap-1')}>
+                          <td
+                            className={clsx(
+                              "px-4",
+                              "py-3",
+                              "align-top",
+                              "text-xs",
+                              "text-slate-500",
+                            )}
+                          >
+                            <div
+                              className={clsx(
+                                "text-xs",
+                                "text-slate-500",
+                                "grid",
+                                "gap-1",
+                              )}
+                            >
                               <span>
                                 Products: {seller.metrics?.products || 0}
                               </span>
@@ -2414,15 +2707,43 @@ const AdminSellerDetailsPage = () => {
                               </span>
                             </div>
                           </td>
-                          <td className={clsx('px-4', 'py-3', 'align-top', 'text-xs', 'text-slate-500')}>
+                          <td
+                            className={clsx(
+                              "px-4",
+                              "py-3",
+                              "align-top",
+                              "text-xs",
+                              "text-slate-500",
+                            )}
+                          >
                             {formatDate(seller.createdAt)}
                           </td>
-                          <td className={clsx('px-4', 'py-3', 'align-top')}>
-                            <div className={clsx('flex', 'items-center', 'justify-end', 'gap-2')}>
+                          <td className={clsx("px-4", "py-3", "align-top")}>
+                            <div
+                              className={clsx(
+                                "flex",
+                                "items-center",
+                                "justify-end",
+                                "gap-2",
+                              )}
+                            >
                               <button
                                 type="button"
                                 onClick={() => setSellerView(seller)}
-                                className={clsx('inline-flex', 'h-9', 'w-9', 'items-center', 'justify-center', 'rounded-xl', 'border', 'border-slate-200', 'text-slate-500', 'transition', 'hover:border-blue-200', 'hover:text-blue-600')}
+                                className={clsx(
+                                  "inline-flex",
+                                  "h-9",
+                                  "w-9",
+                                  "items-center",
+                                  "justify-center",
+                                  "rounded-xl",
+                                  "border",
+                                  "border-slate-200",
+                                  "text-slate-500",
+                                  "transition",
+                                  "hover:border-blue-200",
+                                  "hover:text-blue-600",
+                                )}
                                 aria-label="View seller"
                               >
                                 <Eye size={16} />
@@ -2430,7 +2751,20 @@ const AdminSellerDetailsPage = () => {
                               <button
                                 type="button"
                                 onClick={() => setSellerEdit(seller)}
-                                className={clsx('inline-flex', 'h-9', 'w-9', 'items-center', 'justify-center', 'rounded-xl', 'border', 'border-slate-200', 'text-slate-500', 'transition', 'hover:border-blue-200', 'hover:text-blue-600')}
+                                className={clsx(
+                                  "inline-flex",
+                                  "h-9",
+                                  "w-9",
+                                  "items-center",
+                                  "justify-center",
+                                  "rounded-xl",
+                                  "border",
+                                  "border-slate-200",
+                                  "text-slate-500",
+                                  "transition",
+                                  "hover:border-blue-200",
+                                  "hover:text-blue-600",
+                                )}
                                 aria-label="Edit seller"
                               >
                                 <PencilLine size={16} />
@@ -2438,7 +2772,20 @@ const AdminSellerDetailsPage = () => {
                               <button
                                 type="button"
                                 onClick={() => handleSellerDelete(seller)}
-                                className={clsx('inline-flex', 'h-9', 'w-9', 'items-center', 'justify-center', 'rounded-xl', 'border', 'border-rose-200', 'text-rose-500', 'transition', 'hover:border-rose-300', 'hover:text-rose-600')}
+                                className={clsx(
+                                  "inline-flex",
+                                  "h-9",
+                                  "w-9",
+                                  "items-center",
+                                  "justify-center",
+                                  "rounded-xl",
+                                  "border",
+                                  "border-rose-200",
+                                  "text-rose-500",
+                                  "transition",
+                                  "hover:border-rose-300",
+                                  "hover:text-rose-600",
+                                )}
                                 aria-label="Delete seller"
                               >
                                 <Trash2 size={16} />
@@ -2454,25 +2801,53 @@ const AdminSellerDetailsPage = () => {
             </section>
 
             <section className="space-y-4">
-              <div className={clsx('flex', 'flex-wrap', 'items-center', 'justify-between', 'gap-3')}>
+              <div
+                className={clsx(
+                  "flex",
+                  "flex-wrap",
+                  "items-center",
+                  "justify-between",
+                  "gap-3",
+                )}
+              >
                 <div>
-                  <h2 className={clsx('text-lg', 'font-semibold', 'text-slate-900')}>
+                  <h2
+                    className={clsx(
+                      "text-lg",
+                      "font-semibold",
+                      "text-slate-900",
+                    )}
+                  >
                     Seller Products
                   </h2>
-                  <p className={clsx('text-sm', 'text-slate-500')}>
+                  <p className={clsx("text-sm", "text-slate-500")}>
                     Review every product launched by sellers and keep listings
                     healthy.
                   </p>
                 </div>
-                <div className={clsx('flex', 'items-center', 'gap-3')}>
-                  <div className={clsx('inline-flex', 'items-center', 'gap-2', 'rounded-xl', 'border', 'border-slate-200', 'bg-white', 'px-3', 'py-2', 'text-sm', 'text-slate-600')}>
+                <div className={clsx("flex", "items-center", "gap-3")}>
+                  <div
+                    className={clsx(
+                      "inline-flex",
+                      "items-center",
+                      "gap-2",
+                      "rounded-xl",
+                      "border",
+                      "border-slate-200",
+                      "bg-white",
+                      "px-3",
+                      "py-2",
+                      "text-sm",
+                      "text-slate-600",
+                    )}
+                  >
                     <Filter size={16} className="text-slate-400" />
                     <select
                       value={selectedSellerId}
                       onChange={(event) =>
                         setSelectedSellerId(event.target.value)
                       }
-                      className={clsx('bg-transparent', 'focus:outline-none')}
+                      className={clsx("bg-transparent", "focus:outline-none")}
                     >
                       <option value="all">All sellers</option>
                       {sellers.map((seller) => (
@@ -2486,7 +2861,24 @@ const AdminSellerDetailsPage = () => {
                     type="button"
                     onClick={() => loadProducts({ silent: true })}
                     disabled={productsRefreshing}
-                    className={clsx('inline-flex', 'items-center', 'gap-2', 'rounded-xl', 'border', 'border-slate-200', 'px-4', 'py-2', 'text-sm', 'font-medium', 'text-slate-600', 'transition', 'hover:border-blue-200', 'hover:text-blue-600', 'disabled:cursor-not-allowed', 'disabled:opacity-60')}
+                    className={clsx(
+                      "inline-flex",
+                      "items-center",
+                      "gap-2",
+                      "rounded-xl",
+                      "border",
+                      "border-slate-200",
+                      "px-4",
+                      "py-2",
+                      "text-sm",
+                      "font-medium",
+                      "text-slate-600",
+                      "transition",
+                      "hover:border-blue-200",
+                      "hover:text-blue-600",
+                      "disabled:cursor-not-allowed",
+                      "disabled:opacity-60",
+                    )}
                   >
                     <RefreshCw
                       size={16}
@@ -2500,7 +2892,18 @@ const AdminSellerDetailsPage = () => {
               </div>
 
               {productsError && (
-                <div className={clsx('rounded-xl', 'border', 'border-rose-200', 'bg-rose-50', 'px-4', 'py-3', 'text-sm', 'text-rose-600')}>
+                <div
+                  className={clsx(
+                    "rounded-xl",
+                    "border",
+                    "border-rose-200",
+                    "bg-rose-50",
+                    "px-4",
+                    "py-3",
+                    "text-sm",
+                    "text-rose-600",
+                  )}
+                >
                   {productsError}
                 </div>
               )}
@@ -2518,28 +2921,84 @@ const AdminSellerDetailsPage = () => {
                   subtitle="Seller product listings will appear here."
                 />
               ) : (
-                <div className={clsx('overflow-x-auto', 'rounded-2xl', 'border', 'border-slate-200', 'bg-white', 'shadow-sm')}>
-                  <table className={clsx('min-w-full', 'divide-y', 'divide-slate-100', 'text-sm')}>
+                <div
+                  className={clsx(
+                    "overflow-x-auto",
+                    "rounded-2xl",
+                    "border",
+                    "border-slate-200",
+                    "bg-white",
+                    "shadow-sm",
+                  )}
+                >
+                  <table
+                    className={clsx(
+                      "min-w-full",
+                      "divide-y",
+                      "divide-slate-100",
+                      "text-sm",
+                    )}
+                  >
                     <thead className="bg-slate-50/80">
                       <tr>
-                        <th className={clsx('px-4', 'py-3', 'text-left', 'font-semibold', 'text-slate-500')}>
+                        <th
+                          className={clsx(
+                            "px-4",
+                            "py-3",
+                            "text-left",
+                            "font-semibold",
+                            "text-slate-500",
+                          )}
+                        >
                           Product
                         </th>
-                        <th className={clsx('px-4', 'py-3', 'text-left', 'font-semibold', 'text-slate-500')}>
+                        <th
+                          className={clsx(
+                            "px-4",
+                            "py-3",
+                            "text-left",
+                            "font-semibold",
+                            "text-slate-500",
+                          )}
+                        >
                           Seller
                         </th>
-                        <th className={clsx('px-4', 'py-3', 'text-left', 'font-semibold', 'text-slate-500')}>
+                        <th
+                          className={clsx(
+                            "px-4",
+                            "py-3",
+                            "text-left",
+                            "font-semibold",
+                            "text-slate-500",
+                          )}
+                        >
                           Pricing
                         </th>
-                        <th className={clsx('px-4', 'py-3', 'text-left', 'font-semibold', 'text-slate-500')}>
+                        <th
+                          className={clsx(
+                            "px-4",
+                            "py-3",
+                            "text-left",
+                            "font-semibold",
+                            "text-slate-500",
+                          )}
+                        >
                           Status
                         </th>
-                        <th className={clsx('px-4', 'py-3', 'text-right', 'font-semibold', 'text-slate-500')}>
+                        <th
+                          className={clsx(
+                            "px-4",
+                            "py-3",
+                            "text-right",
+                            "font-semibold",
+                            "text-slate-500",
+                          )}
+                        >
                           Actions
                         </th>
                       </tr>
                     </thead>
-                    <tbody className={clsx('divide-y', 'divide-slate-100')}>
+                    <tbody className={clsx("divide-y", "divide-slate-100")}>
                       {products.map((product) => {
                         const statusInfo =
                           STATUS_LABELS[product.status] ||
@@ -2556,31 +3015,59 @@ const AdminSellerDetailsPage = () => {
                             key={product._id}
                             className="hover:bg-slate-50/50"
                           >
-                            <td className={clsx('px-4', 'py-3', 'align-top')}>
-                              <div className={clsx('flex', 'flex-col', 'gap-1')}>
-                                <span className={clsx('text-sm', 'font-semibold', 'text-slate-900')}>
+                            <td className={clsx("px-4", "py-3", "align-top")}>
+                              <div
+                                className={clsx("flex", "flex-col", "gap-1")}
+                              >
+                                <span
+                                  className={clsx(
+                                    "text-sm",
+                                    "font-semibold",
+                                    "text-slate-900",
+                                  )}
+                                >
                                   {product.name}
                                 </span>
-                                <span className={clsx('text-xs', 'text-slate-500')}>
+                                <span
+                                  className={clsx("text-xs", "text-slate-500")}
+                                >
                                   SKU: {product.sku}
                                 </span>
                               </div>
                             </td>
-                            <td className={clsx('px-4', 'py-3', 'align-top', 'text-xs', 'text-slate-500')}>
+                            <td
+                              className={clsx(
+                                "px-4",
+                                "py-3",
+                                "align-top",
+                                "text-xs",
+                                "text-slate-500",
+                              )}
+                            >
                               {product.sellerId?.name ||
                                 product.sellerId?.username ||
                                 "Seller"}
                             </td>
-                            <td className={clsx('px-4', 'py-3', 'align-top', 'text-xs', 'text-slate-500')}>
-                              <div className={clsx('grid', 'gap-1')}>
+                            <td
+                              className={clsx(
+                                "px-4",
+                                "py-3",
+                                "align-top",
+                                "text-xs",
+                                "text-slate-500",
+                              )}
+                            >
+                              <div className={clsx("grid", "gap-1")}>
                                 <span>
                                   Price: {formatCurrency(product.price)}
                                 </span>
                                 <span>Stock: {product.stock ?? 0}</span>
                               </div>
                             </td>
-                            <td className={clsx('px-4', 'py-3', 'align-top')}>
-                              <div className={clsx('flex', 'flex-col', 'gap-2')}>
+                            <td className={clsx("px-4", "py-3", "align-top")}>
+                              <div
+                                className={clsx("flex", "flex-col", "gap-2")}
+                              >
                                 <span
                                   className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-medium ${statusInfo.className}`}
                                 >
@@ -2593,12 +3080,32 @@ const AdminSellerDetailsPage = () => {
                                 </span>
                               </div>
                             </td>
-                            <td className={clsx('px-4', 'py-3', 'align-top')}>
-                              <div className={clsx('flex', 'items-center', 'justify-end', 'gap-2')}>
+                            <td className={clsx("px-4", "py-3", "align-top")}>
+                              <div
+                                className={clsx(
+                                  "flex",
+                                  "items-center",
+                                  "justify-end",
+                                  "gap-2",
+                                )}
+                              >
                                 <button
                                   type="button"
                                   onClick={() => handleViewProduct(product._id)}
-                                  className={clsx('inline-flex', 'h-9', 'w-9', 'items-center', 'justify-center', 'rounded-xl', 'border', 'border-slate-200', 'text-slate-500', 'transition', 'hover:border-blue-200', 'hover:text-blue-600')}
+                                  className={clsx(
+                                    "inline-flex",
+                                    "h-9",
+                                    "w-9",
+                                    "items-center",
+                                    "justify-center",
+                                    "rounded-xl",
+                                    "border",
+                                    "border-slate-200",
+                                    "text-slate-500",
+                                    "transition",
+                                    "hover:border-blue-200",
+                                    "hover:text-blue-600",
+                                  )}
                                   aria-label="View product"
                                 >
                                   <Eye size={16} />
@@ -2608,7 +3115,20 @@ const AdminSellerDetailsPage = () => {
                                   onClick={() =>
                                     handleOpenEditProduct(product._id)
                                   }
-                                  className={clsx('inline-flex', 'h-9', 'w-9', 'items-center', 'justify-center', 'rounded-xl', 'border', 'border-slate-200', 'text-slate-500', 'transition', 'hover:border-blue-200', 'hover:text-blue-600')}
+                                  className={clsx(
+                                    "inline-flex",
+                                    "h-9",
+                                    "w-9",
+                                    "items-center",
+                                    "justify-center",
+                                    "rounded-xl",
+                                    "border",
+                                    "border-slate-200",
+                                    "text-slate-500",
+                                    "transition",
+                                    "hover:border-blue-200",
+                                    "hover:text-blue-600",
+                                  )}
                                   aria-label="Edit product"
                                 >
                                   <PencilLine size={16} />
@@ -2618,7 +3138,20 @@ const AdminSellerDetailsPage = () => {
                                   onClick={() =>
                                     handleProductDelete(product._id)
                                   }
-                                  className={clsx('inline-flex', 'h-9', 'w-9', 'items-center', 'justify-center', 'rounded-xl', 'border', 'border-rose-200', 'text-rose-500', 'transition', 'hover:border-rose-300', 'hover:text-rose-600')}
+                                  className={clsx(
+                                    "inline-flex",
+                                    "h-9",
+                                    "w-9",
+                                    "items-center",
+                                    "justify-center",
+                                    "rounded-xl",
+                                    "border",
+                                    "border-rose-200",
+                                    "text-rose-500",
+                                    "transition",
+                                    "hover:border-rose-300",
+                                    "hover:text-rose-600",
+                                  )}
                                   aria-label="Delete product"
                                 >
                                   <Trash2 size={16} />
@@ -2635,12 +3168,26 @@ const AdminSellerDetailsPage = () => {
             </section>
 
             <section className="space-y-4">
-              <div className={clsx('flex', 'flex-wrap', 'items-center', 'justify-between', 'gap-3')}>
+              <div
+                className={clsx(
+                  "flex",
+                  "flex-wrap",
+                  "items-center",
+                  "justify-between",
+                  "gap-3",
+                )}
+              >
                 <div>
-                  <h2 className={clsx('text-lg', 'font-semibold', 'text-slate-900')}>
+                  <h2
+                    className={clsx(
+                      "text-lg",
+                      "font-semibold",
+                      "text-slate-900",
+                    )}
+                  >
                     Seller Orders
                   </h2>
-                  <p className={clsx('text-sm', 'text-slate-500')}>
+                  <p className={clsx("text-sm", "text-slate-500")}>
                     Monitor seller fulfilment pipelines and adjust statuses
                     instantly.
                   </p>
@@ -2649,7 +3196,24 @@ const AdminSellerDetailsPage = () => {
                   type="button"
                   onClick={() => loadOrders({ silent: true })}
                   disabled={ordersRefreshing}
-                  className={clsx('inline-flex', 'items-center', 'gap-2', 'rounded-xl', 'border', 'border-slate-200', 'px-4', 'py-2', 'text-sm', 'font-medium', 'text-slate-600', 'transition', 'hover:border-blue-200', 'hover:text-blue-600', 'disabled:cursor-not-allowed', 'disabled:opacity-60')}
+                  className={clsx(
+                    "inline-flex",
+                    "items-center",
+                    "gap-2",
+                    "rounded-xl",
+                    "border",
+                    "border-slate-200",
+                    "px-4",
+                    "py-2",
+                    "text-sm",
+                    "font-medium",
+                    "text-slate-600",
+                    "transition",
+                    "hover:border-blue-200",
+                    "hover:text-blue-600",
+                    "disabled:cursor-not-allowed",
+                    "disabled:opacity-60",
+                  )}
                 >
                   <RefreshCw
                     size={16}
@@ -2661,10 +3225,32 @@ const AdminSellerDetailsPage = () => {
 
               <form
                 onSubmit={handleOrderFiltersSubmit}
-                className={clsx('mt-4', 'grid', 'gap-3', 'md:grid-cols-2', 'lg:grid-cols-5')}
+                className={clsx(
+                  "mt-4",
+                  "grid",
+                  "gap-3",
+                  "md:grid-cols-2",
+                  "lg:grid-cols-5",
+                )}
               >
-                <label className={clsx('flex', 'flex-col', 'gap-1', 'text-sm', 'text-slate-600')}>
-                  <span className={clsx('text-xs', 'font-semibold', 'uppercase', 'tracking-wide', 'text-slate-400')}>
+                <label
+                  className={clsx(
+                    "flex",
+                    "flex-col",
+                    "gap-1",
+                    "text-sm",
+                    "text-slate-600",
+                  )}
+                >
+                  <span
+                    className={clsx(
+                      "text-xs",
+                      "font-semibold",
+                      "uppercase",
+                      "tracking-wide",
+                      "text-slate-400",
+                    )}
+                  >
                     Order status
                   </span>
                   <select
@@ -2672,7 +3258,15 @@ const AdminSellerDetailsPage = () => {
                     onChange={(event) =>
                       setOrderStatusDraft(event.target.value)
                     }
-                    className={clsx('rounded-xl', 'border', 'border-slate-200', 'px-3', 'py-2', 'focus:border-blue-400', 'focus:outline-none')}
+                    className={clsx(
+                      "rounded-xl",
+                      "border",
+                      "border-slate-200",
+                      "px-3",
+                      "py-2",
+                      "focus:border-blue-400",
+                      "focus:outline-none",
+                    )}
                   >
                     <option value="">All statuses</option>
                     {ORDER_STATUS_OPTIONS.map((statusOption) => (
@@ -2682,8 +3276,24 @@ const AdminSellerDetailsPage = () => {
                     ))}
                   </select>
                 </label>
-                <label className={clsx('flex', 'flex-col', 'gap-1', 'text-sm', 'text-slate-600')}>
-                  <span className={clsx('text-xs', 'font-semibold', 'uppercase', 'tracking-wide', 'text-slate-400')}>
+                <label
+                  className={clsx(
+                    "flex",
+                    "flex-col",
+                    "gap-1",
+                    "text-sm",
+                    "text-slate-600",
+                  )}
+                >
+                  <span
+                    className={clsx(
+                      "text-xs",
+                      "font-semibold",
+                      "uppercase",
+                      "tracking-wide",
+                      "text-slate-400",
+                    )}
+                  >
                     Seller name
                   </span>
                   <input
@@ -2693,11 +3303,35 @@ const AdminSellerDetailsPage = () => {
                       setOrderSellerNameDraft(event.target.value)
                     }
                     placeholder="e.g. Vishal"
-                    className={clsx('rounded-xl', 'border', 'border-slate-200', 'px-3', 'py-2', 'focus:border-blue-400', 'focus:outline-none')}
+                    className={clsx(
+                      "rounded-xl",
+                      "border",
+                      "border-slate-200",
+                      "px-3",
+                      "py-2",
+                      "focus:border-blue-400",
+                      "focus:outline-none",
+                    )}
                   />
                 </label>
-                <label className={clsx('flex', 'flex-col', 'gap-1', 'text-sm', 'text-slate-600')}>
-                  <span className={clsx('text-xs', 'font-semibold', 'uppercase', 'tracking-wide', 'text-slate-400')}>
+                <label
+                  className={clsx(
+                    "flex",
+                    "flex-col",
+                    "gap-1",
+                    "text-sm",
+                    "text-slate-600",
+                  )}
+                >
+                  <span
+                    className={clsx(
+                      "text-xs",
+                      "font-semibold",
+                      "uppercase",
+                      "tracking-wide",
+                      "text-slate-400",
+                    )}
+                  >
                     Min amount (₹)
                   </span>
                   <input
@@ -2710,11 +3344,35 @@ const AdminSellerDetailsPage = () => {
                       )
                     }
                     placeholder="0"
-                    className={clsx('rounded-xl', 'border', 'border-slate-200', 'px-3', 'py-2', 'focus:border-blue-400', 'focus:outline-none')}
+                    className={clsx(
+                      "rounded-xl",
+                      "border",
+                      "border-slate-200",
+                      "px-3",
+                      "py-2",
+                      "focus:border-blue-400",
+                      "focus:outline-none",
+                    )}
                   />
                 </label>
-                <label className={clsx('flex', 'flex-col', 'gap-1', 'text-sm', 'text-slate-600')}>
-                  <span className={clsx('text-xs', 'font-semibold', 'uppercase', 'tracking-wide', 'text-slate-400')}>
+                <label
+                  className={clsx(
+                    "flex",
+                    "flex-col",
+                    "gap-1",
+                    "text-sm",
+                    "text-slate-600",
+                  )}
+                >
+                  <span
+                    className={clsx(
+                      "text-xs",
+                      "font-semibold",
+                      "uppercase",
+                      "tracking-wide",
+                      "text-slate-400",
+                    )}
+                  >
                     Max amount (₹)
                   </span>
                   <input
@@ -2727,14 +3385,49 @@ const AdminSellerDetailsPage = () => {
                       )
                     }
                     placeholder="1000"
-                    className={clsx('rounded-xl', 'border', 'border-slate-200', 'px-3', 'py-2', 'focus:border-blue-400', 'focus:outline-none')}
+                    className={clsx(
+                      "rounded-xl",
+                      "border",
+                      "border-slate-200",
+                      "px-3",
+                      "py-2",
+                      "focus:border-blue-400",
+                      "focus:outline-none",
+                    )}
                   />
                 </label>
-                <div className={clsx('flex', 'items-end', 'gap-2', 'md:col-span-2', 'lg:col-span-1')}>
+                <div
+                  className={clsx(
+                    "flex",
+                    "items-end",
+                    "gap-2",
+                    "md:col-span-2",
+                    "lg:col-span-1",
+                  )}
+                >
                   <button
                     type="submit"
                     disabled={ordersLoading || ordersRefreshing}
-                    className={clsx('inline-flex', 'flex-1', 'items-center', 'justify-center', 'rounded-xl', 'border', 'border-blue-600', 'bg-blue-600', 'px-4', 'py-2', 'text-sm', 'font-semibold', 'text-white', 'transition', 'hover:bg-blue-700', 'disabled:cursor-not-allowed', 'disabled:border-blue-300', 'disabled:bg-blue-300')}
+                    className={clsx(
+                      "inline-flex",
+                      "flex-1",
+                      "items-center",
+                      "justify-center",
+                      "rounded-xl",
+                      "border",
+                      "border-blue-600",
+                      "bg-blue-600",
+                      "px-4",
+                      "py-2",
+                      "text-sm",
+                      "font-semibold",
+                      "text-white",
+                      "transition",
+                      "hover:bg-blue-700",
+                      "disabled:cursor-not-allowed",
+                      "disabled:border-blue-300",
+                      "disabled:bg-blue-300",
+                    )}
                   >
                     Apply filters
                   </button>
@@ -2742,7 +3435,24 @@ const AdminSellerDetailsPage = () => {
                     type="button"
                     onClick={handleOrderFiltersReset}
                     disabled={ordersLoading || ordersRefreshing}
-                    className={clsx('inline-flex', 'items-center', 'justify-center', 'rounded-xl', 'border', 'border-slate-200', 'px-4', 'py-2', 'text-sm', 'font-medium', 'text-slate-600', 'transition', 'hover:border-slate-300', 'hover:text-slate-700', 'disabled:cursor-not-allowed', 'disabled:opacity-60')}
+                    className={clsx(
+                      "inline-flex",
+                      "items-center",
+                      "justify-center",
+                      "rounded-xl",
+                      "border",
+                      "border-slate-200",
+                      "px-4",
+                      "py-2",
+                      "text-sm",
+                      "font-medium",
+                      "text-slate-600",
+                      "transition",
+                      "hover:border-slate-300",
+                      "hover:text-slate-700",
+                      "disabled:cursor-not-allowed",
+                      "disabled:opacity-60",
+                    )}
                   >
                     Reset
                   </button>
@@ -2750,7 +3460,18 @@ const AdminSellerDetailsPage = () => {
               </form>
 
               {ordersError && (
-                <div className={clsx('rounded-xl', 'border', 'border-rose-200', 'bg-rose-50', 'px-4', 'py-3', 'text-sm', 'text-rose-600')}>
+                <div
+                  className={clsx(
+                    "rounded-xl",
+                    "border",
+                    "border-rose-200",
+                    "bg-rose-50",
+                    "px-4",
+                    "py-3",
+                    "text-sm",
+                    "text-rose-600",
+                  )}
+                >
                   {ordersError}
                 </div>
               )}
@@ -2768,8 +3489,28 @@ const AdminSellerDetailsPage = () => {
                   subtitle="Seller orders will surface as soon as customers purchase."
                 />
               ) : (
-                <div className={clsx('space-y-4', 'rounded-2xl', 'border', 'border-slate-200', 'bg-white', 'p-4', 'shadow-sm')}>
-                  <div className={clsx('flex', 'flex-wrap', 'items-center', 'justify-between', 'gap-3', 'text-sm', 'text-slate-500')}>
+                <div
+                  className={clsx(
+                    "space-y-4",
+                    "rounded-2xl",
+                    "border",
+                    "border-slate-200",
+                    "bg-white",
+                    "p-4",
+                    "shadow-sm",
+                  )}
+                >
+                  <div
+                    className={clsx(
+                      "flex",
+                      "flex-wrap",
+                      "items-center",
+                      "justify-between",
+                      "gap-3",
+                      "text-sm",
+                      "text-slate-500",
+                    )}
+                  >
                     <span>
                       Showing{" "}
                       {ordersPagination.total
@@ -2777,11 +3518,32 @@ const AdminSellerDetailsPage = () => {
                         : 0}
                       -{ordersPagination.endIndex} of {ordersPagination.total}
                     </span>
-                    <div className={clsx('flex', 'flex-wrap', 'items-center', 'gap-2')}>
+                    <div
+                      className={clsx(
+                        "flex",
+                        "flex-wrap",
+                        "items-center",
+                        "gap-2",
+                      )}
+                    >
                       <button
                         type="button"
                         onClick={handleExportOrders}
-                        className={clsx('inline-flex', 'items-center', 'gap-2', 'rounded-xl', 'border', 'border-slate-200', 'px-3', 'py-2', 'font-medium', 'text-slate-600', 'transition', 'hover:border-blue-200', 'hover:text-blue-600')}
+                        className={clsx(
+                          "inline-flex",
+                          "items-center",
+                          "gap-2",
+                          "rounded-xl",
+                          "border",
+                          "border-slate-200",
+                          "px-3",
+                          "py-2",
+                          "font-medium",
+                          "text-slate-600",
+                          "transition",
+                          "hover:border-blue-200",
+                          "hover:text-blue-600",
+                        )}
                       >
                         Export CSV
                       </button>
@@ -2789,7 +3551,23 @@ const AdminSellerDetailsPage = () => {
                         type="button"
                         onClick={handleBulkDeleteOrders}
                         disabled={!orderSelection.size}
-                        className={clsx('inline-flex', 'items-center', 'gap-2', 'rounded-xl', 'border', 'border-rose-200', 'px-3', 'py-2', 'font-medium', 'text-rose-600', 'transition', 'hover:border-rose-300', 'hover:text-rose-700', 'disabled:cursor-not-allowed', 'disabled:opacity-60')}
+                        className={clsx(
+                          "inline-flex",
+                          "items-center",
+                          "gap-2",
+                          "rounded-xl",
+                          "border",
+                          "border-rose-200",
+                          "px-3",
+                          "py-2",
+                          "font-medium",
+                          "text-rose-600",
+                          "transition",
+                          "hover:border-rose-300",
+                          "hover:text-rose-700",
+                          "disabled:cursor-not-allowed",
+                          "disabled:opacity-60",
+                        )}
                       >
                         Bulk delete ({orderSelection.size})
                       </button>
@@ -2797,45 +3575,133 @@ const AdminSellerDetailsPage = () => {
                   </div>
 
                   <div className="overflow-x-auto">
-                    <table className={clsx('min-w-full', 'divide-y', 'divide-slate-100', 'text-sm')}>
+                    <table
+                      className={clsx(
+                        "min-w-full",
+                        "divide-y",
+                        "divide-slate-100",
+                        "text-sm",
+                      )}
+                    >
                       <thead className="bg-slate-50/80">
                         <tr>
-                          <th className={clsx('w-12', 'px-4', 'py-3', 'text-left', 'font-semibold', 'text-slate-500')}>
+                          <th
+                            className={clsx(
+                              "w-12",
+                              "px-4",
+                              "py-3",
+                              "text-left",
+                              "font-semibold",
+                              "text-slate-500",
+                            )}
+                          >
                             <input
                               ref={ordersHeaderCheckboxRef}
                               type="checkbox"
                               checked={areAllOrdersSelected}
                               onChange={handleToggleAllOrders}
-                              className={clsx('h-4', 'w-4', 'rounded', 'border', 'border-slate-300', 'text-blue-600', 'focus:ring-blue-500')}
+                              className={clsx(
+                                "h-4",
+                                "w-4",
+                                "rounded",
+                                "border",
+                                "border-slate-300",
+                                "text-blue-600",
+                                "focus:ring-blue-500",
+                              )}
                             />
                           </th>
-                          <th className={clsx('px-4', 'py-3', 'text-left', 'font-semibold', 'text-slate-500')}>
+                          <th
+                            className={clsx(
+                              "px-4",
+                              "py-3",
+                              "text-left",
+                              "font-semibold",
+                              "text-slate-500",
+                            )}
+                          >
                             Order
                           </th>
-                          <th className={clsx('px-4', 'py-3', 'text-left', 'font-semibold', 'text-slate-500')}>
+                          <th
+                            className={clsx(
+                              "px-4",
+                              "py-3",
+                              "text-left",
+                              "font-semibold",
+                              "text-slate-500",
+                            )}
+                          >
                             Size
                           </th>
-                          <th className={clsx('px-4', 'py-3', 'text-left', 'font-semibold', 'text-slate-500')}>
+                          <th
+                            className={clsx(
+                              "px-4",
+                              "py-3",
+                              "text-left",
+                              "font-semibold",
+                              "text-slate-500",
+                            )}
+                          >
                             Seller
                           </th>
-                          <th className={clsx('px-4', 'py-3', 'text-left', 'font-semibold', 'text-slate-500')}>
+                          <th
+                            className={clsx(
+                              "px-4",
+                              "py-3",
+                              "text-left",
+                              "font-semibold",
+                              "text-slate-500",
+                            )}
+                          >
                             Customer
                           </th>
-                          <th className={clsx('px-4', 'py-3', 'text-center', 'font-semibold', 'text-slate-500')}>
+                          <th
+                            className={clsx(
+                              "px-4",
+                              "py-3",
+                              "text-center",
+                              "font-semibold",
+                              "text-slate-500",
+                            )}
+                          >
                             QR
                           </th>
-                          <th className={clsx('px-4', 'py-3', 'text-left', 'font-semibold', 'text-slate-500')}>
+                          <th
+                            className={clsx(
+                              "px-4",
+                              "py-3",
+                              "text-left",
+                              "font-semibold",
+                              "text-slate-500",
+                            )}
+                          >
                             Totals
                           </th>
-                          <th className={clsx('px-4', 'py-3', 'text-left', 'font-semibold', 'text-slate-500')}>
+                          <th
+                            className={clsx(
+                              "px-4",
+                              "py-3",
+                              "text-left",
+                              "font-semibold",
+                              "text-slate-500",
+                            )}
+                          >
                             Status
                           </th>
-                          <th className={clsx('px-4', 'py-3', 'text-right', 'font-semibold', 'text-slate-500')}>
+                          <th
+                            className={clsx(
+                              "px-4",
+                              "py-3",
+                              "text-right",
+                              "font-semibold",
+                              "text-slate-500",
+                            )}
+                          >
                             Actions
                           </th>
                         </tr>
                       </thead>
-                      <tbody className={clsx('divide-y', 'divide-slate-100')}>
+                      <tbody className={clsx("divide-y", "divide-slate-100")}>
                         {paginatedOrders.map((order) => {
                           const orderId = String(order._id);
                           const orderKey = order.orderId
@@ -2863,44 +3729,101 @@ const AdminSellerDetailsPage = () => {
                             "Customer";
                           return (
                             <tr key={orderId} className="hover:bg-slate-50/50">
-                              <td className={clsx('px-4', 'py-3', 'align-top')}>
+                              <td className={clsx("px-4", "py-3", "align-top")}>
                                 <input
                                   type="checkbox"
                                   checked={isSelected}
                                   onChange={() =>
                                     handleToggleOrderSelection(orderId)
                                   }
-                                  className={clsx('h-4', 'w-4', 'rounded', 'border', 'border-slate-300', 'text-blue-600', 'focus:ring-blue-500')}
+                                  className={clsx(
+                                    "h-4",
+                                    "w-4",
+                                    "rounded",
+                                    "border",
+                                    "border-slate-300",
+                                    "text-blue-600",
+                                    "focus:ring-blue-500",
+                                  )}
                                 />
                               </td>
-                              <td className={clsx('px-4', 'py-3', 'align-top')}>
-                                <div className={clsx('flex', 'flex-col', 'gap-1')}>
-                                  <span className={clsx('text-sm', 'font-semibold', 'text-slate-900')}>
+                              <td className={clsx("px-4", "py-3", "align-top")}>
+                                <div
+                                  className={clsx("flex", "flex-col", "gap-1")}
+                                >
+                                  <span
+                                    className={clsx(
+                                      "text-sm",
+                                      "font-semibold",
+                                      "text-slate-900",
+                                    )}
+                                  >
                                     {order.orderId || orderId}
                                   </span>
-                                  <span className={clsx('text-xs', 'text-slate-500')}>
+                                  <span
+                                    className={clsx(
+                                      "text-xs",
+                                      "text-slate-500",
+                                    )}
+                                  >
                                     {order.items?.length || 0} item(s)
                                   </span>
                                 </div>
                               </td>
-                              <td className={clsx('px-4', 'py-3', 'align-top', 'text-xs', 'text-slate-500')}>
+                              <td
+                                className={clsx(
+                                  "px-4",
+                                  "py-3",
+                                  "align-top",
+                                  "text-xs",
+                                  "text-slate-500",
+                                )}
+                              >
                                 {sizeLabel}
                               </td>
-                              <td className={clsx('px-4', 'py-3', 'align-top', 'text-xs', 'text-slate-500')}>
+                              <td
+                                className={clsx(
+                                  "px-4",
+                                  "py-3",
+                                  "align-top",
+                                  "text-xs",
+                                  "text-slate-500",
+                                )}
+                              >
                                 {order.sellerId?.name ||
                                   order.sellerId?.companyName ||
                                   order.sellerId?.username ||
                                   "Seller"}
                               </td>
-                              <td className={clsx('px-4', 'py-3', 'align-top', 'text-xs', 'text-slate-500')}>
-                                <div className={clsx('grid', 'gap-1')}>
-                                  <span className={clsx('text-sm', 'font-medium', 'text-slate-700')}>
+                              <td
+                                className={clsx(
+                                  "px-4",
+                                  "py-3",
+                                  "align-top",
+                                  "text-xs",
+                                  "text-slate-500",
+                                )}
+                              >
+                                <div className={clsx("grid", "gap-1")}>
+                                  <span
+                                    className={clsx(
+                                      "text-sm",
+                                      "font-medium",
+                                      "text-slate-700",
+                                    )}
+                                  >
                                     {customerName}
                                   </span>
                                   {order.customerEmail ||
                                   order.buyerEmail ||
                                   order.shippingAddress?.email ? (
-                                    <span className={clsx('break-all', 'text-xs', 'text-slate-500')}>
+                                    <span
+                                      className={clsx(
+                                        "break-all",
+                                        "text-xs",
+                                        "text-slate-500",
+                                      )}
+                                    >
                                       {order.customerEmail ||
                                         order.buyerEmail ||
                                         order.shippingAddress?.email}
@@ -2908,7 +3831,14 @@ const AdminSellerDetailsPage = () => {
                                   ) : null}
                                 </div>
                               </td>
-                              <td className={clsx('px-4', 'py-3', 'align-top', 'text-center')}>
+                              <td
+                                className={clsx(
+                                  "px-4",
+                                  "py-3",
+                                  "align-top",
+                                  "text-center",
+                                )}
+                              >
                                 <button
                                   type="button"
                                   onClick={() => handleDownloadQr(order)}
@@ -2916,7 +3846,24 @@ const AdminSellerDetailsPage = () => {
                                     !qrfolioImage ||
                                     downloadingQrId === orderKey
                                   }
-                                  className={clsx('inline-flex', 'h-9', 'w-9', 'items-center', 'justify-center', 'rounded-xl', 'border', 'border-slate-200', 'text-slate-500', 'transition', 'hover:border-blue-200', 'hover:bg-blue-50', 'hover:text-blue-600', 'disabled:cursor-not-allowed', 'disabled:border-slate-200', 'disabled:text-slate-300')}
+                                  className={clsx(
+                                    "inline-flex",
+                                    "h-9",
+                                    "w-9",
+                                    "items-center",
+                                    "justify-center",
+                                    "rounded-xl",
+                                    "border",
+                                    "border-slate-200",
+                                    "text-slate-500",
+                                    "transition",
+                                    "hover:border-blue-200",
+                                    "hover:bg-blue-50",
+                                    "hover:text-blue-600",
+                                    "disabled:cursor-not-allowed",
+                                    "disabled:border-slate-200",
+                                    "disabled:text-slate-300",
+                                  )}
                                   aria-label={`Download QR for order ${orderKey}`}
                                 >
                                   {downloadingQrId === orderKey ? (
@@ -2929,8 +3876,16 @@ const AdminSellerDetailsPage = () => {
                                   )}
                                 </button>
                               </td>
-                              <td className={clsx('px-4', 'py-3', 'align-top', 'text-xs', 'text-slate-500')}>
-                                <div className={clsx('grid', 'gap-1')}>
+                              <td
+                                className={clsx(
+                                  "px-4",
+                                  "py-3",
+                                  "align-top",
+                                  "text-xs",
+                                  "text-slate-500",
+                                )}
+                              >
+                                <div className={clsx("grid", "gap-1")}>
                                   <span>
                                     Total:{" "}
                                     {formatCurrency(
@@ -2946,18 +3901,46 @@ const AdminSellerDetailsPage = () => {
                                   </span>
                                 </div>
                               </td>
-                              <td className={clsx('px-4', 'py-3', 'align-top', 'text-xs', 'text-slate-500')}>
-                                <div className={clsx('grid', 'gap-1')}>
+                              <td
+                                className={clsx(
+                                  "px-4",
+                                  "py-3",
+                                  "align-top",
+                                  "text-xs",
+                                  "text-slate-500",
+                                )}
+                              >
+                                <div className={clsx("grid", "gap-1")}>
                                   <span>Order: {order.orderStatus}</span>
                                   <span>Payment: {order.paymentStatus}</span>
                                 </div>
                               </td>
-                              <td className={clsx('px-4', 'py-3', 'align-top')}>
-                                <div className={clsx('flex', 'items-center', 'justify-end', 'gap-2')}>
+                              <td className={clsx("px-4", "py-3", "align-top")}>
+                                <div
+                                  className={clsx(
+                                    "flex",
+                                    "items-center",
+                                    "justify-end",
+                                    "gap-2",
+                                  )}
+                                >
                                   <button
                                     type="button"
                                     onClick={() => setOrderView(order)}
-                                    className={clsx('inline-flex', 'h-9', 'w-9', 'items-center', 'justify-center', 'rounded-xl', 'border', 'border-slate-200', 'text-slate-500', 'transition', 'hover:border-blue-200', 'hover:text-blue-600')}
+                                    className={clsx(
+                                      "inline-flex",
+                                      "h-9",
+                                      "w-9",
+                                      "items-center",
+                                      "justify-center",
+                                      "rounded-xl",
+                                      "border",
+                                      "border-slate-200",
+                                      "text-slate-500",
+                                      "transition",
+                                      "hover:border-blue-200",
+                                      "hover:text-blue-600",
+                                    )}
                                     aria-label="View order"
                                   >
                                     <Eye size={16} />
@@ -2969,7 +3952,23 @@ const AdminSellerDetailsPage = () => {
                                       !invoiceReady ||
                                       downloadingInvoiceId === orderId
                                     }
-                                    className={clsx('inline-flex', 'h-9', 'w-9', 'items-center', 'justify-center', 'rounded-xl', 'border', 'border-slate-200', 'text-slate-500', 'transition', 'hover:border-blue-200', 'hover:text-blue-600', 'disabled:cursor-not-allowed', 'disabled:border-slate-200', 'disabled:text-slate-300')}
+                                    className={clsx(
+                                      "inline-flex",
+                                      "h-9",
+                                      "w-9",
+                                      "items-center",
+                                      "justify-center",
+                                      "rounded-xl",
+                                      "border",
+                                      "border-slate-200",
+                                      "text-slate-500",
+                                      "transition",
+                                      "hover:border-blue-200",
+                                      "hover:text-blue-600",
+                                      "disabled:cursor-not-allowed",
+                                      "disabled:border-slate-200",
+                                      "disabled:text-slate-300",
+                                    )}
                                     aria-label="Download invoice"
                                     title={
                                       invoiceReady
@@ -2989,7 +3988,20 @@ const AdminSellerDetailsPage = () => {
                                   <button
                                     type="button"
                                     onClick={() => setOrderEdit(order)}
-                                    className={clsx('inline-flex', 'h-9', 'w-9', 'items-center', 'justify-center', 'rounded-xl', 'border', 'border-slate-200', 'text-slate-500', 'transition', 'hover:border-blue-200', 'hover:text-blue-600')}
+                                    className={clsx(
+                                      "inline-flex",
+                                      "h-9",
+                                      "w-9",
+                                      "items-center",
+                                      "justify-center",
+                                      "rounded-xl",
+                                      "border",
+                                      "border-slate-200",
+                                      "text-slate-500",
+                                      "transition",
+                                      "hover:border-blue-200",
+                                      "hover:text-blue-600",
+                                    )}
                                     aria-label="Edit order"
                                   >
                                     <PencilLine size={16} />
@@ -2997,7 +4009,20 @@ const AdminSellerDetailsPage = () => {
                                   <button
                                     type="button"
                                     onClick={() => handleOrderDelete(order._id)}
-                                    className={clsx('inline-flex', 'h-9', 'w-9', 'items-center', 'justify-center', 'rounded-xl', 'border', 'border-rose-200', 'text-rose-500', 'transition', 'hover:border-rose-300', 'hover:text-rose-600')}
+                                    className={clsx(
+                                      "inline-flex",
+                                      "h-9",
+                                      "w-9",
+                                      "items-center",
+                                      "justify-center",
+                                      "rounded-xl",
+                                      "border",
+                                      "border-rose-200",
+                                      "text-rose-500",
+                                      "transition",
+                                      "hover:border-rose-300",
+                                      "hover:text-rose-600",
+                                    )}
                                     aria-label="Delete order"
                                   >
                                     <Trash2 size={16} />
@@ -3011,13 +4036,35 @@ const AdminSellerDetailsPage = () => {
                     </table>
                   </div>
 
-                  <div className={clsx('flex', 'flex-col', 'gap-3', 'border-t', 'border-slate-100', 'pt-4', 'text-sm', 'text-slate-600', 'md:flex-row', 'md:items-center', 'md:justify-between')}>
-                    <div className={clsx('flex', 'items-center', 'gap-2')}>
+                  <div
+                    className={clsx(
+                      "flex",
+                      "flex-col",
+                      "gap-3",
+                      "border-t",
+                      "border-slate-100",
+                      "pt-4",
+                      "text-sm",
+                      "text-slate-600",
+                      "md:flex-row",
+                      "md:items-center",
+                      "md:justify-between",
+                    )}
+                  >
+                    <div className={clsx("flex", "items-center", "gap-2")}>
                       Rows per page
                       <select
                         value={ordersRowsPerPage}
                         onChange={handleOrdersRowsPerPageChange}
-                        className={clsx('rounded-xl', 'border', 'border-slate-200', 'px-3', 'py-2', 'focus:border-blue-400', 'focus:outline-none')}
+                        className={clsx(
+                          "rounded-xl",
+                          "border",
+                          "border-slate-200",
+                          "px-3",
+                          "py-2",
+                          "focus:border-blue-400",
+                          "focus:outline-none",
+                        )}
                       >
                         {[10, 20, 50].map((option) => (
                           <option key={option} value={option}>
@@ -3026,7 +4073,7 @@ const AdminSellerDetailsPage = () => {
                         ))}
                       </select>
                     </div>
-                    <div className={clsx('flex', 'items-center', 'gap-2')}>
+                    <div className={clsx("flex", "items-center", "gap-2")}>
                       <button
                         type="button"
                         onClick={() =>
@@ -3035,7 +4082,18 @@ const AdminSellerDetailsPage = () => {
                           )
                         }
                         disabled={ordersPagination.currentPage <= 1}
-                        className={clsx('rounded-xl', 'border', 'border-slate-200', 'px-3', 'py-1', 'transition', 'hover:border-blue-200', 'hover:text-blue-600', 'disabled:cursor-not-allowed', 'disabled:opacity-50')}
+                        className={clsx(
+                          "rounded-xl",
+                          "border",
+                          "border-slate-200",
+                          "px-3",
+                          "py-1",
+                          "transition",
+                          "hover:border-blue-200",
+                          "hover:text-blue-600",
+                          "disabled:cursor-not-allowed",
+                          "disabled:opacity-50",
+                        )}
                       >
                         Prev
                       </button>
@@ -3061,7 +4119,18 @@ const AdminSellerDetailsPage = () => {
                           ordersPagination.currentPage >=
                           ordersPagination.totalPages
                         }
-                        className={clsx('rounded-xl', 'border', 'border-slate-200', 'px-3', 'py-1', 'transition', 'hover:border-blue-200', 'hover:text-blue-600', 'disabled:cursor-not-allowed', 'disabled:opacity-50')}
+                        className={clsx(
+                          "rounded-xl",
+                          "border",
+                          "border-slate-200",
+                          "px-3",
+                          "py-1",
+                          "transition",
+                          "hover:border-blue-200",
+                          "hover:text-blue-600",
+                          "disabled:cursor-not-allowed",
+                          "disabled:opacity-50",
+                        )}
                       >
                         Next
                       </button>
@@ -3071,13 +4140,27 @@ const AdminSellerDetailsPage = () => {
               )}
             </section>
 
-            <section className={clsx('space-y-4', 'pb-12')}>
-              <div className={clsx('flex', 'flex-wrap', 'items-center', 'justify-between', 'gap-3')}>
+            <section className={clsx("space-y-4", "pb-12")}>
+              <div
+                className={clsx(
+                  "flex",
+                  "flex-wrap",
+                  "items-center",
+                  "justify-between",
+                  "gap-3",
+                )}
+              >
                 <div>
-                  <h2 className={clsx('text-lg', 'font-semibold', 'text-slate-900')}>
+                  <h2
+                    className={clsx(
+                      "text-lg",
+                      "font-semibold",
+                      "text-slate-900",
+                    )}
+                  >
                     Seller Coupons
                   </h2>
-                  <p className={clsx('text-sm', 'text-slate-500')}>
+                  <p className={clsx("text-sm", "text-slate-500")}>
                     Keep seller coupons in sync with platform-wide promotional
                     policies.
                   </p>
@@ -3086,7 +4169,24 @@ const AdminSellerDetailsPage = () => {
                   type="button"
                   onClick={() => loadCoupons({ silent: true })}
                   disabled={couponsRefreshing}
-                  className={clsx('inline-flex', 'items-center', 'gap-2', 'rounded-xl', 'border', 'border-slate-200', 'px-4', 'py-2', 'text-sm', 'font-medium', 'text-slate-600', 'transition', 'hover:border-blue-200', 'hover:text-blue-600', 'disabled:cursor-not-allowed', 'disabled:opacity-60')}
+                  className={clsx(
+                    "inline-flex",
+                    "items-center",
+                    "gap-2",
+                    "rounded-xl",
+                    "border",
+                    "border-slate-200",
+                    "px-4",
+                    "py-2",
+                    "text-sm",
+                    "font-medium",
+                    "text-slate-600",
+                    "transition",
+                    "hover:border-blue-200",
+                    "hover:text-blue-600",
+                    "disabled:cursor-not-allowed",
+                    "disabled:opacity-60",
+                  )}
                 >
                   <RefreshCw
                     size={16}
@@ -3097,7 +4197,18 @@ const AdminSellerDetailsPage = () => {
               </div>
 
               {couponsError && (
-                <div className={clsx('rounded-xl', 'border', 'border-rose-200', 'bg-rose-50', 'px-4', 'py-3', 'text-sm', 'text-rose-600')}>
+                <div
+                  className={clsx(
+                    "rounded-xl",
+                    "border",
+                    "border-rose-200",
+                    "bg-rose-50",
+                    "px-4",
+                    "py-3",
+                    "text-sm",
+                    "text-rose-600",
+                  )}
+                >
                   {couponsError}
                 </div>
               )}
@@ -3115,8 +4226,28 @@ const AdminSellerDetailsPage = () => {
                   subtitle="Seller-generated coupons will surface here."
                 />
               ) : (
-                <div className={clsx('space-y-4', 'rounded-2xl', 'border', 'border-slate-200', 'bg-white', 'p-4', 'shadow-sm')}>
-                  <div className={clsx('flex', 'flex-wrap', 'items-center', 'justify-between', 'gap-3', 'text-sm', 'text-slate-500')}>
+                <div
+                  className={clsx(
+                    "space-y-4",
+                    "rounded-2xl",
+                    "border",
+                    "border-slate-200",
+                    "bg-white",
+                    "p-4",
+                    "shadow-sm",
+                  )}
+                >
+                  <div
+                    className={clsx(
+                      "flex",
+                      "flex-wrap",
+                      "items-center",
+                      "justify-between",
+                      "gap-3",
+                      "text-sm",
+                      "text-slate-500",
+                    )}
+                  >
                     <span>
                       Showing{" "}
                       {couponsPagination.total
@@ -3124,11 +4255,32 @@ const AdminSellerDetailsPage = () => {
                         : 0}
                       -{couponsPagination.endIndex} of {couponsPagination.total}
                     </span>
-                    <div className={clsx('flex', 'flex-wrap', 'items-center', 'gap-2')}>
+                    <div
+                      className={clsx(
+                        "flex",
+                        "flex-wrap",
+                        "items-center",
+                        "gap-2",
+                      )}
+                    >
                       <button
                         type="button"
                         onClick={handleExportCoupons}
-                        className={clsx('inline-flex', 'items-center', 'gap-2', 'rounded-xl', 'border', 'border-slate-200', 'px-3', 'py-2', 'font-medium', 'text-slate-600', 'transition', 'hover:border-blue-200', 'hover:text-blue-600')}
+                        className={clsx(
+                          "inline-flex",
+                          "items-center",
+                          "gap-2",
+                          "rounded-xl",
+                          "border",
+                          "border-slate-200",
+                          "px-3",
+                          "py-2",
+                          "font-medium",
+                          "text-slate-600",
+                          "transition",
+                          "hover:border-blue-200",
+                          "hover:text-blue-600",
+                        )}
                       >
                         Export CSV
                       </button>
@@ -3136,7 +4288,23 @@ const AdminSellerDetailsPage = () => {
                         type="button"
                         onClick={handleBulkDeleteCoupons}
                         disabled={!couponSelection.size}
-                        className={clsx('inline-flex', 'items-center', 'gap-2', 'rounded-xl', 'border', 'border-rose-200', 'px-3', 'py-2', 'font-medium', 'text-rose-600', 'transition', 'hover:border-rose-300', 'hover:text-rose-700', 'disabled:cursor-not-allowed', 'disabled:opacity-60')}
+                        className={clsx(
+                          "inline-flex",
+                          "items-center",
+                          "gap-2",
+                          "rounded-xl",
+                          "border",
+                          "border-rose-200",
+                          "px-3",
+                          "py-2",
+                          "font-medium",
+                          "text-rose-600",
+                          "transition",
+                          "hover:border-rose-300",
+                          "hover:text-rose-700",
+                          "disabled:cursor-not-allowed",
+                          "disabled:opacity-60",
+                        )}
                       >
                         Bulk delete ({couponSelection.size})
                       </button>
@@ -3144,68 +4312,169 @@ const AdminSellerDetailsPage = () => {
                   </div>
 
                   <div className="overflow-x-auto">
-                    <table className={clsx('min-w-full', 'divide-y', 'divide-slate-100', 'text-sm')}>
+                    <table
+                      className={clsx(
+                        "min-w-full",
+                        "divide-y",
+                        "divide-slate-100",
+                        "text-sm",
+                      )}
+                    >
                       <thead className="bg-slate-50/80">
                         <tr>
-                          <th className={clsx('w-12', 'px-4', 'py-3', 'text-left', 'font-semibold', 'text-slate-500')}>
+                          <th
+                            className={clsx(
+                              "w-12",
+                              "px-4",
+                              "py-3",
+                              "text-left",
+                              "font-semibold",
+                              "text-slate-500",
+                            )}
+                          >
                             <input
                               ref={couponsHeaderCheckboxRef}
                               type="checkbox"
                               checked={areAllCouponsSelected}
                               onChange={handleToggleAllCoupons}
-                              className={clsx('h-4', 'w-4', 'rounded', 'border', 'border-slate-300', 'text-blue-600', 'focus:ring-blue-500')}
+                              className={clsx(
+                                "h-4",
+                                "w-4",
+                                "rounded",
+                                "border",
+                                "border-slate-300",
+                                "text-blue-600",
+                                "focus:ring-blue-500",
+                              )}
                             />
                           </th>
-                          <th className={clsx('px-4', 'py-3', 'text-left', 'font-semibold', 'text-slate-500')}>
+                          <th
+                            className={clsx(
+                              "px-4",
+                              "py-3",
+                              "text-left",
+                              "font-semibold",
+                              "text-slate-500",
+                            )}
+                          >
                             Code
                           </th>
-                          <th className={clsx('px-4', 'py-3', 'text-left', 'font-semibold', 'text-slate-500')}>
+                          <th
+                            className={clsx(
+                              "px-4",
+                              "py-3",
+                              "text-left",
+                              "font-semibold",
+                              "text-slate-500",
+                            )}
+                          >
                             Seller
                           </th>
-                          <th className={clsx('px-4', 'py-3', 'text-left', 'font-semibold', 'text-slate-500')}>
+                          <th
+                            className={clsx(
+                              "px-4",
+                              "py-3",
+                              "text-left",
+                              "font-semibold",
+                              "text-slate-500",
+                            )}
+                          >
                             Discount
                           </th>
-                          <th className={clsx('px-4', 'py-3', 'text-left', 'font-semibold', 'text-slate-500')}>
+                          <th
+                            className={clsx(
+                              "px-4",
+                              "py-3",
+                              "text-left",
+                              "font-semibold",
+                              "text-slate-500",
+                            )}
+                          >
                             Usage
                           </th>
-                          <th className={clsx('px-4', 'py-3', 'text-right', 'font-semibold', 'text-slate-500')}>
+                          <th
+                            className={clsx(
+                              "px-4",
+                              "py-3",
+                              "text-right",
+                              "font-semibold",
+                              "text-slate-500",
+                            )}
+                          >
                             Actions
                           </th>
                         </tr>
                       </thead>
-                      <tbody className={clsx('divide-y', 'divide-slate-100')}>
+                      <tbody className={clsx("divide-y", "divide-slate-100")}>
                         {paginatedCoupons.map((coupon) => {
                           const couponId = String(coupon._id);
                           const isSelected = couponSelection.has(couponId);
                           return (
                             <tr key={couponId} className="hover:bg-slate-50/50">
-                              <td className={clsx('px-4', 'py-3', 'align-top')}>
+                              <td className={clsx("px-4", "py-3", "align-top")}>
                                 <input
                                   type="checkbox"
                                   checked={isSelected}
                                   onChange={() =>
                                     handleToggleCouponSelection(couponId)
                                   }
-                                  className={clsx('h-4', 'w-4', 'rounded', 'border', 'border-slate-300', 'text-blue-600', 'focus:ring-blue-500')}
+                                  className={clsx(
+                                    "h-4",
+                                    "w-4",
+                                    "rounded",
+                                    "border",
+                                    "border-slate-300",
+                                    "text-blue-600",
+                                    "focus:ring-blue-500",
+                                  )}
                                 />
                               </td>
-                              <td className={clsx('px-4', 'py-3', 'align-top')}>
-                                <div className={clsx('flex', 'flex-col', 'gap-1')}>
-                                  <span className={clsx('text-sm', 'font-semibold', 'text-slate-900')}>
+                              <td className={clsx("px-4", "py-3", "align-top")}>
+                                <div
+                                  className={clsx("flex", "flex-col", "gap-1")}
+                                >
+                                  <span
+                                    className={clsx(
+                                      "text-sm",
+                                      "font-semibold",
+                                      "text-slate-900",
+                                    )}
+                                  >
                                     {coupon.code}
                                   </span>
-                                  <span className={clsx('text-xs', 'text-slate-500')}>
+                                  <span
+                                    className={clsx(
+                                      "text-xs",
+                                      "text-slate-500",
+                                    )}
+                                  >
                                     {coupon.description || "—"}
                                   </span>
                                 </div>
                               </td>
-                              <td className={clsx('px-4', 'py-3', 'align-top', 'text-xs', 'text-slate-500')}>
+                              <td
+                                className={clsx(
+                                  "px-4",
+                                  "py-3",
+                                  "align-top",
+                                  "text-xs",
+                                  "text-slate-500",
+                                )}
+                              >
                                 {coupon.sellerId?.name ||
                                   coupon.sellerId?.username ||
                                   "Seller"}
                               </td>
-                              <td className={clsx('px-4', 'py-3', 'align-top', 'text-xs', 'text-slate-500')}>
-                                <div className={clsx('grid', 'gap-1')}>
+                              <td
+                                className={clsx(
+                                  "px-4",
+                                  "py-3",
+                                  "align-top",
+                                  "text-xs",
+                                  "text-slate-500",
+                                )}
+                              >
+                                <div className={clsx("grid", "gap-1")}>
                                   <span>
                                     {coupon.discountType === "percentage"
                                       ? `${coupon.discountValue}%`
@@ -3217,8 +4486,16 @@ const AdminSellerDetailsPage = () => {
                                   </span>
                                 </div>
                               </td>
-                              <td className={clsx('px-4', 'py-3', 'align-top', 'text-xs', 'text-slate-500')}>
-                                <div className={clsx('grid', 'gap-1')}>
+                              <td
+                                className={clsx(
+                                  "px-4",
+                                  "py-3",
+                                  "align-top",
+                                  "text-xs",
+                                  "text-slate-500",
+                                )}
+                              >
+                                <div className={clsx("grid", "gap-1")}>
                                   <span>
                                     Active: {coupon.isActive ? "Yes" : "No"}
                                   </span>
@@ -3228,12 +4505,32 @@ const AdminSellerDetailsPage = () => {
                                   </span>
                                 </div>
                               </td>
-                              <td className={clsx('px-4', 'py-3', 'align-top')}>
-                                <div className={clsx('flex', 'items-center', 'justify-end', 'gap-2')}>
+                              <td className={clsx("px-4", "py-3", "align-top")}>
+                                <div
+                                  className={clsx(
+                                    "flex",
+                                    "items-center",
+                                    "justify-end",
+                                    "gap-2",
+                                  )}
+                                >
                                   <button
                                     type="button"
                                     onClick={() => setCouponView(coupon)}
-                                    className={clsx('inline-flex', 'h-9', 'w-9', 'items-center', 'justify-center', 'rounded-xl', 'border', 'border-slate-200', 'text-slate-500', 'transition', 'hover:border-blue-200', 'hover:text-blue-600')}
+                                    className={clsx(
+                                      "inline-flex",
+                                      "h-9",
+                                      "w-9",
+                                      "items-center",
+                                      "justify-center",
+                                      "rounded-xl",
+                                      "border",
+                                      "border-slate-200",
+                                      "text-slate-500",
+                                      "transition",
+                                      "hover:border-blue-200",
+                                      "hover:text-blue-600",
+                                    )}
                                     aria-label="View coupon"
                                   >
                                     <Eye size={16} />
@@ -3241,7 +4538,20 @@ const AdminSellerDetailsPage = () => {
                                   <button
                                     type="button"
                                     onClick={() => setCouponEdit(coupon)}
-                                    className={clsx('inline-flex', 'h-9', 'w-9', 'items-center', 'justify-center', 'rounded-xl', 'border', 'border-slate-200', 'text-slate-500', 'transition', 'hover:border-blue-200', 'hover:text-blue-600')}
+                                    className={clsx(
+                                      "inline-flex",
+                                      "h-9",
+                                      "w-9",
+                                      "items-center",
+                                      "justify-center",
+                                      "rounded-xl",
+                                      "border",
+                                      "border-slate-200",
+                                      "text-slate-500",
+                                      "transition",
+                                      "hover:border-blue-200",
+                                      "hover:text-blue-600",
+                                    )}
                                     aria-label="Edit coupon"
                                   >
                                     <PencilLine size={16} />
@@ -3251,7 +4561,20 @@ const AdminSellerDetailsPage = () => {
                                     onClick={() =>
                                       handleCouponDelete(coupon._id)
                                     }
-                                    className={clsx('inline-flex', 'h-9', 'w-9', 'items-center', 'justify-center', 'rounded-xl', 'border', 'border-rose-200', 'text-rose-500', 'transition', 'hover:border-rose-300', 'hover:text-rose-600')}
+                                    className={clsx(
+                                      "inline-flex",
+                                      "h-9",
+                                      "w-9",
+                                      "items-center",
+                                      "justify-center",
+                                      "rounded-xl",
+                                      "border",
+                                      "border-rose-200",
+                                      "text-rose-500",
+                                      "transition",
+                                      "hover:border-rose-300",
+                                      "hover:text-rose-600",
+                                    )}
                                     aria-label="Delete coupon"
                                   >
                                     <Trash2 size={16} />
@@ -3265,13 +4588,35 @@ const AdminSellerDetailsPage = () => {
                     </table>
                   </div>
 
-                  <div className={clsx('flex', 'flex-col', 'gap-3', 'border-t', 'border-slate-100', 'pt-4', 'text-sm', 'text-slate-600', 'md:flex-row', 'md:items-center', 'md:justify-between')}>
-                    <div className={clsx('flex', 'items-center', 'gap-2')}>
+                  <div
+                    className={clsx(
+                      "flex",
+                      "flex-col",
+                      "gap-3",
+                      "border-t",
+                      "border-slate-100",
+                      "pt-4",
+                      "text-sm",
+                      "text-slate-600",
+                      "md:flex-row",
+                      "md:items-center",
+                      "md:justify-between",
+                    )}
+                  >
+                    <div className={clsx("flex", "items-center", "gap-2")}>
                       Rows per page
                       <select
                         value={couponsRowsPerPage}
                         onChange={handleCouponsRowsPerPageChange}
-                        className={clsx('rounded-xl', 'border', 'border-slate-200', 'px-3', 'py-2', 'focus:border-blue-400', 'focus:outline-none')}
+                        className={clsx(
+                          "rounded-xl",
+                          "border",
+                          "border-slate-200",
+                          "px-3",
+                          "py-2",
+                          "focus:border-blue-400",
+                          "focus:outline-none",
+                        )}
                       >
                         {[10, 20, 50].map((option) => (
                           <option key={option} value={option}>
@@ -3280,7 +4625,7 @@ const AdminSellerDetailsPage = () => {
                         ))}
                       </select>
                     </div>
-                    <div className={clsx('flex', 'items-center', 'gap-2')}>
+                    <div className={clsx("flex", "items-center", "gap-2")}>
                       <button
                         type="button"
                         onClick={() =>
@@ -3289,7 +4634,18 @@ const AdminSellerDetailsPage = () => {
                           )
                         }
                         disabled={couponsPagination.currentPage <= 1}
-                        className={clsx('rounded-xl', 'border', 'border-slate-200', 'px-3', 'py-1', 'transition', 'hover:border-blue-200', 'hover:text-blue-600', 'disabled:cursor-not-allowed', 'disabled:opacity-50')}
+                        className={clsx(
+                          "rounded-xl",
+                          "border",
+                          "border-slate-200",
+                          "px-3",
+                          "py-1",
+                          "transition",
+                          "hover:border-blue-200",
+                          "hover:text-blue-600",
+                          "disabled:cursor-not-allowed",
+                          "disabled:opacity-50",
+                        )}
                       >
                         Prev
                       </button>
@@ -3315,7 +4671,18 @@ const AdminSellerDetailsPage = () => {
                           couponsPagination.currentPage >=
                           couponsPagination.totalPages
                         }
-                        className={clsx('rounded-xl', 'border', 'border-slate-200', 'px-3', 'py-1', 'transition', 'hover:border-blue-200', 'hover:text-blue-600', 'disabled:cursor-not-allowed', 'disabled:opacity-50')}
+                        className={clsx(
+                          "rounded-xl",
+                          "border",
+                          "border-slate-200",
+                          "px-3",
+                          "py-1",
+                          "transition",
+                          "hover:border-blue-200",
+                          "hover:text-blue-600",
+                          "disabled:cursor-not-allowed",
+                          "disabled:opacity-50",
+                        )}
                       >
                         Next
                       </button>
@@ -3340,23 +4707,29 @@ const AdminSellerDetailsPage = () => {
         {sellerView ? (
           <div className="space-y-3">
             <div>
-              <p className={clsx('text-xs', 'uppercase', 'text-slate-400')}>Contact</p>
-              <div className={clsx('mt-1', 'text-sm', 'text-slate-600')}>
+              <p className={clsx("text-xs", "uppercase", "text-slate-400")}>
+                Contact
+              </p>
+              <div className={clsx("mt-1", "text-sm", "text-slate-600")}>
                 <p>Company: {sellerView.companyName || "--"}</p>
                 <p>Email: {sellerView.email}</p>
                 <p>Location: {sellerView.location || "--"}</p>
               </div>
             </div>
             <div>
-              <p className={clsx('text-xs', 'uppercase', 'text-slate-400')}>Status</p>
-              <div className={clsx('mt-1', 'text-sm', 'text-slate-600')}>
+              <p className={clsx("text-xs", "uppercase", "text-slate-400")}>
+                Status
+              </p>
+              <div className={clsx("mt-1", "text-sm", "text-slate-600")}>
                 <p>Verified: {sellerView.isVerified ? "Yes" : "No"}</p>
                 <p>Role: {sellerView.role || "--"}</p>
               </div>
             </div>
             <div>
-              <p className={clsx('text-xs', 'uppercase', 'text-slate-400')}>Metrics</p>
-              <div className={clsx('mt-1', 'text-sm', 'text-slate-600')}>
+              <p className={clsx("text-xs", "uppercase", "text-slate-400")}>
+                Metrics
+              </p>
+              <div className={clsx("mt-1", "text-sm", "text-slate-600")}>
                 <p>Products: {sellerView.metrics?.products || 0}</p>
                 <p>Orders: {sellerView.metrics?.orders || 0}</p>
                 <p>Coupons: {sellerView.metrics?.coupons || 0}</p>
@@ -3365,7 +4738,7 @@ const AdminSellerDetailsPage = () => {
                 </p>
               </div>
             </div>
-            <p className={clsx('text-xs', 'text-slate-500')}>
+            <p className={clsx("text-xs", "text-slate-500")}>
               Joined {formatDate(sellerView.createdAt)}
             </p>
           </div>
@@ -3388,7 +4761,23 @@ const AdminSellerDetailsPage = () => {
               type="button"
               onClick={() => setSellerEdit(null)}
               disabled={isSavingSeller}
-              className={clsx('inline-flex', 'items-center', 'justify-center', 'rounded-xl', 'border', 'border-slate-200', 'px-4', 'py-2', 'text-sm', 'font-medium', 'text-slate-600', 'hover:border-slate-300', 'hover:text-slate-700', 'disabled:cursor-not-allowed', 'disabled:opacity-60')}
+              className={clsx(
+                "inline-flex",
+                "items-center",
+                "justify-center",
+                "rounded-xl",
+                "border",
+                "border-slate-200",
+                "px-4",
+                "py-2",
+                "text-sm",
+                "font-medium",
+                "text-slate-600",
+                "hover:border-slate-300",
+                "hover:text-slate-700",
+                "disabled:cursor-not-allowed",
+                "disabled:opacity-60",
+              )}
             >
               Cancel
             </button>
@@ -3402,7 +4791,24 @@ const AdminSellerDetailsPage = () => {
                 })
               }
               disabled={isSavingSeller}
-              className={clsx('inline-flex', 'items-center', 'justify-center', 'rounded-xl', 'border', 'border-blue-600', 'bg-blue-600', 'px-4', 'py-2', 'text-sm', 'font-semibold', 'text-white', 'transition', 'hover:bg-blue-700', 'disabled:cursor-not-allowed', 'disabled:bg-blue-300')}
+              className={clsx(
+                "inline-flex",
+                "items-center",
+                "justify-center",
+                "rounded-xl",
+                "border",
+                "border-blue-600",
+                "bg-blue-600",
+                "px-4",
+                "py-2",
+                "text-sm",
+                "font-semibold",
+                "text-white",
+                "transition",
+                "hover:bg-blue-700",
+                "disabled:cursor-not-allowed",
+                "disabled:bg-blue-300",
+              )}
             >
               {isSavingSeller
                 ? "Saving..."
@@ -3414,7 +4820,24 @@ const AdminSellerDetailsPage = () => {
               type="button"
               onClick={handleSellerDelete}
               disabled={isDeletingSeller}
-              className={clsx('inline-flex', 'items-center', 'justify-center', 'gap-2', 'rounded-xl', 'border', 'border-rose-200', 'px-4', 'py-2', 'text-sm', 'font-semibold', 'text-rose-600', 'hover:border-rose-300', 'hover:text-rose-700', 'disabled:cursor-not-allowed', 'disabled:opacity-60')}
+              className={clsx(
+                "inline-flex",
+                "items-center",
+                "justify-center",
+                "gap-2",
+                "rounded-xl",
+                "border",
+                "border-rose-200",
+                "px-4",
+                "py-2",
+                "text-sm",
+                "font-semibold",
+                "text-rose-600",
+                "hover:border-rose-300",
+                "hover:text-rose-700",
+                "disabled:cursor-not-allowed",
+                "disabled:opacity-60",
+              )}
             >
               {isDeletingSeller ? "Removing..." : "Delete Seller"}
             </button>
@@ -3422,7 +4845,7 @@ const AdminSellerDetailsPage = () => {
         }
       >
         {sellerEdit ? (
-          <div className={clsx('space-y-3', 'text-sm', 'text-slate-600')}>
+          <div className={clsx("space-y-3", "text-sm", "text-slate-600")}>
             <p>
               Username:{" "}
               <span className="font-medium">@{sellerEdit.username}</span>
@@ -3442,47 +4865,101 @@ const AdminSellerDetailsPage = () => {
         onClose={handleCloseViewProduct}
       >
         {productViewModal.loading ? (
-          <div className={clsx('flex', 'items-center', 'justify-center', 'py-8', 'text-sm', 'text-gray-500')}>
+          <div
+            className={clsx(
+              "flex",
+              "items-center",
+              "justify-center",
+              "py-8",
+              "text-sm",
+              "text-gray-500",
+            )}
+          >
             Loading product details...
           </div>
         ) : productViewModal.error ? (
-          <div className={clsx('rounded-xl', 'border', 'border-rose-200', 'bg-rose-50', 'px-4', 'py-3', 'text-sm', 'text-rose-600')}>
+          <div
+            className={clsx(
+              "rounded-xl",
+              "border",
+              "border-rose-200",
+              "bg-rose-50",
+              "px-4",
+              "py-3",
+              "text-sm",
+              "text-rose-600",
+            )}
+          >
             {productViewModal.error}
           </div>
         ) : productViewModal.data ? (
           <div className="space-y-6">
-            <div className={clsx('grid', 'gap-4', 'sm:grid-cols-[1.2fr,0.8fr]')}>
+            <div
+              className={clsx("grid", "gap-4", "sm:grid-cols-[1.2fr,0.8fr]")}
+            >
               <div className="space-y-3">
-                <div className={clsx('grid', 'gap-2', 'sm:grid-cols-2')}>
+                <div className={clsx("grid", "gap-2", "sm:grid-cols-2")}>
                   <div>
-                    <p className={clsx('text-xs', 'uppercase', 'text-slate-400')}>Name</p>
-                    <p className={clsx('text-base', 'font-semibold', 'text-slate-900')}>
+                    <p
+                      className={clsx("text-xs", "uppercase", "text-slate-400")}
+                    >
+                      Name
+                    </p>
+                    <p
+                      className={clsx(
+                        "text-base",
+                        "font-semibold",
+                        "text-slate-900",
+                      )}
+                    >
                       {productViewModal.data.name || "—"}
                     </p>
                   </div>
                   <div>
-                    <p className={clsx('text-xs', 'uppercase', 'text-slate-400')}>SKU</p>
-                    <p className={clsx('text-sm', 'font-medium', 'text-slate-700')}>
+                    <p
+                      className={clsx("text-xs", "uppercase", "text-slate-400")}
+                    >
+                      SKU
+                    </p>
+                    <p
+                      className={clsx(
+                        "text-sm",
+                        "font-medium",
+                        "text-slate-700",
+                      )}
+                    >
                       {productViewModal.data.sku ||
                         productViewModal.data._id ||
                         "—"}
                     </p>
                   </div>
                   <div>
-                    <p className={clsx('text-xs', 'uppercase', 'text-slate-400')}>Category</p>
-                    <p className={clsx('text-sm', 'text-slate-700')}>
+                    <p
+                      className={clsx("text-xs", "uppercase", "text-slate-400")}
+                    >
+                      Category
+                    </p>
+                    <p className={clsx("text-sm", "text-slate-700")}>
                       {productViewModal.data.category || "—"}
                     </p>
                   </div>
                   <div>
-                    <p className={clsx('text-xs', 'uppercase', 'text-slate-400')}>Brand</p>
-                    <p className={clsx('text-sm', 'text-slate-700')}>
+                    <p
+                      className={clsx("text-xs", "uppercase", "text-slate-400")}
+                    >
+                      Brand
+                    </p>
+                    <p className={clsx("text-sm", "text-slate-700")}>
                       {productViewModal.data.brand || "—"}
                     </p>
                   </div>
                   <div>
-                    <p className={clsx('text-xs', 'uppercase', 'text-slate-400')}>Seller</p>
-                    <p className={clsx('text-sm', 'text-slate-700')}>
+                    <p
+                      className={clsx("text-xs", "uppercase", "text-slate-400")}
+                    >
+                      Seller
+                    </p>
+                    <p className={clsx("text-sm", "text-slate-700")}>
                       {productViewModal.data.sellerId?.companyName ||
                         productViewModal.data.sellerId?.name ||
                         productViewModal.data.sellerId?.username ||
@@ -3490,10 +4967,12 @@ const AdminSellerDetailsPage = () => {
                     </p>
                   </div>
                   <div>
-                    <p className={clsx('text-xs', 'uppercase', 'text-slate-400')}>
+                    <p
+                      className={clsx("text-xs", "uppercase", "text-slate-400")}
+                    >
                       HSN / GST
                     </p>
-                    <p className={clsx('text-sm', 'text-slate-700')}>
+                    <p className={clsx("text-sm", "text-slate-700")}>
                       {productViewModal.data.hsnCode || "—"} ·{" "}
                       {productViewModal.data.gstRate !== undefined &&
                       productViewModal.data.gstRate !== null
@@ -3503,46 +4982,122 @@ const AdminSellerDetailsPage = () => {
                   </div>
                 </div>
 
-                <div className={clsx('grid', 'gap-3', 'sm:grid-cols-2')}>
-                  <div className={clsx('rounded-2xl', 'border', 'border-slate-200', 'bg-white', 'p-4', 'shadow-sm')}>
-                    <p className={clsx('text-xs', 'uppercase', 'text-slate-400')}>Price</p>
-                    <p className={clsx('text-lg', 'font-semibold', 'text-slate-900')}>
+                <div className={clsx("grid", "gap-3", "sm:grid-cols-2")}>
+                  <div
+                    className={clsx(
+                      "rounded-2xl",
+                      "border",
+                      "border-slate-200",
+                      "bg-white",
+                      "p-4",
+                      "shadow-sm",
+                    )}
+                  >
+                    <p
+                      className={clsx("text-xs", "uppercase", "text-slate-400")}
+                    >
+                      Price
+                    </p>
+                    <p
+                      className={clsx(
+                        "text-lg",
+                        "font-semibold",
+                        "text-slate-900",
+                      )}
+                    >
                       {formatCurrency(productViewModal.data.price)}
                     </p>
-                    <p className={clsx('text-xs', 'text-slate-500')}>
+                    <p className={clsx("text-xs", "text-slate-500")}>
                       Original{" "}
                       {formatCurrency(productViewModal.data.originalPrice)}
                     </p>
                   </div>
-                  <div className={clsx('rounded-2xl', 'border', 'border-slate-200', 'bg-white', 'p-4', 'shadow-sm')}>
-                    <p className={clsx('text-xs', 'uppercase', 'text-slate-400')}>Stock</p>
-                    <p className={clsx('text-lg', 'font-semibold', 'text-slate-900')}>
+                  <div
+                    className={clsx(
+                      "rounded-2xl",
+                      "border",
+                      "border-slate-200",
+                      "bg-white",
+                      "p-4",
+                      "shadow-sm",
+                    )}
+                  >
+                    <p
+                      className={clsx("text-xs", "uppercase", "text-slate-400")}
+                    >
+                      Stock
+                    </p>
+                    <p
+                      className={clsx(
+                        "text-lg",
+                        "font-semibold",
+                        "text-slate-900",
+                      )}
+                    >
                       {productViewModal.data.stock ?? 0}
                     </p>
-                    <p className={clsx('text-xs', 'text-slate-500')}>
+                    <p className={clsx("text-xs", "text-slate-500")}>
                       Availability:{" "}
                       {getAvailabilityLabel(
                         productViewModal.data.availabilityStatus,
                       )}
                     </p>
                   </div>
-                  <div className={clsx('rounded-2xl', 'border', 'border-slate-200', 'bg-white', 'p-4', 'shadow-sm')}>
-                    <p className={clsx('text-xs', 'uppercase', 'text-slate-400')}>Status</p>
-                    <p className={clsx('text-lg', 'font-semibold', 'text-slate-900')}>
+                  <div
+                    className={clsx(
+                      "rounded-2xl",
+                      "border",
+                      "border-slate-200",
+                      "bg-white",
+                      "p-4",
+                      "shadow-sm",
+                    )}
+                  >
+                    <p
+                      className={clsx("text-xs", "uppercase", "text-slate-400")}
+                    >
+                      Status
+                    </p>
+                    <p
+                      className={clsx(
+                        "text-lg",
+                        "font-semibold",
+                        "text-slate-900",
+                      )}
+                    >
                       {STATUS_LABELS[productViewModal.data.status]?.label ||
                         productViewModal.data.status}
                     </p>
-                    <p className={clsx('text-xs', 'text-slate-500')}>
+                    <p className={clsx("text-xs", "text-slate-500")}>
                       Featured:{" "}
                       {productViewModal.data.isFeatured ? "Yes" : "No"}
                     </p>
                   </div>
-                  <div className={clsx('rounded-2xl', 'border', 'border-slate-200', 'bg-white', 'p-4', 'shadow-sm')}>
-                    <p className={clsx('text-xs', 'uppercase', 'text-slate-400')}>Discount</p>
-                    <p className={clsx('text-lg', 'font-semibold', 'text-slate-900')}>
+                  <div
+                    className={clsx(
+                      "rounded-2xl",
+                      "border",
+                      "border-slate-200",
+                      "bg-white",
+                      "p-4",
+                      "shadow-sm",
+                    )}
+                  >
+                    <p
+                      className={clsx("text-xs", "uppercase", "text-slate-400")}
+                    >
+                      Discount
+                    </p>
+                    <p
+                      className={clsx(
+                        "text-lg",
+                        "font-semibold",
+                        "text-slate-900",
+                      )}
+                    >
                       {Number(productViewModal.data.discountPercentage ?? 0)}%
                     </p>
-                    <p className={clsx('text-xs', 'text-slate-500')}>
+                    <p className={clsx("text-xs", "text-slate-500")}>
                       Savings:{" "}
                       {formatCurrency(productViewModal.data.saveAmount ?? 0)}
                     </p>
@@ -3551,10 +5106,23 @@ const AdminSellerDetailsPage = () => {
 
                 {productViewModal.data.shortDescription ? (
                   <div>
-                    <p className={clsx('text-xs', 'uppercase', 'text-slate-400')}>
+                    <p
+                      className={clsx("text-xs", "uppercase", "text-slate-400")}
+                    >
                       Short Description
                     </p>
-                    <p className={clsx('mt-1', 'rounded-xl', 'border', 'border-slate-200', 'bg-white', 'p-3', 'text-sm', 'text-slate-600')}>
+                    <p
+                      className={clsx(
+                        "mt-1",
+                        "rounded-xl",
+                        "border",
+                        "border-slate-200",
+                        "bg-white",
+                        "p-3",
+                        "text-sm",
+                        "text-slate-600",
+                      )}
+                    >
                       {productViewModal.data.shortDescription}
                     </p>
                   </div>
@@ -3562,10 +5130,24 @@ const AdminSellerDetailsPage = () => {
 
                 {productViewModal.data.description ? (
                   <div>
-                    <p className={clsx('text-xs', 'uppercase', 'text-slate-400')}>
+                    <p
+                      className={clsx("text-xs", "uppercase", "text-slate-400")}
+                    >
                       Description
                     </p>
-                    <p className={clsx('mt-1', 'whitespace-pre-line', 'rounded-xl', 'border', 'border-slate-200', 'bg-white', 'p-3', 'text-sm', 'text-slate-600')}>
+                    <p
+                      className={clsx(
+                        "mt-1",
+                        "whitespace-pre-line",
+                        "rounded-xl",
+                        "border",
+                        "border-slate-200",
+                        "bg-white",
+                        "p-3",
+                        "text-sm",
+                        "text-slate-600",
+                      )}
+                    >
                       {productViewModal.data.description}
                     </p>
                   </div>
@@ -3574,15 +5156,25 @@ const AdminSellerDetailsPage = () => {
                 {Array.isArray(productViewModal.data.keyFeatures) &&
                 productViewModal.data.keyFeatures.length ? (
                   <div className="space-y-2">
-                    <p className={clsx('text-xs', 'uppercase', 'text-slate-400')}>
+                    <p
+                      className={clsx("text-xs", "uppercase", "text-slate-400")}
+                    >
                       Key Features
                     </p>
-                    <ul className={clsx('grid', 'gap-2', 'sm:grid-cols-2')}>
+                    <ul className={clsx("grid", "gap-2", "sm:grid-cols-2")}>
                       {productViewModal.data.keyFeatures.map(
                         (feature, index) => (
                           <li
                             key={`${feature}-${index}`}
-                            className={clsx('rounded-xl', 'border', 'border-slate-200', 'bg-white', 'p-3', 'text-sm', 'text-slate-600')}
+                            className={clsx(
+                              "rounded-xl",
+                              "border",
+                              "border-slate-200",
+                              "bg-white",
+                              "p-3",
+                              "text-sm",
+                              "text-slate-600",
+                            )}
                           >
                             {feature}
                           </li>
@@ -3595,20 +5187,38 @@ const AdminSellerDetailsPage = () => {
                 {Array.isArray(productViewModal.data.sizes) &&
                 productViewModal.data.sizes.length ? (
                   <div className="space-y-2">
-                    <p className={clsx('text-xs', 'uppercase', 'text-slate-400')}>Sizes</p>
-                    <div className={clsx('grid', 'gap-2', 'sm:grid-cols-3')}>
+                    <p
+                      className={clsx("text-xs", "uppercase", "text-slate-400")}
+                    >
+                      Sizes
+                    </p>
+                    <div className={clsx("grid", "gap-2", "sm:grid-cols-3")}>
                       {productViewModal.data.sizes.map((size, index) => (
                         <div
                           key={`${size?.label || "size"}-${index}`}
-                          className={clsx('rounded-xl', 'border', 'border-slate-200', 'bg-white', 'p-3', 'text-sm', 'text-slate-600')}
+                          className={clsx(
+                            "rounded-xl",
+                            "border",
+                            "border-slate-200",
+                            "bg-white",
+                            "p-3",
+                            "text-sm",
+                            "text-slate-600",
+                          )}
                         >
-                          <p className={clsx('text-xs', 'font-semibold', 'text-slate-500')}>
+                          <p
+                            className={clsx(
+                              "text-xs",
+                              "font-semibold",
+                              "text-slate-500",
+                            )}
+                          >
                             {size?.label || "—"}
                           </p>
-                          <p className={clsx('text-sm', 'text-slate-700')}>
+                          <p className={clsx("text-sm", "text-slate-700")}>
                             Stock: {size?.stock ?? 0}
                           </p>
-                          <p className={clsx('text-xs', 'text-slate-500')}>
+                          <p className={clsx("text-xs", "text-slate-500")}>
                             {size?.isAvailable ? "Available" : "Not available"}
                           </p>
                         </div>
@@ -3619,7 +5229,16 @@ const AdminSellerDetailsPage = () => {
               </div>
 
               <div className="space-y-4">
-                <div className={clsx('overflow-hidden', 'rounded-2xl', 'border', 'border-dashed', 'border-slate-200', 'bg-slate-50')}>
+                <div
+                  className={clsx(
+                    "overflow-hidden",
+                    "rounded-2xl",
+                    "border",
+                    "border-dashed",
+                    "border-slate-200",
+                    "bg-slate-50",
+                  )}
+                >
                   <img
                     src={
                       productViewModal.data.thumbnail ||
@@ -3627,7 +5246,7 @@ const AdminSellerDetailsPage = () => {
                       "https://placehold.co/480x480/f8fafc/e2e8f0?text=Thumbnail"
                     }
                     alt={productViewModal.data.name || "Product thumbnail"}
-                    className={clsx('h-64', 'w-full', 'object-cover')}
+                    className={clsx("h-64", "w-full", "object-cover")}
                     onError={(event) => {
                       event.currentTarget.src =
                         "https://placehold.co/480x480/f8fafc/e2e8f0?text=Image";
@@ -3638,19 +5257,29 @@ const AdminSellerDetailsPage = () => {
                 {Array.isArray(productViewModal.data.gallery) &&
                 productViewModal.data.gallery.length > 1 ? (
                   <div className="space-y-2">
-                    <p className={clsx('text-xs', 'uppercase', 'text-slate-400')}>Gallery</p>
-                    <div className={clsx('grid', 'grid-cols-3', 'gap-2')}>
+                    <p
+                      className={clsx("text-xs", "uppercase", "text-slate-400")}
+                    >
+                      Gallery
+                    </p>
+                    <div className={clsx("grid", "grid-cols-3", "gap-2")}>
                       {productViewModal.data.gallery.map((image, index) => (
                         <div
                           key={`${image}-${index}`}
-                          className={clsx('overflow-hidden', 'rounded-xl', 'border', 'border-slate-200', 'bg-white')}
+                          className={clsx(
+                            "overflow-hidden",
+                            "rounded-xl",
+                            "border",
+                            "border-slate-200",
+                            "bg-white",
+                          )}
                         >
                           <img
                             src={image}
                             alt={`${productViewModal.data.name || "Product"} ${
                               index + 1
                             }`}
-                            className={clsx('h-24', 'w-full', 'object-cover')}
+                            className={clsx("h-24", "w-full", "object-cover")}
                             onError={(event) => {
                               event.currentTarget.src =
                                 "https://placehold.co/200x200/f8fafc/e2e8f0?text=Image";
@@ -3681,19 +5310,54 @@ const AdminSellerDetailsPage = () => {
         }}
       >
         {productEditModal.loading ? (
-          <div className={clsx('flex', 'items-center', 'justify-center', 'py-8', 'text-sm', 'text-gray-500')}>
+          <div
+            className={clsx(
+              "flex",
+              "items-center",
+              "justify-center",
+              "py-8",
+              "text-sm",
+              "text-gray-500",
+            )}
+          >
             Loading product details...
           </div>
         ) : productEditModal.error ? (
           <div className="space-y-4">
-            <div className={clsx('rounded-xl', 'border', 'border-rose-200', 'bg-rose-50', 'px-4', 'py-3', 'text-sm', 'text-rose-600')}>
+            <div
+              className={clsx(
+                "rounded-xl",
+                "border",
+                "border-rose-200",
+                "bg-rose-50",
+                "px-4",
+                "py-3",
+                "text-sm",
+                "text-rose-600",
+              )}
+            >
               {productEditModal.error}
             </div>
-            <div className={clsx('flex', 'justify-end')}>
+            <div className={clsx("flex", "justify-end")}>
               <button
                 type="button"
                 onClick={handleCloseEditProduct}
-                className={clsx('inline-flex', 'items-center', 'justify-center', 'rounded-xl', 'border', 'border-slate-200', 'px-4', 'py-2', 'text-sm', 'font-medium', 'text-slate-600', 'transition', 'hover:border-slate-300', 'hover:text-slate-700')}
+                className={clsx(
+                  "inline-flex",
+                  "items-center",
+                  "justify-center",
+                  "rounded-xl",
+                  "border",
+                  "border-slate-200",
+                  "px-4",
+                  "py-2",
+                  "text-sm",
+                  "font-medium",
+                  "text-slate-600",
+                  "transition",
+                  "hover:border-slate-300",
+                  "hover:text-slate-700",
+                )}
               >
                 Close
               </button>
@@ -3701,9 +5365,18 @@ const AdminSellerDetailsPage = () => {
           </div>
         ) : productEditModal.data && productEditModal.draft ? (
           <form onSubmit={handleSubmitProductEdit} className="space-y-6">
-            <div className={clsx('grid', 'gap-4', 'sm:grid-cols-2')}>
-              <label className={clsx('grid', 'gap-1', 'text-sm', 'text-slate-600')}>
-                <span className={clsx('text-xs', 'uppercase', 'tracking-wide', 'text-slate-400')}>
+            <div className={clsx("grid", "gap-4", "sm:grid-cols-2")}>
+              <label
+                className={clsx("grid", "gap-1", "text-sm", "text-slate-600")}
+              >
+                <span
+                  className={clsx(
+                    "text-xs",
+                    "uppercase",
+                    "tracking-wide",
+                    "text-slate-400",
+                  )}
+                >
                   Price (₹)
                 </span>
                 <input
@@ -3714,11 +5387,28 @@ const AdminSellerDetailsPage = () => {
                   onChange={(event) =>
                     handleChangeProductDraft("price", event.target.value)
                   }
-                  className={clsx('rounded-xl', 'border', 'border-slate-200', 'px-3', 'py-2', 'focus:border-blue-400', 'focus:outline-none')}
+                  className={clsx(
+                    "rounded-xl",
+                    "border",
+                    "border-slate-200",
+                    "px-3",
+                    "py-2",
+                    "focus:border-blue-400",
+                    "focus:outline-none",
+                  )}
                 />
               </label>
-              <label className={clsx('grid', 'gap-1', 'text-sm', 'text-slate-600')}>
-                <span className={clsx('text-xs', 'uppercase', 'tracking-wide', 'text-slate-400')}>
+              <label
+                className={clsx("grid", "gap-1", "text-sm", "text-slate-600")}
+              >
+                <span
+                  className={clsx(
+                    "text-xs",
+                    "uppercase",
+                    "tracking-wide",
+                    "text-slate-400",
+                  )}
+                >
                   Original price (₹)
                 </span>
                 <input
@@ -3732,11 +5422,28 @@ const AdminSellerDetailsPage = () => {
                       event.target.value,
                     )
                   }
-                  className={clsx('rounded-xl', 'border', 'border-slate-200', 'px-3', 'py-2', 'focus:border-blue-400', 'focus:outline-none')}
+                  className={clsx(
+                    "rounded-xl",
+                    "border",
+                    "border-slate-200",
+                    "px-3",
+                    "py-2",
+                    "focus:border-blue-400",
+                    "focus:outline-none",
+                  )}
                 />
               </label>
-              <label className={clsx('grid', 'gap-1', 'text-sm', 'text-slate-600')}>
-                <span className={clsx('text-xs', 'uppercase', 'tracking-wide', 'text-slate-400')}>
+              <label
+                className={clsx("grid", "gap-1", "text-sm", "text-slate-600")}
+              >
+                <span
+                  className={clsx(
+                    "text-xs",
+                    "uppercase",
+                    "tracking-wide",
+                    "text-slate-400",
+                  )}
+                >
                   Stock
                 </span>
                 <input
@@ -3746,11 +5453,28 @@ const AdminSellerDetailsPage = () => {
                   onChange={(event) =>
                     handleChangeProductDraft("stock", event.target.value)
                   }
-                  className={clsx('rounded-xl', 'border', 'border-slate-200', 'px-3', 'py-2', 'focus:border-blue-400', 'focus:outline-none')}
+                  className={clsx(
+                    "rounded-xl",
+                    "border",
+                    "border-slate-200",
+                    "px-3",
+                    "py-2",
+                    "focus:border-blue-400",
+                    "focus:outline-none",
+                  )}
                 />
               </label>
-              <label className={clsx('grid', 'gap-1', 'text-sm', 'text-slate-600')}>
-                <span className={clsx('text-xs', 'uppercase', 'tracking-wide', 'text-slate-400')}>
+              <label
+                className={clsx("grid", "gap-1", "text-sm", "text-slate-600")}
+              >
+                <span
+                  className={clsx(
+                    "text-xs",
+                    "uppercase",
+                    "tracking-wide",
+                    "text-slate-400",
+                  )}
+                >
                   Availability status
                 </span>
                 <select
@@ -3761,7 +5485,15 @@ const AdminSellerDetailsPage = () => {
                       event.target.value,
                     )
                   }
-                  className={clsx('rounded-xl', 'border', 'border-slate-200', 'px-3', 'py-2', 'focus:border-blue-400', 'focus:outline-none')}
+                  className={clsx(
+                    "rounded-xl",
+                    "border",
+                    "border-slate-200",
+                    "px-3",
+                    "py-2",
+                    "focus:border-blue-400",
+                    "focus:outline-none",
+                  )}
                 >
                   <option value="in_stock">In stock</option>
                   <option value="low_stock">Low stock</option>
@@ -3769,8 +5501,17 @@ const AdminSellerDetailsPage = () => {
                   <option value="preorder">Pre-order</option>
                 </select>
               </label>
-              <label className={clsx('grid', 'gap-1', 'text-sm', 'text-slate-600')}>
-                <span className={clsx('text-xs', 'uppercase', 'tracking-wide', 'text-slate-400')}>
+              <label
+                className={clsx("grid", "gap-1", "text-sm", "text-slate-600")}
+              >
+                <span
+                  className={clsx(
+                    "text-xs",
+                    "uppercase",
+                    "tracking-wide",
+                    "text-slate-400",
+                  )}
+                >
                   Status
                 </span>
                 <select
@@ -3778,33 +5519,78 @@ const AdminSellerDetailsPage = () => {
                   onChange={(event) =>
                     handleChangeProductDraft("status", event.target.value)
                   }
-                  className={clsx('rounded-xl', 'border', 'border-slate-200', 'px-3', 'py-2', 'focus:border-blue-400', 'focus:outline-none')}
+                  className={clsx(
+                    "rounded-xl",
+                    "border",
+                    "border-slate-200",
+                    "px-3",
+                    "py-2",
+                    "focus:border-blue-400",
+                    "focus:outline-none",
+                  )}
                 >
                   <option value="published">Published</option>
                   <option value="archived">Archived</option>
                 </select>
               </label>
             </div>
-            <div className={clsx('flex', 'justify-end', 'gap-3')}>
+            <div className={clsx("flex", "justify-end", "gap-3")}>
               <button
                 type="button"
                 onClick={handleCloseEditProduct}
                 disabled={productEditModal.isSubmitting}
-                className={clsx('inline-flex', 'items-center', 'justify-center', 'rounded-xl', 'border', 'border-slate-200', 'px-4', 'py-2', 'text-sm', 'font-medium', 'text-slate-600', 'transition', 'hover:border-slate-300', 'hover:text-slate-700', 'disabled:cursor-not-allowed', 'disabled:opacity-60')}
+                className={clsx(
+                  "inline-flex",
+                  "items-center",
+                  "justify-center",
+                  "rounded-xl",
+                  "border",
+                  "border-slate-200",
+                  "px-4",
+                  "py-2",
+                  "text-sm",
+                  "font-medium",
+                  "text-slate-600",
+                  "transition",
+                  "hover:border-slate-300",
+                  "hover:text-slate-700",
+                  "disabled:cursor-not-allowed",
+                  "disabled:opacity-60",
+                )}
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={productEditModal.isSubmitting}
-                className={clsx('inline-flex', 'items-center', 'justify-center', 'rounded-xl', 'border', 'border-blue-600', 'bg-blue-600', 'px-4', 'py-2', 'text-sm', 'font-semibold', 'text-white', 'transition', 'hover:bg-blue-700', 'disabled:cursor-not-allowed', 'disabled:border-blue-300', 'disabled:bg-blue-300')}
+                className={clsx(
+                  "inline-flex",
+                  "items-center",
+                  "justify-center",
+                  "rounded-xl",
+                  "border",
+                  "border-blue-600",
+                  "bg-blue-600",
+                  "px-4",
+                  "py-2",
+                  "text-sm",
+                  "font-semibold",
+                  "text-white",
+                  "transition",
+                  "hover:bg-blue-700",
+                  "disabled:cursor-not-allowed",
+                  "disabled:border-blue-300",
+                  "disabled:bg-blue-300",
+                )}
               >
                 {productEditModal.isSubmitting ? "Saving..." : "Save changes"}
               </button>
             </div>
           </form>
         ) : (
-          <p className={clsx('text-sm', 'text-slate-600')}>No product selected</p>
+          <p className={clsx("text-sm", "text-slate-600")}>
+            No product selected
+          </p>
         )}
       </BaseModal>
 
@@ -3814,23 +5600,40 @@ const AdminSellerDetailsPage = () => {
         onClose={() => setOrderView(null)}
       >
         {orderView ? (
-          <div className={clsx('space-y-3', 'text-sm', 'text-slate-600')}>
-            <div className={clsx('grid', 'gap-1')}>
+          <div className={clsx("space-y-3", "text-sm", "text-slate-600")}>
+            <div className={clsx("grid", "gap-1")}>
               <p>Status: {orderView.orderStatus}</p>
               <p>Payment: {orderView.paymentStatus}</p>
               <p>Revenue: {formatCurrency(orderView.totals?.revenue)}</p>
               <p>Quantity: {orderView.totals?.quantity ?? 0}</p>
             </div>
             <div>
-              <p className={clsx('text-xs', 'uppercase', 'text-slate-400')}>Items</p>
-              <ul className={clsx('mt-2', 'space-y-2', 'text-sm', 'text-slate-600')}>
+              <p className={clsx("text-xs", "uppercase", "text-slate-400")}>
+                Items
+              </p>
+              <ul
+                className={clsx(
+                  "mt-2",
+                  "space-y-2",
+                  "text-sm",
+                  "text-slate-600",
+                )}
+              >
                 {orderView.items?.map((item) => (
                   <li
                     key={`${item.productId}-${item.name}`}
-                    className={clsx('rounded-xl', 'border', 'border-slate-200', 'px-3', 'py-2')}
+                    className={clsx(
+                      "rounded-xl",
+                      "border",
+                      "border-slate-200",
+                      "px-3",
+                      "py-2",
+                    )}
                   >
-                    <p className={clsx('font-medium', 'text-slate-800')}>{item.name}</p>
-                    <p className={clsx('text-xs', 'text-slate-500')}>
+                    <p className={clsx("font-medium", "text-slate-800")}>
+                      {item.name}
+                    </p>
+                    <p className={clsx("text-xs", "text-slate-500")}>
                       Qty {item.quantity} · {formatCurrency(item.price)}
                     </p>
                   </li>
@@ -3861,16 +5664,33 @@ const AdminSellerDetailsPage = () => {
               });
             }}
             disabled={isSavingOrder}
-            className={clsx('inline-flex', 'items-center', 'justify-center', 'rounded-xl', 'border', 'border-blue-600', 'bg-blue-600', 'px-4', 'py-2', 'text-sm', 'font-semibold', 'text-white', 'transition', 'hover:bg-blue-700')}
+            className={clsx(
+              "inline-flex",
+              "items-center",
+              "justify-center",
+              "rounded-xl",
+              "border",
+              "border-blue-600",
+              "bg-blue-600",
+              "px-4",
+              "py-2",
+              "text-sm",
+              "font-semibold",
+              "text-white",
+              "transition",
+              "hover:bg-blue-700",
+            )}
           >
             {isSavingOrder ? "Saving..." : "Save Changes"}
           </button>
         }
       >
         {orderEdit ? (
-          <div className={clsx('space-y-3', 'text-sm', 'text-slate-600')}>
-            <label className={clsx('grid', 'gap-1')}>
-              <span className={clsx('text-xs', 'text-slate-500')}>Order status</span>
+          <div className={clsx("space-y-3", "text-sm", "text-slate-600")}>
+            <label className={clsx("grid", "gap-1")}>
+              <span className={clsx("text-xs", "text-slate-500")}>
+                Order status
+              </span>
               <select
                 value={orderEdit.orderStatus || "processing"}
                 onChange={(event) =>
@@ -3879,7 +5699,15 @@ const AdminSellerDetailsPage = () => {
                     orderStatus: event.target.value,
                   }))
                 }
-                className={clsx('rounded-xl', 'border', 'border-slate-200', 'px-3', 'py-2', 'focus:border-blue-400', 'focus:outline-none')}
+                className={clsx(
+                  "rounded-xl",
+                  "border",
+                  "border-slate-200",
+                  "px-3",
+                  "py-2",
+                  "focus:border-blue-400",
+                  "focus:outline-none",
+                )}
               >
                 {ORDER_STATUS_OPTIONS.map((status) => (
                   <option key={status} value={status}>
@@ -3888,8 +5716,10 @@ const AdminSellerDetailsPage = () => {
                 ))}
               </select>
             </label>
-            <label className={clsx('grid', 'gap-1')}>
-              <span className={clsx('text-xs', 'text-slate-500')}>Payment status</span>
+            <label className={clsx("grid", "gap-1")}>
+              <span className={clsx("text-xs", "text-slate-500")}>
+                Payment status
+              </span>
               <select
                 value={orderEdit.paymentStatus || "pending"}
                 onChange={(event) =>
@@ -3898,7 +5728,15 @@ const AdminSellerDetailsPage = () => {
                     paymentStatus: event.target.value,
                   }))
                 }
-                className={clsx('rounded-xl', 'border', 'border-slate-200', 'px-3', 'py-2', 'focus:border-blue-400', 'focus:outline-none')}
+                className={clsx(
+                  "rounded-xl",
+                  "border",
+                  "border-slate-200",
+                  "px-3",
+                  "py-2",
+                  "focus:border-blue-400",
+                  "focus:outline-none",
+                )}
               >
                 {PAYMENT_STATUS_OPTIONS.map((status) => (
                   <option key={status} value={status}>
@@ -3907,8 +5745,10 @@ const AdminSellerDetailsPage = () => {
                 ))}
               </select>
             </label>
-            <label className={clsx('grid', 'gap-1')}>
-              <span className={clsx('text-xs', 'text-slate-500')}>Estimated delivery</span>
+            <label className={clsx("grid", "gap-1")}>
+              <span className={clsx("text-xs", "text-slate-500")}>
+                Estimated delivery
+              </span>
               <input
                 type="date"
                 value={
@@ -3924,7 +5764,15 @@ const AdminSellerDetailsPage = () => {
                       : null,
                   }))
                 }
-                className={clsx('rounded-xl', 'border', 'border-slate-200', 'px-3', 'py-2', 'focus:border-blue-400', 'focus:outline-none')}
+                className={clsx(
+                  "rounded-xl",
+                  "border",
+                  "border-slate-200",
+                  "px-3",
+                  "py-2",
+                  "focus:border-blue-400",
+                  "focus:outline-none",
+                )}
               />
             </label>
           </div>
@@ -3937,7 +5785,7 @@ const AdminSellerDetailsPage = () => {
         onClose={() => setCouponView(null)}
       >
         {couponView ? (
-          <div className={clsx('space-y-3', 'text-sm', 'text-slate-600')}>
+          <div className={clsx("space-y-3", "text-sm", "text-slate-600")}>
             <p>Description: {couponView.description || "—"}</p>
             <p>
               Discount:{" "}
@@ -3979,16 +5827,33 @@ const AdminSellerDetailsPage = () => {
                 isActive: Boolean(couponEdit.isActive),
               });
             }}
-            className={clsx('inline-flex', 'items-center', 'justify-center', 'rounded-xl', 'border', 'border-blue-600', 'bg-blue-600', 'px-4', 'py-2', 'text-sm', 'font-semibold', 'text-white', 'transition', 'hover:bg-blue-700')}
+            className={clsx(
+              "inline-flex",
+              "items-center",
+              "justify-center",
+              "rounded-xl",
+              "border",
+              "border-blue-600",
+              "bg-blue-600",
+              "px-4",
+              "py-2",
+              "text-sm",
+              "font-semibold",
+              "text-white",
+              "transition",
+              "hover:bg-blue-700",
+            )}
           >
             Save Changes
           </button>
         }
       >
         {couponEdit ? (
-          <div className={clsx('space-y-4', 'text-sm', 'text-slate-600')}>
-            <label className={clsx('grid', 'gap-1')}>
-              <span className={clsx('text-xs', 'text-slate-500')}>Description</span>
+          <div className={clsx("space-y-4", "text-sm", "text-slate-600")}>
+            <label className={clsx("grid", "gap-1")}>
+              <span className={clsx("text-xs", "text-slate-500")}>
+                Description
+              </span>
               <textarea
                 value={couponEdit.description || ""}
                 onChange={(event) =>
@@ -3997,14 +5862,24 @@ const AdminSellerDetailsPage = () => {
                     description: event.target.value,
                   }))
                 }
-                className={clsx('rounded-xl', 'border', 'border-slate-200', 'px-3', 'py-2', 'focus:border-blue-400', 'focus:outline-none')}
+                className={clsx(
+                  "rounded-xl",
+                  "border",
+                  "border-slate-200",
+                  "px-3",
+                  "py-2",
+                  "focus:border-blue-400",
+                  "focus:outline-none",
+                )}
                 rows={3}
               />
             </label>
 
-            <div className={clsx('grid', 'gap-4', 'sm:grid-cols-2')}>
-              <label className={clsx('grid', 'gap-1')}>
-                <span className={clsx('text-xs', 'text-slate-500')}>Discount type</span>
+            <div className={clsx("grid", "gap-4", "sm:grid-cols-2")}>
+              <label className={clsx("grid", "gap-1")}>
+                <span className={clsx("text-xs", "text-slate-500")}>
+                  Discount type
+                </span>
                 <select
                   value={couponEdit.discountType || "percentage"}
                   onChange={(event) =>
@@ -4014,14 +5889,22 @@ const AdminSellerDetailsPage = () => {
                       discountValue: prev.discountValue,
                     }))
                   }
-                  className={clsx('rounded-xl', 'border', 'border-slate-200', 'px-3', 'py-2', 'focus:border-blue-400', 'focus:outline-none')}
+                  className={clsx(
+                    "rounded-xl",
+                    "border",
+                    "border-slate-200",
+                    "px-3",
+                    "py-2",
+                    "focus:border-blue-400",
+                    "focus:outline-none",
+                  )}
                 >
                   <option value="percentage">Percentage</option>
                   <option value="amount">Flat amount</option>
                 </select>
               </label>
-              <label className={clsx('grid', 'gap-1')}>
-                <span className={clsx('text-xs', 'text-slate-500')}>
+              <label className={clsx("grid", "gap-1")}>
+                <span className={clsx("text-xs", "text-slate-500")}>
                   {couponEdit.discountType === "amount"
                     ? "Discount amount (₹)"
                     : "Discount percentage (%)"}
@@ -4037,12 +5920,20 @@ const AdminSellerDetailsPage = () => {
                       discountValue: event.target.value,
                     }))
                   }
-                  className={clsx('rounded-xl', 'border', 'border-slate-200', 'px-3', 'py-2', 'focus:border-blue-400', 'focus:outline-none')}
+                  className={clsx(
+                    "rounded-xl",
+                    "border",
+                    "border-slate-200",
+                    "px-3",
+                    "py-2",
+                    "focus:border-blue-400",
+                    "focus:outline-none",
+                  )}
                 />
               </label>
 
-              <label className={clsx('grid', 'gap-1')}>
-                <span className={clsx('text-xs', 'text-slate-500')}>
+              <label className={clsx("grid", "gap-1")}>
+                <span className={clsx("text-xs", "text-slate-500")}>
                   Minimum order amount (₹)
                 </span>
                 <input
@@ -4056,11 +5947,21 @@ const AdminSellerDetailsPage = () => {
                       minOrderAmount: event.target.value,
                     }))
                   }
-                  className={clsx('rounded-xl', 'border', 'border-slate-200', 'px-3', 'py-2', 'focus:border-blue-400', 'focus:outline-none')}
+                  className={clsx(
+                    "rounded-xl",
+                    "border",
+                    "border-slate-200",
+                    "px-3",
+                    "py-2",
+                    "focus:border-blue-400",
+                    "focus:outline-none",
+                  )}
                 />
               </label>
-              <label className={clsx('grid', 'gap-1')}>
-                <span className={clsx('text-xs', 'text-slate-500')}>Max redemptions</span>
+              <label className={clsx("grid", "gap-1")}>
+                <span className={clsx("text-xs", "text-slate-500")}>
+                  Max redemptions
+                </span>
                 <input
                   type="number"
                   min="1"
@@ -4071,12 +5972,31 @@ const AdminSellerDetailsPage = () => {
                       maxRedemptions: event.target.value,
                     }))
                   }
-                  className={clsx('rounded-xl', 'border', 'border-slate-200', 'px-3', 'py-2', 'focus:border-blue-400', 'focus:outline-none')}
+                  className={clsx(
+                    "rounded-xl",
+                    "border",
+                    "border-slate-200",
+                    "px-3",
+                    "py-2",
+                    "focus:border-blue-400",
+                    "focus:outline-none",
+                  )}
                 />
               </label>
             </div>
 
-            <label className={clsx('inline-flex', 'items-center', 'gap-3', 'rounded-xl', 'border', 'border-slate-200', 'px-3', 'py-2')}>
+            <label
+              className={clsx(
+                "inline-flex",
+                "items-center",
+                "gap-3",
+                "rounded-xl",
+                "border",
+                "border-slate-200",
+                "px-3",
+                "py-2",
+              )}
+            >
               <input
                 type="checkbox"
                 checked={Boolean(couponEdit.isActive)}
@@ -4086,9 +6006,18 @@ const AdminSellerDetailsPage = () => {
                     isActive: event.target.checked,
                   }))
                 }
-                className={clsx('h-4', 'w-4', 'rounded', 'border-slate-300', 'text-blue-600', 'focus:ring-blue-500')}
+                className={clsx(
+                  "h-4",
+                  "w-4",
+                  "rounded",
+                  "border-slate-300",
+                  "text-blue-600",
+                  "focus:ring-blue-500",
+                )}
               />
-              <span className={clsx('text-sm', 'text-slate-600')}>Coupon is active</span>
+              <span className={clsx("text-sm", "text-slate-600")}>
+                Coupon is active
+              </span>
             </label>
           </div>
         ) : null}

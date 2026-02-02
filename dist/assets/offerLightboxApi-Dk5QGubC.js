@@ -1,1 +1,0 @@
-import{a as o}from"./index-Bpx0OnSg.js";const n=async(a={})=>{var t;const e=new URLSearchParams;a.offersOnly===!0&&e.append("offersOnly","true");const r=e.toString();return((t=(await o.get(r?`/offer-lightbox?${r}`:"/offer-lightbox")).data)==null?void 0:t.data)||[]};export{n as f};

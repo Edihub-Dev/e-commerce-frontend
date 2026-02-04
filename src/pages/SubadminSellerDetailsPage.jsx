@@ -1710,6 +1710,12 @@ const SubadminSellerDetailsPage = () => {
     }));
   }, [filteredOrders]);
 
+  const handleOrderStatusCardClick = (statusKey) => {
+    setOrdersStatusFilter((previous) =>
+      previous === statusKey ? "" : statusKey,
+    );
+  };
+
   const handleOpenEditShipping = async (order) => {
     const orderKey = getOrderKey(order);
     if (!orderKey) {
@@ -2617,50 +2623,71 @@ const SubadminSellerDetailsPage = () => {
                     )}
                   >
                     {orderSummaryCards.map(
-                      ({ key, label, value, accent, badge }) => (
-                        <div
-                          key={key}
-                          className={clsx(
-                            "rounded-2xl",
-                            "border",
-                            "border-slate-200",
-                            "bg-white",
-                            "p-4",
-                            "shadow-sm",
-                          )}
-                        >
-                          <p
+                      ({ key, label, value, accent, badge }) => {
+                        const isActive = ordersStatusFilter === key;
+                        return (
+                          <button
+                            key={key}
+                            type="button"
+                            onClick={() => handleOrderStatusCardClick(key)}
                             className={clsx(
-                              "text-xs",
-                              "font-semibold",
-                              "uppercase",
-                              "tracking-[0.18em]",
-                              "text-slate-400",
+                              "text-left",
+                              "rounded-2xl",
+                              "border",
+                              "p-4",
+                              "shadow-sm",
+                              "transition",
+                              isActive
+                                ? "border-blue-400 bg-blue-50/70 ring-2 ring-blue-100"
+                                : "border-slate-200 bg-white hover:border-blue-200 hover:bg-blue-50/40",
                             )}
                           >
-                            {label}
-                          </p>
-                          <div
-                            className={clsx(
-                              "mt-3",
-                              "flex",
-                              "items-baseline",
-                              "gap-3",
-                            )}
-                          >
-                            <span
-                              className={`text-3xl font-semibold ${accent}`}
+                            <p
+                              className={clsx(
+                                "text-xs",
+                                "font-semibold",
+                                "uppercase",
+                                "tracking-[0.18em]",
+                                "text-slate-400",
+                              )}
                             >
-                              {value}
-                            </span>
-                            <span
-                              className={`inline-flex items-center rounded-full px-3 py-1 text-[11px] font-semibold ${badge}`}
+                              {label}
+                            </p>
+                            <div
+                              className={clsx(
+                                "mt-3",
+                                "flex",
+                                "items-baseline",
+                                "gap-3",
+                              )}
                             >
-                              {key.replace(/_/g, " ")}
-                            </span>
-                          </div>
-                        </div>
-                      ),
+                              <span
+                                className={clsx(
+                                  "text-3xl",
+                                  "font-semibold",
+                                  accent,
+                                )}
+                              >
+                                {value}
+                              </span>
+                              <span
+                                className={clsx(
+                                  "inline-flex",
+                                  "items-center",
+                                  "rounded-full",
+                                  "px-3",
+                                  "py-1",
+                                  "text-[11px]",
+                                  "font-semibold",
+                                  badge,
+                                )}
+                              >
+                                {key.replace(/_/g, " ")}
+                              </span>
+                            </div>
+                          </button>
+                        );
+                      },
                     )}
                   </div>
                 )}

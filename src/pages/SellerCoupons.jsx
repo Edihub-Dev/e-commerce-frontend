@@ -344,7 +344,7 @@ const formatFileSize = (bytes) => {
   const units = ["B", "KB", "MB", "GB", "TB"];
   const exponent = Math.min(
     Math.floor(Math.log(value) / Math.log(1024)),
-    units.length - 1
+    units.length - 1,
   );
   const size = value / 1024 ** exponent;
 
@@ -540,6 +540,7 @@ const SellerCoupons = () => {
   const [filterDiscountMax, setFilterDiscountMax] = useState("");
   const [selectedIds, setSelectedIds] = useState([]);
   const fileInputRef = useRef(null);
+  const formRef = useRef(null);
   const [importRows, setImportRows] = useState([]);
   const [importPreviewRows, setImportPreviewRows] = useState([]);
   const [importColumns, setImportColumns] = useState([]);
@@ -577,7 +578,7 @@ const SellerCoupons = () => {
   const readyImportRowCount = importRows.length;
   const importErrorsList = useMemo(
     () => (Array.isArray(importErrors) ? importErrors : []),
-    [importErrors]
+    [importErrors],
   );
 
   const fetchCurrentCoupons = useCallback(() => {
@@ -585,8 +586,8 @@ const SellerCoupons = () => {
       statusFilter === "active"
         ? "true"
         : statusFilter === "inactive"
-        ? "false"
-        : undefined;
+          ? "false"
+          : undefined;
 
     dispatch(
       fetchSellerCouponsThunk({
@@ -594,7 +595,7 @@ const SellerCoupons = () => {
         limit,
         search: debouncedSearch || undefined,
         isActive: isActiveParam,
-      })
+      }),
     );
   }, [dispatch, page, limit, debouncedSearch, statusFilter]);
 
@@ -633,22 +634,23 @@ const SellerCoupons = () => {
     const fallback = (() => {
       const total = coupons.length;
       const active = coupons.filter(
-        (coupon) => coupon.isActive !== false
+        (coupon) => coupon.isActive !== false,
       ).length;
       const single = coupons.filter(
-        (coupon) => deriveTypeFromCoupon(coupon) === "single"
+        (coupon) => deriveTypeFromCoupon(coupon) === "single",
       ).length;
       const multi = total - single;
       const expiredSingle = coupons.filter(
         (coupon) =>
-          deriveTypeFromCoupon(coupon) === "single" && coupon.isActive === false
+          deriveTypeFromCoupon(coupon) === "single" &&
+          coupon.isActive === false,
       ).length;
       const expiredMulti = coupons.filter(
         (coupon) =>
-          deriveTypeFromCoupon(coupon) === "multi" && coupon.isActive === false
+          deriveTypeFromCoupon(coupon) === "multi" && coupon.isActive === false,
       ).length;
       const redeemed = coupons.filter((coupon) =>
-        isCouponRedeemed(coupon)
+        isCouponRedeemed(coupon),
       ).length;
       const notRedeemed = total - redeemed;
 
@@ -786,7 +788,7 @@ const SellerCoupons = () => {
       filteredCoupons
         .map((coupon) => (coupon?._id ? String(coupon._id) : null))
         .filter(Boolean),
-    [filteredCoupons]
+    [filteredCoupons],
   );
 
   const isAllSelected =
@@ -851,14 +853,14 @@ const SellerCoupons = () => {
       const createdCount = Number.isFinite(createdCountCandidate)
         ? createdCountCandidate
         : Array.isArray(summary.created)
-        ? summary.created.length
-        : readyImportRowCount;
+          ? summary.created.length
+          : readyImportRowCount;
       const errorCountCandidate = Number(summary.errorCount);
       const errorCount = Number.isFinite(errorCountCandidate)
         ? errorCountCandidate
         : Array.isArray(summary.errors)
-        ? summary.errors.length
-        : 0;
+          ? summary.errors.length
+          : 0;
       const totalRowsCandidate = Number(summary.totalRows);
       const totalRows = Number.isFinite(totalRowsCandidate)
         ? totalRowsCandidate
@@ -868,13 +870,13 @@ const SellerCoupons = () => {
       parts.push(
         `${createdCount} coupon${
           createdCount === 1 ? "" : "s"
-        } imported successfully`
+        } imported successfully`,
       );
       if (errorCount > 0) {
         parts.push(
           `${errorCount} row${
             errorCount === 1 ? "" : "s"
-          } skipped due to validation`
+          } skipped due to validation`,
         );
       }
       if (totalRows > createdCount && totalRows > 0) {
@@ -909,7 +911,7 @@ const SellerCoupons = () => {
     setSelectedIds((prev) =>
       prev.includes(stringId)
         ? prev.filter((existing) => existing !== stringId)
-        : [...prev, stringId]
+        : [...prev, stringId],
     );
   };
 
@@ -1048,12 +1050,12 @@ const SellerCoupons = () => {
 
       if (!normalizedRows.length) {
         throw new Error(
-          "No valid coupon rows were detected. Check required fields and try again."
+          "No valid coupon rows were detected. Check required fields and try again.",
         );
       }
 
       const detectedColumns = IMPORT_ALLOWED_KEYS.filter((key) =>
-        normalizedRows.some((row) => row[key] !== undefined)
+        normalizedRows.some((row) => row[key] !== undefined),
       );
 
       const warnings = [];
@@ -1061,14 +1063,14 @@ const SellerCoupons = () => {
         warnings.push(
           `Ignored columns: ${ignoredHeaders
             .map((header) => `"${header}"`)
-            .join(", ")}`
+            .join(", ")}`,
         );
       }
       if (normalizedRows.length < rawRows.length) {
         warnings.push(
           `${
             rawRows.length - normalizedRows.length
-          } row(s) were skipped because they were empty or missing values.`
+          } row(s) were skipped because they were empty or missing values.`,
         );
       }
 
@@ -1269,14 +1271,14 @@ const SellerCoupons = () => {
     const maxRedemptions = isSingle
       ? 1
       : formState.maxRedemptions.trim() === ""
-      ? undefined
-      : Number(formState.maxRedemptions);
+        ? undefined
+        : Number(formState.maxRedemptions);
 
     const maxRedemptionsPerUser = isSingle
       ? 1
       : formState.maxRedemptionsPerUser.trim() === ""
-      ? undefined
-      : Number(formState.maxRedemptionsPerUser);
+        ? undefined
+        : Number(formState.maxRedemptionsPerUser);
 
     const normalizedCode = formState.code
       ? formState.code.trim().toUpperCase()
@@ -1306,10 +1308,10 @@ const SellerCoupons = () => {
                   .map((id) =>
                     id && typeof id.toString === "function"
                       ? id.toString()
-                      : String(id || "").trim()
+                      : String(id || "").trim(),
                   )
-                  .filter(Boolean)
-              )
+                  .filter(Boolean),
+              ),
             )
           : [],
     };
@@ -1326,7 +1328,7 @@ const SellerCoupons = () => {
     try {
       if (editingCoupon?._id) {
         await dispatch(
-          updateSellerCouponThunk({ id: editingCoupon._id, payload })
+          updateSellerCouponThunk({ id: editingCoupon._id, payload }),
         ).unwrap();
         toast.success("Coupon updated successfully");
       } else if (isBulkCreate) {
@@ -1388,13 +1390,26 @@ const SellerCoupons = () => {
             .filter(Boolean)
         : [],
     });
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    if (
+      formRef.current &&
+      typeof formRef.current.scrollIntoView === "function"
+    ) {
+      formRef.current.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    } else if (
+      typeof window !== "undefined" &&
+      typeof window.scrollTo === "function"
+    ) {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
   };
 
   const handleDelete = async (coupon) => {
     if (!coupon?._id) return;
     const confirmed = window.confirm(
-      `Delete coupon "${coupon.code}"? This action cannot be undone.`
+      `Delete coupon "${coupon.code}"? This action cannot be undone.`,
     );
     if (!confirmed) return;
 
@@ -1412,7 +1427,7 @@ const SellerCoupons = () => {
     const confirmed = window.confirm(
       `Delete ${selectedIds.length} selected coupon${
         selectedIds.length > 1 ? "s" : ""
-      }? This action cannot be undone.`
+      }? This action cannot be undone.`,
     );
     if (!confirmed) return;
 
@@ -1422,7 +1437,7 @@ const SellerCoupons = () => {
       setSelectedIds([]);
     } catch (err) {
       toast.error(
-        err.message || "Failed to delete selected coupons. Please retry."
+        err.message || "Failed to delete selected coupons. Please retry.",
       );
     }
   };
@@ -1463,8 +1478,8 @@ const SellerCoupons = () => {
       statusFilter === "active"
         ? "true"
         : statusFilter === "inactive"
-        ? "false"
-        : undefined;
+          ? "false"
+          : undefined;
 
     dispatch(
       fetchSellerCouponsThunk({
@@ -1472,7 +1487,7 @@ const SellerCoupons = () => {
         limit,
         search: debouncedSearch || undefined,
         isActive: isActiveParam,
-      })
+      }),
     );
   };
 
@@ -1543,7 +1558,10 @@ const SellerCoupons = () => {
         ))}
       </section>
 
-      <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+      <section
+        ref={formRef}
+        className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm"
+      >
         <form onSubmit={handleSubmit} className="space-y-5" noValidate>
           <div className="flex flex-wrap items-start justify-between gap-3 sm:items-center">
             <div className="space-y-1">
@@ -2150,7 +2168,7 @@ const SellerCoupons = () => {
                     const validityLabel =
                       coupon.startDate || coupon.endDate
                         ? `${formatDate(coupon.startDate)} - ${formatDate(
-                            coupon.endDate
+                            coupon.endDate,
                           )}`
                         : "No expiry";
 
@@ -2300,7 +2318,7 @@ const SellerCoupons = () => {
                 const validityLabel =
                   coupon.startDate || coupon.endDate
                     ? `${formatDate(coupon.startDate)} - ${formatDate(
-                        coupon.endDate
+                        coupon.endDate,
                       )}`
                     : "No expiry";
 
@@ -2707,7 +2725,7 @@ const SellerCoupons = () => {
               </motion.div>
             )}
           </AnimatePresence>,
-          portalTarget
+          portalTarget,
         )}
     </motion.div>
   );

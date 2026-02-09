@@ -313,6 +313,20 @@ const isCouponRedeemed = (coupon = {}) => {
   return used >= total;
 };
 
+const isCouponExpired = (coupon = {}) => {
+  if (!coupon || !coupon.endDate) {
+    return false;
+  }
+
+  const end = new Date(coupon.endDate);
+  if (Number.isNaN(end.getTime())) {
+    return false;
+  }
+
+  const now = new Date();
+  return now > end;
+};
+
 const parseDiscountBound = (value) => {
   if (value === null || value === undefined || value === "") {
     return null;
@@ -346,6 +360,16 @@ const formatFileSize = (bytes) => {
     Math.floor(Math.log(value) / Math.log(1024)),
     units.length - 1,
   );
+
+  useEffect(() => {
+    const parsed = parse24HourTo12Hour(formState.startTime);
+    setStartTime12h(parsed);
+  }, [formState.startTime]);
+
+  useEffect(() => {
+    const parsed = parse24HourTo12Hour(formState.endTime);
+    setEndTime12h(parsed);
+  }, [formState.endTime]);
   const size = value / 1024 ** exponent;
 
   return `${size % 1 === 0 ? size : size.toFixed(1)} ${units[exponent]}`;
@@ -367,7 +391,8 @@ const formatDateTime = (value) => {
 const transformSellerCouponsForExport = (couponList) =>
   (Array.isArray(couponList) ? couponList : []).map((coupon, index) => {
     const type = deriveTypeFromCoupon(coupon);
-    const isActive = coupon.isActive !== false;
+    const isExpired = isCouponExpired(coupon);
+    const isActive = !isExpired && coupon.isActive !== false;
     const isRedeemed = isCouponRedeemed(coupon);
     const totalRedemptions =
       coupon.maxRedemptions !== undefined && coupon.maxRedemptions !== null
@@ -377,6 +402,12 @@ const transformSellerCouponsForExport = (couponList) =>
       totalRedemptions === null
         ? "Unlimited"
         : Math.max(totalRedemptions - (coupon.usageCount || 0), 0);
+
+    const statusLabel = !isActive
+      ? "Inactive"
+      : isRedeemed
+        ? "Redeemed"
+        : "Active";
 
     return {
       "#": index + 1,
@@ -390,7 +421,7 @@ const transformSellerCouponsForExport = (couponList) =>
       "Per User Limit": formatLimit(coupon.maxRedemptionsPerUser),
       "Usage Count": Number(coupon.usageCount) || 0,
       "Remaining Redemptions": remainingRedemptions,
-      Status: !isActive ? "Inactive" : isRedeemed ? "Redeemed" : "Active",
+      Status: statusLabel,
       "Start Date": formatDate(coupon.startDate),
       "End Date": formatDate(coupon.endDate),
       Active: formatBoolean(isActive),
@@ -496,6 +527,8 @@ const buildDefaultFormState = () => ({
   maxRedemptionsPerUser: "1",
   startDate: "",
   endDate: "",
+  startTime: "",
+  endTime: "",
   isActive: true,
   count: "1",
   appliesTo: "all",
@@ -504,13 +537,135 @@ const buildDefaultFormState = () => ({
 
 const toDateInputValue = (value) => {
   if (!value) return "";
-  try {
-    return value.slice(0, 10);
-  } catch (_err) {
-    const parsed = new Date(value);
+
+  // Prefer treating the value as a raw ISO-like string from the backend
+  // to avoid timezone shifts. Expect formats like:
+  // - YYYY-MM-DD
+  // - YYYY-MM-DDTHH:mm
+  // - YYYY-MM-DDTHH:mm:ss(.sss)Z
+  const stringValue = String(value);
+  const hasTimezoneInfo = /([zZ]|[+-]\d{2}:\d{2})$/.test(stringValue);
+  if (hasTimezoneInfo) {
+    const parsed = new Date(stringValue);
     if (Number.isNaN(parsed.getTime())) return "";
-    return parsed.toISOString().slice(0, 10);
+    const year = parsed.getFullYear();
+    const month = String(parsed.getMonth() + 1).padStart(2, "0");
+    const day = String(parsed.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
   }
+  if (stringValue.length >= 10) {
+    return stringValue.slice(0, 10);
+  }
+
+  // Fallback to Date parsing only if needed
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return "";
+  return parsed.toISOString().slice(0, 10);
+};
+
+const toTimeInputValue = (value) => {
+  if (!value) return "";
+
+  const stringValue = String(value);
+  const hasTimezoneInfo = /([zZ]|[+-]\d{2}:\d{2})$/.test(stringValue);
+  if (hasTimezoneInfo) {
+    const parsed = new Date(stringValue);
+    if (Number.isNaN(parsed.getTime())) return "";
+    const hours = parsed.getHours().toString().padStart(2, "0");
+    const minutes = parsed.getMinutes().toString().padStart(2, "0");
+    return `${hours}:${minutes}`;
+  }
+  const tIndex = stringValue.indexOf("T");
+
+  if (tIndex !== -1) {
+    const timePart = stringValue.slice(tIndex + 1); // e.g. "10:34:00.000Z"
+    const match = timePart.match(/^(\d{2}):(\d{2})/);
+    if (match) {
+      return `${match[1]}:${match[2]}`;
+    }
+  }
+
+  // As a last resort, fall back to Date parsing
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return "";
+  const hours = parsed.getHours().toString().padStart(2, "0");
+  const minutes = parsed.getMinutes().toString().padStart(2, "0");
+  return `${hours}:${minutes}`;
+};
+
+const buildDateTimeString = (date, time, isEnd = false) => {
+  if (!date) return "";
+
+  // When the user chooses an explicit time, use it exactly as given
+  // so that the same time shows when the coupon is edited again.
+  if (time) {
+    return `${date}T${time}`;
+  }
+
+  // If no explicit time is provided, default start to beginning of day
+  // and end to end of day so that "date-only" coupons are valid for
+  // the full selected day.
+  if (isEnd) {
+    return `${date}T23:59:59`;
+  }
+  return `${date}T00:00:00`;
+};
+
+const parse24HourTo12Hour = (time) => {
+  if (!time) {
+    return { hour: "", minute: "", period: "AM" };
+  }
+
+  const match = String(time).match(/^(\d{2}):(\d{2})/);
+  if (!match) {
+    return { hour: "", minute: "", period: "AM" };
+  }
+
+  let hours = Number(match[1]);
+  const minutes = match[2];
+  let period = "AM";
+
+  if (Number.isNaN(hours)) {
+    return { hour: "", minute: "", period: "AM" };
+  }
+
+  if (hours === 0) {
+    hours = 12;
+    period = "AM";
+  } else if (hours === 12) {
+    period = "PM";
+  } else if (hours > 12) {
+    hours -= 12;
+    period = "PM";
+  }
+
+  return {
+    hour: String(hours).padStart(2, "0"),
+    minute: minutes,
+    period,
+  };
+};
+
+const build24HourFrom12Hour = (hour12, minute, period) => {
+  const cleanHour = String(hour12 || "").padStart(2, "0");
+  const cleanMinute = String(minute || "").padStart(2, "0");
+
+  const h = Number(cleanHour);
+  const m = Number(cleanMinute);
+
+  if (!Number.isInteger(h) || h < 1 || h > 12) {
+    return "";
+  }
+  if (!Number.isInteger(m) || m < 0 || m > 59) {
+    return "";
+  }
+
+  let hours24 = h % 12;
+  if (String(period).toUpperCase() === "PM") {
+    hours24 += 12;
+  }
+
+  return `${String(hours24).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
 };
 
 const SellerCoupons = () => {
@@ -559,6 +714,16 @@ const SellerCoupons = () => {
   const [productOptions, setProductOptions] = useState([]);
   const [isLoadingProducts, setIsLoadingProducts] = useState(false);
   const [productLoadError, setProductLoadError] = useState("");
+  const [startTime12h, setStartTime12h] = useState({
+    hour: "",
+    minute: "",
+    period: "AM",
+  });
+  const [endTime12h, setEndTime12h] = useState({
+    hour: "",
+    minute: "",
+    period: "AM",
+  });
 
   const isLoadingList = status === "loading";
   const isMutating = mutationStatus === "loading";
@@ -633,26 +798,42 @@ const SellerCoupons = () => {
   const summary = useMemo(() => {
     const fallback = (() => {
       const total = coupons.length;
-      const active = coupons.filter(
-        (coupon) => coupon.isActive !== false,
-      ).length;
-      const single = coupons.filter(
-        (coupon) => deriveTypeFromCoupon(coupon) === "single",
-      ).length;
-      const multi = total - single;
-      const expiredSingle = coupons.filter(
-        (coupon) =>
-          deriveTypeFromCoupon(coupon) === "single" &&
-          coupon.isActive === false,
-      ).length;
-      const expiredMulti = coupons.filter(
-        (coupon) =>
-          deriveTypeFromCoupon(coupon) === "multi" && coupon.isActive === false,
-      ).length;
-      const redeemed = coupons.filter((coupon) =>
-        isCouponRedeemed(coupon),
-      ).length;
-      const notRedeemed = total - redeemed;
+      let active = 0;
+      let single = 0;
+      let multi = 0;
+      let expiredSingle = 0;
+      let expiredMulti = 0;
+      let redeemed = 0;
+      let notRedeemed = 0;
+
+      coupons.forEach((coupon) => {
+        const type = deriveTypeFromCoupon(coupon);
+        const expired = isCouponExpired(coupon);
+        const isActive = !expired && coupon.isActive !== false;
+        const isRedeemed = isCouponRedeemed(coupon);
+
+        if (type === "single") {
+          single += 1;
+          if (expired) {
+            expiredSingle += 1;
+          }
+        } else {
+          multi += 1;
+          if (expired) {
+            expiredMulti += 1;
+          }
+        }
+
+        if (isActive) {
+          active += 1;
+        }
+
+        if (isRedeemed) {
+          redeemed += 1;
+        } else {
+          notRedeemed += 1;
+        }
+      });
 
       return {
         total,
@@ -752,16 +933,20 @@ const SellerCoupons = () => {
         return false;
       }
 
+      const isExpired = isCouponExpired(coupon);
+      const isActive = !isExpired && coupon.isActive !== false;
+      const isRedeemed = isCouponRedeemed(coupon);
+
       const matchesStatus = (() => {
         switch (statusFilter) {
           case "active":
-            return coupon.isActive !== false;
+            return isActive;
           case "inactive":
-            return coupon.isActive === false;
+            return !isActive;
           case "redeemed":
-            return isCouponRedeemed(coupon);
+            return isRedeemed;
           case "not-redeemed":
-            return !isCouponRedeemed(coupon);
+            return !isRedeemed;
           default:
             return true;
         }
@@ -1183,6 +1368,26 @@ const SellerCoupons = () => {
     }));
   };
 
+  const handleStartTime12hChange = (field) => (event) => {
+    const value = event.target.value;
+    setStartTime12h((prev) => {
+      const next = { ...prev, [field]: value };
+      const time24 = build24HourFrom12Hour(next.hour, next.minute, next.period);
+      setFormState((formPrev) => ({ ...formPrev, startTime: time24 }));
+      return next;
+    });
+  };
+
+  const handleEndTime12hChange = (field) => (event) => {
+    const value = event.target.value;
+    setEndTime12h((prev) => {
+      const next = { ...prev, [field]: value };
+      const time24 = build24HourFrom12Hour(next.hour, next.minute, next.period);
+      setFormState((formPrev) => ({ ...formPrev, endTime: time24 }));
+      return next;
+    });
+  };
+
   const validateForm = () => {
     if (!Number.isFinite(countValue) || countValue < 1) {
       toast.error("Count must be at least 1");
@@ -1230,15 +1435,26 @@ const SellerCoupons = () => {
       }
     }
 
-    if (formState.startDate && formState.endDate) {
-      const start = new Date(formState.startDate);
-      const end = new Date(formState.endDate);
+    const startDateTimeString = buildDateTimeString(
+      formState.startDate,
+      formState.startTime,
+      false,
+    );
+    const endDateTimeString = buildDateTimeString(
+      formState.endDate,
+      formState.endTime,
+      true,
+    );
+
+    if (startDateTimeString && endDateTimeString) {
+      const start = new Date(startDateTimeString);
+      const end = new Date(endDateTimeString);
       if (
         !Number.isNaN(start.getTime()) &&
         !Number.isNaN(end.getTime()) &&
         start > end
       ) {
-        toast.error("End date must be after start date");
+        toast.error("End date/time must be after start date/time");
         return false;
       }
     }
@@ -1284,6 +1500,17 @@ const SellerCoupons = () => {
       ? formState.code.trim().toUpperCase()
       : "";
 
+    const startDateTimeString = buildDateTimeString(
+      formState.startDate,
+      formState.startTime,
+      false,
+    );
+    const endDateTimeString = buildDateTimeString(
+      formState.endDate,
+      formState.endTime,
+      true,
+    );
+
     return {
       code: normalizedCode,
       description: formState.description.trim() || undefined,
@@ -1293,8 +1520,8 @@ const SellerCoupons = () => {
       minOrderAmount,
       maxRedemptions,
       maxRedemptionsPerUser,
-      startDate: formState.startDate || undefined,
-      endDate: formState.endDate || undefined,
+      startDate: startDateTimeString || undefined,
+      endDate: endDateTimeString || undefined,
       isActive: Boolean(formState.isActive),
       appliesTo: formState.appliesTo === "product" ? "product" : "all",
       productIds:
@@ -1381,6 +1608,8 @@ const SellerCoupons = () => {
           : "",
       startDate: toDateInputValue(coupon.startDate),
       endDate: toDateInputValue(coupon.endDate),
+      startTime: toTimeInputValue(coupon.startDate),
+      endTime: toTimeInputValue(coupon.endDate),
       isActive: coupon.isActive !== false,
       count: "1",
       appliesTo: coupon.appliesTo === "product" ? "product" : "all",
@@ -1979,6 +2208,77 @@ const SellerCoupons = () => {
                   </div>
                 </div>
 
+                <div className="mt-3 grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <span className="text-sm font-medium text-slate-600">
+                      Start Time (optional)
+                    </span>
+                    <div className="mt-1 flex items-center gap-2">
+                      <input
+                        type="number"
+                        min={1}
+                        max={12}
+                        value={startTime12h.hour}
+                        onChange={handleStartTime12hChange("hour")}
+                        className="w-16 rounded-xl border border-slate-200 px-2 py-2 text-sm text-center text-slate-700 focus:border-blue-500 focus:outline-none"
+                        placeholder="hh"
+                      />
+                      <span className="text-sm text-slate-500">:</span>
+                      <input
+                        type="number"
+                        min={0}
+                        max={59}
+                        value={startTime12h.minute}
+                        onChange={handleStartTime12hChange("minute")}
+                        className="w-16 rounded-xl border border-slate-200 px-2 py-2 text-sm text-center text-slate-700 focus:border-blue-500 focus:outline-none"
+                        placeholder="mm"
+                      />
+                      <select
+                        value={startTime12h.period}
+                        onChange={handleStartTime12hChange("period")}
+                        className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-blue-500 focus:outline-none"
+                      >
+                        <option value="AM">AM</option>
+                        <option value="PM">PM</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div>
+                    <span className="text-sm font-medium text-slate-600">
+                      End Time (optional)
+                    </span>
+                    <div className="mt-1 flex items-center gap-2">
+                      <input
+                        type="number"
+                        min={1}
+                        max={12}
+                        value={endTime12h.hour}
+                        onChange={handleEndTime12hChange("hour")}
+                        className="w-16 rounded-xl border border-slate-200 px-2 py-2 text-sm text-center text-slate-700 focus:border-blue-500 focus:outline-none"
+                        placeholder="hh"
+                      />
+                      <span className="text-sm text-slate-500">:</span>
+                      <input
+                        type="number"
+                        min={0}
+                        max={59}
+                        value={endTime12h.minute}
+                        onChange={handleEndTime12hChange("minute")}
+                        className="w-16 rounded-xl border border-slate-200 px-2 py-2 text-sm text-center text-slate-700 focus:border-blue-500 focus:outline-none"
+                        placeholder="mm"
+                      />
+                      <select
+                        value={endTime12h.period}
+                        onChange={handleEndTime12hChange("period")}
+                        className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-blue-500 focus:outline-none"
+                      >
+                        <option value="AM">AM</option>
+                        <option value="PM">PM</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
                 <div className="flex flex-wrap items-center gap-3">
                   <button
                     type="submit"
@@ -2173,7 +2473,8 @@ const SellerCoupons = () => {
                         : "No expiry";
 
                     const type = deriveTypeFromCoupon(coupon);
-                    const isActive = coupon.isActive !== false;
+                    const isExpired = isCouponExpired(coupon);
+                    const isActive = !isExpired && coupon.isActive !== false;
                     const redeemed = isCouponRedeemed(coupon);
 
                     return (
@@ -2256,6 +2557,10 @@ const SellerCoupons = () => {
                                 redeemed
                                   ? "bg-rose-50 text-rose-600"
                                   : "bg-blue-50 text-blue-600"
+                              } ${
+                                !redeemed && isExpired
+                                  ? "line-through opacity-70"
+                                  : ""
                               }`}
                             >
                               {redeemed ? "Redeemed" : "Not Redeemed"}
@@ -2323,7 +2628,8 @@ const SellerCoupons = () => {
                     : "No expiry";
 
                 const type = deriveTypeFromCoupon(coupon);
-                const isActive = coupon.isActive !== false;
+                const isExpired = isCouponExpired(coupon);
+                const isActive = !isExpired && coupon.isActive !== false;
                 const redeemed = isCouponRedeemed(coupon);
                 const typeBadgeClass =
                   type === "single"
@@ -2370,6 +2676,10 @@ const SellerCoupons = () => {
                           redeemed
                             ? "bg-rose-50 text-rose-600"
                             : "bg-blue-50 text-blue-600"
+                        } ${
+                          !redeemed && isExpired
+                            ? "line-through opacity-70"
+                            : ""
                         }`}
                       >
                         {redeemed ? "Redeemed" : "Not Redeemed"}

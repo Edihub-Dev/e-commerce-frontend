@@ -360,16 +360,6 @@ const formatFileSize = (bytes) => {
     Math.floor(Math.log(value) / Math.log(1024)),
     units.length - 1,
   );
-
-  useEffect(() => {
-    const parsed = parse24HourTo12Hour(formState.startTime);
-    setStartTime12h(parsed);
-  }, [formState.startTime]);
-
-  useEffect(() => {
-    const parsed = parse24HourTo12Hour(formState.endTime);
-    setEndTime12h(parsed);
-  }, [formState.endTime]);
   const size = value / 1024 ** exponent;
 
   return `${size % 1 === 0 ? size : size.toFixed(1)} ${units[exponent]}`;
@@ -725,6 +715,26 @@ const SellerCoupons = () => {
     period: "AM",
   });
 
+  const [nowTick, setNowTick] = useState(0);
+
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      setNowTick((prev) => prev + 1);
+    }, 30000);
+
+    return () => clearInterval(intervalId);
+  }, []);
+
+  useEffect(() => {
+    const parsed = parse24HourTo12Hour(formState.startTime);
+    setStartTime12h(parsed);
+  }, [formState.startTime]);
+
+  useEffect(() => {
+    const parsed = parse24HourTo12Hour(formState.endTime);
+    setEndTime12h(parsed);
+  }, [formState.endTime]);
+
   const isLoadingList = status === "loading";
   const isMutating = mutationStatus === "loading";
   const page = meta.page || 1;
@@ -921,7 +931,7 @@ const SellerCoupons = () => {
         badgeClass: "bg-blue-50 text-blue-600",
       },
     ];
-  }, [coupons, storeStats]);
+  }, [coupons, storeStats, nowTick]);
 
   const filteredCoupons = useMemo(() => {
     const min = parseDiscountBound(filterDiscountMin);
@@ -966,7 +976,15 @@ const SellerCoupons = () => {
 
       return true;
     });
-  }, [coupons, filterDiscountMax, filterDiscountMin, filterType, statusFilter]);
+  }, [
+    coupons,
+    debouncedSearch,
+    filterDiscountMax,
+    filterDiscountMin,
+    filterType,
+    statusFilter,
+    nowTick,
+  ]);
 
   const selectableIds = useMemo(
     () =>

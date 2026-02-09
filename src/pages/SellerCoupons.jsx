@@ -586,19 +586,20 @@ const toTimeInputValue = (value) => {
 const buildDateTimeString = (date, time, isEnd = false) => {
   if (!date) return "";
 
-  // When the user chooses an explicit time, use it exactly as given
-  // so that the same time shows when the coupon is edited again.
-  if (time) {
-    return `${date}T${time}`;
-  }
+  const dateTimeLocal = (() => {
+    if (time) {
+      return `${date}T${time}:00`;
+    }
 
-  // If no explicit time is provided, default start to beginning of day
-  // and end to end of day so that "date-only" coupons are valid for
-  // the full selected day.
-  if (isEnd) {
-    return `${date}T23:59:59`;
-  }
-  return `${date}T00:00:00`;
+    if (isEnd) {
+      return `${date}T23:59:59`;
+    }
+    return `${date}T00:00:00`;
+  })();
+
+  const parsed = new Date(dateTimeLocal);
+  if (Number.isNaN(parsed.getTime())) return "";
+  return parsed.toISOString();
 };
 
 const parse24HourTo12Hour = (time) => {
